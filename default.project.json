@@ -6,6 +6,30 @@
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
+      },
+      "Remotes": {
+        "$className": "Folder",
+        "UseItem": {
+          "$className": "RemoteEvent"
+        },
+        "UpdateScore": {
+          "$className": "RemoteEvent"
+        },
+        "StageComplete": {
+          "$className": "RemoteEvent"
+        },
+        "StartGame": {
+          "$className": "RemoteEvent"
+        },
+        "UpdateLeaderboard": {
+          "$className": "RemoteEvent"
+        },
+        "PlayerDied": {
+          "$className": "RemoteEvent"
+        }
+      },
+      "StageTemplates": {
+        "$className": "Folder"
       }
     },
 
@@ -24,48 +48,80 @@
     },
 
     "Workspace": {
-      "$properties": {
-        "FilteringEnabled": true
+      "Lobby": {
+        "$className": "Folder",
+        "Floor": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.3, 0.5, 0.3],
+            "Material": "Grass",
+            "Size": [100, 2, 100],
+            "Position": [0, -1, 0]
+          }
+        },
+        "SpawnLocation": {
+          "$className": "SpawnLocation",
+          "$properties": {
+            "Anchored": true,
+            "Position": [0, 1, 0],
+            "Size": [6, 1, 6],
+            "Neutral": true
+          }
+        },
+        "StartPortal": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.0, 0.8, 0.4],
+            "Material": "Neon",
+            "Size": [10, 15, 2],
+            "Position": [0, 7.5, 40],
+            "Transparency": 0.3,
+            "CanCollide": false
+          }
+        }
       },
-      "Baseplate": {
+      "Stages": {
+        "$className": "Folder"
+      },
+      "KillBrick": {
         "$className": "Part",
         "$properties": {
           "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0,
-            -10,
-            0
-          ],
-          "Size": [
-            512,
-            20,
-            512
-          ]
+          "Color": [0.7, 0.1, 0.1],
+          "Transparency": 0.8,
+          "Size": [2000, 1, 2000],
+          "Position": [0, -25, 500],
+          "CanCollide": false
         }
       }
     },
+
     "Lighting": {
       "$properties": {
-        "Ambient": [
-          0,
-          0,
-          0
-        ],
+        "Ambient": [0.2, 0.2, 0.25],
         "Brightness": 2,
         "GlobalShadows": true,
         "Outlines": false,
-        "Technology": "Voxel"
+        "Technology": "Voxel",
+        "ClockTime": 14
       }
     },
+
     "SoundService": {
       "$properties": {
         "RespectFilteringEnabled": true
+      }
+    },
+
+    "StarterGui": {
+      "GameUI": {
+        "$className": "ScreenGui",
+        "$properties": {
+          "ResetOnSpawn": false,
+          "IgnoreGuiInset": false
+        }
       }
     }
   }

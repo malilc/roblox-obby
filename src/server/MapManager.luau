@@ -1,0 +1,291 @@
+-- MapManager: จัดการการสุ่มและสร้าง Map
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local StageTemplates = require(script.Parent.StageTemplates)
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local MapManager = {}
+MapManager.__index = MapManager
+
+-- สร้าง MapManager ใหม่
+function MapManager.new()
+	local self = setmetatable({}, MapManager)
+	
+	self.currentStages = {} :: {Model}
+	self.stageOrder = {} :: {number}
+	self.stagesFolder = workspace:WaitForChild("Stages")
+	self.movingParts = {} :: {Part}
+	self.spinningParts = {} :: {Part}
+	self.disappearingParts = {} :: {{part: Part, touched: boolean, lastTouchTime: number}}
+	
+	return self
+end
+
+-- สุ่มลำดับ stages
+function MapManager:shuffleStages(): {number}
+	local stages = {}
+	for i = 1, Config.Stages.Count do
+		table.insert(stages, i)
+	end
+	
+	-- Fisher-Yates shuffle
+	for i = #stages, 2, -1 do
+		local j = math.random(1, i)
+		stages[i], stages[j] = stages[j], stages[i]
+	end
+	
+	return stages
+end
+
+-- สร้าง Map ใหม่
+function MapManager:generateMap()
+	-- Clear existing stages
+	self:clearMap()
+	
+	-- สุ่มลำดับ
+	self.stageOrder = self:shuffleStages()
+	print("[MapManager] Stage order:", table.concat(self.stageOrder, ", "))
+	
+	local stageCreators = StageTemplates.getStageCreators()
+	local currentPosition = Config.Stages.StartOffset
+	
+	for index, stageNum in ipairs(self.stageOrder) do
+		local creator = stageCreators[stageNum]
+		if creator then
+			local stage = creator(currentPosition)
+			stage.Name = "Stage_" .. index .. "_Type" .. stageNum
+			stage:SetAttribute("StageIndex", index)
+			stage:SetAttribute("StageType", stageNum)
+			stage.Parent = self.stagesFolder
+			
+			table.insert(self.currentStages, stage)
+			
+			-- หา EndPart เพื่อคำนวณตำแหน่งถัดไป
+			local endPart = stage:FindFirstChild("EndPart")
+			if endPart then
+				currentPosition = endPart.Position + Vector3.new(0, 0, 10) -- Gap between stages
+			else
+				currentPosition = currentPosition + Vector3.new(0, 0, Config.Stages.StageLength + 10)
+			end
+			
+			-- Register animated parts
+			self:registerAnimatedParts(stage)
+		end
+	end
+	
+	-- Start animations
+	self:startAnimations()
+	
+	print("[MapManager] Generated " .. #self.currentStages .. " stages")
+end
+
+-- ลงทะเบียน parts ที่ต้องมี animation
+function MapManager:registerAnimatedParts(stage: Model)
+	for _, descendant in ipairs(stage:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			if descendant:GetAttribute("IsMoving") then
+				table.insert(self.movingParts, descendant)
+				-- เก็บตำแหน่งเริ่มต้น
+				descendant:SetAttribute("OriginalPosition", descendant.Position)
+			end
+			
+			if descendant:GetAttribute("IsSpinning") then
+				table.insert(self.spinningParts, descendant)
+			end
+			
+			if descendant:GetAttribute("IsDisappearing") then
+				table.insert(self.disappearingParts, {
+					part = descendant,
+					touched = false,
+					lastTouchTime = 0,
+				})
+				-- Setup touch detection
+				self:setupDisappearingPlatform(descendant)
+			end
+		end
+	end
+end
+
+-- Setup disappearing platform
+function MapManager:setupDisappearingPlatform(part: Part)
+	part.Touched:Connect(function(hit)
+		local humanoid = hit.Parent:FindFirstChild("Humanoid")
+		if humanoid then
+			-- Find in disappearingParts
+			for _, data in ipairs(self.disappearingParts) do
+				if data.part == part and not data.touched then
+					data.touched = true
+					data.lastTouchTime = tick()
+					
+					local disappearDelay = part:GetAttribute("DisappearDelay") or 1.5
+					local reappearDelay = part:GetAttribute("ReappearDelay") or 3
+					
+					-- Blink effect then disappear
+					task.spawn(function()
+						-- Blink warning
+						for _ = 1, 3 do
+							part.Transparency = 0.5
+							task.wait(disappearDelay / 6)
+							part.Transparency = 0
+							task.wait(disappearDelay / 6)
+						end
+						
+						-- Disappear
+						part.Transparency = 1
+						part.CanCollide = false
+						
+						-- Reappear
+						task.wait(reappearDelay)
+						part.Transparency = 0
+						part.CanCollide = true
+						data.touched = false
+					end)
+					
+					break
+				end
+			end
+		end
+	end)
+end
+
+-- Start animations
+function MapManager:startAnimations()
+	-- Animation loop
+	self.animationConnection = RunService.Heartbeat:Connect(function(dt)
+		local time = tick()
+		
+		-- Moving platforms
+		for _, part in ipairs(self.movingParts) do
+			local originalPos = part:GetAttribute("OriginalPosition")
+			if originalPos then
+				local axis = part:GetAttribute("MoveAxis") or "X"
+				local distance = part:GetAttribute("MoveDistance") or 10
+				local speed = part:GetAttribute("MoveSpeed") or 3
+				
+				local offset = math.sin(time * speed) * distance
+				
+				if axis == "X" then
+					part.Position = originalPos + Vector3.new(offset, 0, 0)
+				elseif axis == "Y" then
+					part.Position = originalPos + Vector3.new(0, offset, 0)
+				else
+					part.Position = originalPos + Vector3.new(0, 0, offset)
+				end
+			end
+		end
+		
+		-- Spinning parts
+		for _, part in ipairs(self.spinningParts) do
+			local spinSpeed = part:GetAttribute("SpinSpeed") or 2
+			part.CFrame = part.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
+		end
+	end)
+end
+
+-- Clear map
+function MapManager:clearMap()
+	-- Stop animations
+	if self.animationConnection then
+		self.animationConnection:Disconnect()
+		self.animationConnection = nil
+	end
+	
+	-- Clear stages
+	for _, stage in ipairs(self.currentStages) do
+		stage:Destroy()
+	end
+	
+	self.currentStages = {}
+	self.movingParts = {}
+	self.spinningParts = {}
+	self.disappearingParts = {}
+end
+
+-- Get checkpoint position for stage
+function MapManager:getCheckpointPosition(stageIndex: number): Vector3?
+	local stage = self.currentStages[stageIndex]
+	if stage then
+		local checkpoint = stage:FindFirstChild("Checkpoint")
+		if checkpoint then
+			return checkpoint.Position + Vector3.new(0, 3, 0)
+		end
+	end
+	return nil
+end
+
+-- Get stage from position
+function MapManager:getStageIndexFromPosition(position: Vector3): number?
+	for index, stage in ipairs(self.currentStages) do
+		local startPart = stage:FindFirstChild("StartPart")
+		local endPart = stage:FindFirstChild("EndPart")
+		
+		if startPart and endPart then
+			local startZ = startPart.Position.Z - 10
+			local endZ = endPart.Position.Z + 10
+			
+			if position.Z >= startZ and position.Z <= endZ then
+				return index
+			end
+		end
+	end
+	return nil
+end
+
+-- Check if position is at finish line
+function MapManager:isAtFinishLine(position: Vector3): boolean
+	local lastStage = self.currentStages[#self.currentStages]
+	if lastStage then
+		local endPart = lastStage:FindFirstChild("EndPart")
+		if endPart and endPart:GetAttribute("IsFinishLine") then
+			local distance = (position - endPart.Position).Magnitude
+			return distance < 15
+		end
+	end
+	return false
+end
+
+-- Get all checkpoints
+function MapManager:getAllCheckpoints(): {SpawnLocation}
+	local checkpoints = {}
+	for _, stage in ipairs(self.currentStages) do
+		local checkpoint = stage:FindFirstChild("Checkpoint")
+		if checkpoint and checkpoint:IsA("SpawnLocation") then
+			table.insert(checkpoints, checkpoint)
+		end
+	end
+	return checkpoints
+end
+
+-- Get all item pickups
+function MapManager:getAllItemPickups(): {Part}
+	local pickups = {}
+	for _, stage in ipairs(self.currentStages) do
+		local folder = stage:FindFirstChild("ItemPickups")
+		if folder then
+			for _, pickup in ipairs(folder:GetChildren()) do
+				if pickup:IsA("BasePart") then
+					table.insert(pickups, pickup)
+				end
+			end
+		end
+	end
+	return pickups
+end
+
+-- Get all kill parts
+function MapManager:getAllKillParts(): {Part}
+	local killParts = {}
+	for _, stage in ipairs(self.currentStages) do
+		for _, descendant in ipairs(stage:GetDescendants()) do
+			if descendant:IsA("BasePart") and descendant:GetAttribute("IsKillPart") then
+				table.insert(killParts, descendant)
+			end
+		end
+	end
+	return killParts
+end
+
+return MapManager
