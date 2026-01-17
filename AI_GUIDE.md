@@ -9,14 +9,14 @@ src/
 ├── server/                      # Server-side code
 │   ├── init.server.luau         # Entry point - สร้าง GameManager
 │   ├── GameManager.luau         # ควบคุมเกมทั้งหมด
-│   ├── MapManager.luau          # จัดการ map/stages
+│   ├── MapManager.luau          # จัดการ map/stages + animations
 │   ├── ScoreManager.luau        # ระบบคะแนน + DataStore
 │   ├── ItemManager.luau         # ระบบ Push item
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
 │
 ├── client/                      # Client-side code
 │   ├── init.client.luau         # Entry point
-│   ├── FlyController.luau       # ระบบบินทดสอบ
+│   ├── FlyController.luau       # ระบบบินทดสอบ (กด F)
 │   └── UI/
 │       ├── MainUI.luau          # Controller หลัก
 │       ├── ScoreUI.luau         # แสดงคะแนน
@@ -27,6 +27,22 @@ src/
     ├── Config.luau              # ⭐ ค่า Config ทั้งหมด
     └── Types.luau               # Type definitions
 ```
+
+---
+
+## 🏠 Workspace Structure
+
+```
+Workspace/
+├── SpawnLocation          # จุดเกิดเริ่มต้น (ต้องอยู่ใน Workspace โดยตรง!)
+├── Lobby/
+│   ├── Floor              # พื้น Lobby
+│   └── StartPortal        # Portal เข้าเกม
+├── Stages/                # Folder เก็บด่านที่ generate
+└── KillBrick              # พื้นที่ตายเมื่อตก
+```
+
+**สำคัญ**: `SpawnLocation` ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder ไม่งั้น Roblox จะไม่รู้จักเป็นจุดเกิด
 
 ---
 
@@ -50,7 +66,7 @@ function StageTemplates.createStageX(startPosition: Vector3): Model
     })
     startPart.Parent = stage
     
-    -- 2. Checkpoint (จุด respawn - ต้องมี)
+    -- 2. Checkpoint (จุด respawn - ต้องมี) ⚠️ เป็น Part ไม่ใช่ SpawnLocation
     local checkpoint = createCheckpoint(startPosition + Vector3.new(0, 1.5, 0))
     checkpoint.Parent = stage
     
@@ -79,11 +95,33 @@ function StageTemplates.createStageX(startPosition: Vector3): Model
 end
 ```
 
+### Helper Functions:
+
+| Function | Return Type | Description |
+|----------|-------------|-------------|
+| `createPart(props)` | `Part` | สร้าง Part พร้อม Friction สูง |
+| `createCheckpoint(pos)` | `Part` | สร้าง Checkpoint (Part สีเขียว Neon) |
+| `createItemPickup(pos)` | `Part` | สร้าง Item pickup (ลูกบอลสีทอง) |
+
+### ⚠️ สำคัญ: Checkpoint เป็น Part ไม่ใช่ SpawnLocation
+
+```lua
+-- ✅ ถูกต้อง - ใช้ Part
+local function createCheckpoint(position: Vector3): Part
+    local checkpoint = Instance.new("Part")
+    checkpoint.Name = "Checkpoint"
+    -- ...
+end
+
+-- ❌ ผิด - ถ้าใช้ SpawnLocation จะทำให้ผู้เล่นเกิดที่นี่แทน Lobby
+local checkpoint = Instance.new("SpawnLocation")
+```
+
 ### Attributes สำหรับ Obstacle พิเศษ:
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `IsMoving` | boolean | Platform เคลื่อนที่ |
+| `IsMoving` | boolean | Platform เคลื่อนที่ (ใช้ PrismaticConstraint) |
 | `MoveAxis` | string | "X", "Y", หรือ "Z" |
 | `MoveDistance` | number | ระยะเคลื่อนที่ (studs) |
 | `MoveSpeed` | number | ความเร็ว |
@@ -93,9 +131,8 @@ end
 | `DisappearDelay` | number | วินาทีก่อนหาย |
 | `ReappearDelay` | number | วินาทีก่อนกลับมา |
 | `IsKillPart` | boolean | แตะแล้วตาย (respawn) |
-| `IsFinishLine` | boolean | เส้นชัย (เฉพาะด่านสุดท้าย) |
 
-### ตัวอย่าง: เพิ่ม Moving Platform
+### ตัวอย่าง: Moving Platform (Physics-based)
 
 ```lua
 local platform = createPart({
@@ -111,7 +148,9 @@ platform:SetAttribute("MoveSpeed", 3)
 platform.Parent = obstacles
 ```
 
-### ตัวอย่าง: เพิ่ม Spinning Kill Part
+**หมายเหตุ**: Moving Platform จะใช้ `PrismaticConstraint` โดยอัตโนมัติ ทำให้ผู้เล่นเกาะไปด้วย (ไม่ลื่น)
+
+### ตัวอย่าง: Spinning Kill Part
 
 ```lua
 local spinner = createPart({
@@ -145,6 +184,86 @@ end
 ```
 
 3. อัพเดท `Config.Stages.Count` ใน `src/shared/Config.luau`
+
+---
+
+## 🎲 ระบบสุ่มด่าน
+
+### ไฟล์: `src/server/MapManager.luau`
+
+```lua
+-- Seed random เพื่อให้สุ่มได้จริง (ทำอัตโนมัติแล้ว)
+math.randomseed(os.time() + os.clock() * 1000)
+
+-- Fisher-Yates shuffle
+function MapManager:shuffleStages(): {number}
+    local stages = {}
+    for i = 1, Config.Stages.Count do
+        table.insert(stages, i)
+    end
+    
+    for i = #stages, 2, -1 do
+        local j = math.random(1, i)
+        stages[i], stages[j] = stages[j], stages[i]
+    end
+    
+    return stages
+end
+```
+
+**Output ใน Console**: `[GameManager] Stage order: 3, 1, 5, 2, 4`
+
+---
+
+## 🏃 Moving Platform System (Physics-based)
+
+### ไฟล์: `src/server/MapManager.luau`
+
+Moving Platforms ใช้ `PrismaticConstraint` แทน CFrame animation เพื่อให้ผู้เล่นเกาะไปด้วย:
+
+```lua
+function MapManager:setupMovingPlatformConstraint(part: Part)
+    -- Unanchor เพื่อให้ physics ทำงาน
+    part.Anchored = false
+    
+    -- สร้าง Anchor Part (มองไม่เห็น)
+    local anchorPart = Instance.new("Part")
+    anchorPart.Anchored = true
+    anchorPart.CanCollide = false
+    anchorPart.Transparency = 1
+    
+    -- สร้าง PrismaticConstraint
+    local prismatic = Instance.new("PrismaticConstraint")
+    prismatic.ActuatorType = Enum.ActuatorType.Servo
+    prismatic.ServoMaxForce = 1000000
+    -- ...
+end
+```
+
+---
+
+## 🧱 Friction System (ไม่ลื่น)
+
+### ไฟล์: `src/server/StageTemplates.luau`
+
+ทุก Part ที่สร้างจะมี Friction สูงโดยอัตโนมัติ:
+
+```lua
+local function createPart(properties): Part
+    local part = Instance.new("Part")
+    part.Material = Enum.Material.Concrete
+    
+    -- Friction สูง = ไม่ลื่น
+    part.CustomPhysicalProperties = PhysicalProperties.new(
+        0.7,  -- Density
+        2.0,  -- Friction (สูง!)
+        0.1,  -- Elasticity
+        1.0,  -- FrictionWeight
+        0.5   -- ElasticityWeight
+    )
+    -- ...
+end
+```
 
 ---
 
@@ -308,25 +427,27 @@ self.newUI = NewUI.new(screenGui)
 ```
 Player Joins
     ↓
+Spawn at Lobby (SpawnLocation in Workspace)
+    ↓
 GameManager:onPlayerAdded()
     ↓
 ScoreManager:initPlayer() + ItemManager:initPlayer()
     ↓
-Player in Lobby
-    ↓
-Touch Portal / Press Start
+Touch StartPortal
     ↓
 GameManager:startGameForPlayer()
     ↓
-Teleport to Stage 1
+Teleport to Stage 1 Checkpoint
     ↓
 Playing (checkPlayerPosition loop)
     ↓
 Pass Checkpoint → ScoreManager:addStageScore()
     ↓
-Reach Finish → ScoreManager:addFinishBonus()
+Touch EndPart of last stage (Finish Line)
     ↓
-Return to Lobby
+GameManager:onPlayerFinished()
+    ↓
+Wait 2 seconds → Teleport back to Stage 1
 ```
 
 ---
@@ -336,8 +457,18 @@ Return to Lobby
 ### Fly Mode (ทดสอบ):
 - กด **F** เพื่อบิน
 - **W/A/S/D** เคลื่อนที่
-- **Space** ขึ้น, **Shift** ลง
-- ปุ่ม +/- ปรับความเร็ว
+- **Space** ขึ้น, **Shift/Ctrl** ลง
+- ปุ่ม **+/-** ปรับความเร็ว (25-200)
+
+### Debug Output:
+```
+[Server] Starting Obby Game...
+[MapManager] Stage order: 3, 1, 5, 2, 4
+[GameManager] Finish line setup at: 0, 0, 550
+[GameManager] PlayerName started the obby!
+[GameManager] PlayerName completed stage 1
+[GameManager] PlayerName FINISHED THE OBBY!
+```
 
 ### Commands (เพิ่มเองได้):
 สามารถเพิ่ม admin commands ใน `init.server.luau`:
@@ -345,7 +476,7 @@ Return to Lobby
 Players.PlayerAdded:Connect(function(player)
     player.Chatted:Connect(function(message)
         if message == "/regen" then
-            gameManager:regenerateMap()
+            game_manager:regenerateMap()
         end
     end)
 end)
@@ -355,14 +486,6 @@ end)
 
 ## 📝 Quick Reference
 
-### Helper Functions ใน StageTemplates.luau:
-
-| Function | Description |
-|----------|-------------|
-| `createPart(props)` | สร้าง Part พร้อม properties |
-| `createCheckpoint(pos)` | สร้าง SpawnLocation |
-| `createItemPickup(pos)` | สร้าง Item pickup (ลูกบอลสีทอง) |
-
 ### Constants:
 
 | Constant | Value | Location |
@@ -370,13 +493,18 @@ end)
 | `STAGE_LENGTH` | 100 | StageTemplates.luau |
 | `Config.Stages.Count` | 5 | Config.luau |
 | `Config.KillZoneY` | -20 | Config.luau |
+| `Friction` | 2.0 | StageTemplates.luau |
 
 ---
 
 ## ⚠️ Important Notes
 
-1. **Stage ต้องมี**: StartPart, EndPart, Checkpoint, Obstacles folder, ItemPickups folder
-2. **Position**: Stage วางต่อกันตามแกน Z (ไปข้างหน้า)
-3. **Checkpoint**: ตำแหน่ง respawn เมื่อตาย
-4. **DataStore**: ใช้ `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
-5. **Rojo**: ใช้ `rojo serve` เพื่อ sync กับ Studio
+1. **SpawnLocation**: ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
+2. **Checkpoint**: ใช้ `Part` ไม่ใช่ `SpawnLocation` (ไม่งั้นผู้เล่นจะเกิดที่นี่)
+3. **Moving Platform**: ใช้ `PrismaticConstraint` (physics-based) ไม่ใช่ CFrame animation
+4. **Friction**: ทุก Part มี `CustomPhysicalProperties` กับ Friction = 2.0
+5. **Random Seed**: `math.randomseed()` ถูกเรียกใน MapManager แล้ว
+6. **Stage ต้องมี**: StartPart, EndPart, Checkpoint, Obstacles folder, ItemPickups folder
+7. **Position**: Stage วางต่อกันตามแกน Z (ไปข้างหน้า)
+8. **DataStore**: ใช้ `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
+9. **Rojo**: ใช้ `rojo serve` เพื่อ sync กับ Studio

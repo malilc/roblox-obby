@@ -200,10 +200,38 @@ function GameManager:onPlayerFinished(player: Player)
 	
 	print("[GameManager]", player.Name, "FINISHED THE OBBY!")
 	
-	-- Teleport back to lobby after delay
-	task.delay(5, function()
-		self:teleportToLobby(player)
+	-- Teleport กลับจุดเริ่มต้นทันที (หลังแสดง message 2 วินาที)
+	task.delay(2, function()
+		self:teleportToStart(player)
 	end)
+end
+
+-- Teleport กลับจุดเริ่มต้น (Stage 1)
+function GameManager:teleportToStart(player: Player)
+	self.playerStates[player] = "Playing"
+	
+	-- Reset scores for new round
+	self.scoreManager:resetRoundScore(player)
+	self.itemManager:resetPlayer(player)
+	
+	-- Clear checkpoint
+	self.playerCheckpoints[player] = nil
+	
+	-- Teleport to first stage
+	local startPos = self.mapManager:getCheckpointPosition(1)
+	if startPos then
+		local character = player.Character
+		if character then
+			local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+			if humanoidRootPart then
+				humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+				humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+				humanoidRootPart.CFrame = CFrame.new(startPos)
+			end
+		end
+	end
+	
+	print("[GameManager]", player.Name, "teleported back to start!")
 end
 
 -- On player died
@@ -322,17 +350,16 @@ function GameManager:teleportToLobby(player: Player)
 	-- Clear checkpoint
 	self.playerCheckpoints[player] = nil
 	
-	-- Teleport
-	local lobby = workspace:FindFirstChild("Lobby")
-	if lobby then
-		local spawn = lobby:FindFirstChild("SpawnLocation")
-		if spawn then
-			local character = player.Character
-			if character then
-				local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-				if humanoidRootPart then
-					humanoidRootPart.CFrame = CFrame.new(spawn.Position + Vector3.new(0, 3, 0))
-				end
+	-- Teleport to SpawnLocation
+	local spawn = workspace:FindFirstChild("SpawnLocation")
+	if spawn then
+		local character = player.Character
+		if character then
+			local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+			if humanoidRootPart then
+				humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+				humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+				humanoidRootPart.CFrame = CFrame.new(spawn.Position + Vector3.new(0, 3, 0))
 			end
 		end
 	end
@@ -347,11 +374,45 @@ function GameManager:generateNewMap()
 	-- Setup kill parts
 	self:setupKillParts()
 	
+	-- Setup finish line touch detection
+	self:setupFinishLine()
+	
 	-- Setup item pickups
 	local pickups = self.mapManager:getAllItemPickups()
 	self.itemManager:setupItemPickups(pickups)
 	
 	print("[GameManager] New map generated!")
+	print("[GameManager] Stage order:", table.concat(self.mapManager.stageOrder, ", "))
+end
+
+-- Setup finish line touch detection
+function GameManager:setupFinishLine()
+	local finishPos = self.mapManager:getFinishLinePosition()
+	if not finishPos then return end
+	
+	-- หา EndPart ของ stage สุดท้าย
+	local lastStage = self.mapManager.currentStages[#self.mapManager.currentStages]
+	if lastStage then
+		local endPart = lastStage:FindFirstChild("EndPart")
+		if endPart then
+			-- เพิ่ม touch detection
+			endPart.Touched:Connect(function(hit)
+				local humanoid = hit.Parent:FindFirstChild("Humanoid")
+				if humanoid then
+					local player = Players:GetPlayerFromCharacter(hit.Parent)
+					if player and self.playerStates[player] == "Playing" then
+						self:onPlayerFinished(player)
+					end
+				end
+			end)
+			
+			-- เปลี่ยนสี EndPart ให้เด่นชัด (เส้นชัย)
+			endPart.Color = Color3.fromRGB(0, 255, 100)
+			endPart.Material = Enum.Material.Neon
+			
+			print("[GameManager] Finish line setup at:", endPart.Position)
+		end
+	end
 end
 
 -- Setup kill parts

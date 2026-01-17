@@ -10,7 +10,16 @@ local PLATFORM_HEIGHT = 0
 local function createPart(properties: {[string]: any}): Part
 	local part = Instance.new("Part")
 	part.Anchored = true
-	part.Material = Enum.Material.SmoothPlastic
+	part.Material = Enum.Material.Concrete
+	
+	-- เพิ่ม Friction สูงเพื่อไม่ให้ลื่น
+	part.CustomPhysicalProperties = PhysicalProperties.new(
+		0.7,  -- Density
+		2.0,  -- Friction (สูง = ไม่ลื่น)
+		0.1,  -- Elasticity (ต่ำ = ไม่เด้ง)
+		1.0,  -- FrictionWeight
+		0.5   -- ElasticityWeight
+	)
 	
 	for key, value in pairs(properties) do
 		(part :: any)[key] = value
@@ -19,17 +28,26 @@ local function createPart(properties: {[string]: any}): Part
 	return part
 end
 
--- Helper function สร้าง Checkpoint
-local function createCheckpoint(position: Vector3): SpawnLocation
-	local checkpoint = Instance.new("SpawnLocation")
+-- Helper function สร้าง Checkpoint (ใช้ Part แทน SpawnLocation เพื่อไม่ให้เป็นจุดเกิดเริ่มต้น)
+local function createCheckpoint(position: Vector3): Part
+	local checkpoint = Instance.new("Part")
 	checkpoint.Name = "Checkpoint"
 	checkpoint.Anchored = true
 	checkpoint.Size = Vector3.new(6, 1, 6)
 	checkpoint.Position = position
 	checkpoint.Material = Enum.Material.Neon
 	checkpoint.Color = Color3.fromRGB(0, 255, 127)
-	checkpoint.Neutral = true
 	checkpoint.CanCollide = true
+	
+	-- เพิ่ม Friction สูงเพื่อไม่ให้ลื่น
+	checkpoint.CustomPhysicalProperties = PhysicalProperties.new(
+		0.7,  -- Density
+		2.0,  -- Friction
+		0.1,  -- Elasticity
+		1.0,  -- FrictionWeight
+		0.5   -- ElasticityWeight
+	)
+	
 	return checkpoint
 end
 

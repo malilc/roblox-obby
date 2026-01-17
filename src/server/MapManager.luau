@@ -10,6 +10,9 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local MapManager = {}
 MapManager.__index = MapManager
 
+-- Seed random เพื่อให้สุ่มได้จริง
+math.randomseed(os.time() + os.clock() * 1000)
+
 -- สร้าง MapManager ใหม่
 function MapManager.new()
 	local self = setmetatable({}, MapManager)
@@ -90,6 +93,8 @@ function MapManager:registerAnimatedParts(stage: Model)
 				table.insert(self.movingParts, descendant)
 				-- เก็บตำแหน่งเริ่มต้น
 				descendant:SetAttribute("OriginalPosition", descendant.Position)
+				-- Setup moving platform ให้ unanchored + constraint
+				self:setupMovingPlatformConstraint(descendant)
 			end
 			
 			if descendant:GetAttribute("IsSpinning") then
@@ -107,6 +112,61 @@ function MapManager:registerAnimatedParts(stage: Model)
 			end
 		end
 	end
+end
+
+-- Setup moving platform ด้วย constraint (physics-based เพื่อไม่ลื่น)
+function MapManager:setupMovingPlatformConstraint(part: Part)
+	local originalPos = part.Position
+	local axis = part:GetAttribute("MoveAxis") or "X"
+	local distance = part:GetAttribute("MoveDistance") or 10
+	
+	-- Unanchor เพื่อให้ physics ทำงาน
+	part.Anchored = false
+	
+	-- สร้าง Attachment บน Part
+	local attachment0 = Instance.new("Attachment")
+	attachment0.Name = "PlatformAttachment"
+	attachment0.Parent = part
+	
+	-- สร้าง Attachment บน Workspace (จุดยึด)
+	local anchorPart = Instance.new("Part")
+	anchorPart.Name = "PlatformAnchor_" .. part.Name
+	anchorPart.Anchored = true
+	anchorPart.CanCollide = false
+	anchorPart.Transparency = 1
+	anchorPart.Size = Vector3.new(1, 1, 1)
+	anchorPart.Position = originalPos
+	anchorPart.Parent = part.Parent
+	
+	local attachment1 = Instance.new("Attachment")
+	attachment1.Name = "AnchorAttachment"
+	attachment1.Parent = anchorPart
+	
+	-- สร้าง PrismaticConstraint สำหรับเคลื่อนที่ตามแกน
+	local prismatic = Instance.new("PrismaticConstraint")
+	prismatic.Name = "MovementConstraint"
+	prismatic.Attachment0 = attachment0
+	prismatic.Attachment1 = attachment1
+	prismatic.ActuatorType = Enum.ActuatorType.Servo
+	prismatic.ServoMaxForce = 1000000
+	prismatic.Speed = 50
+	prismatic.LimitsEnabled = true
+	prismatic.LowerLimit = -distance
+	prismatic.UpperLimit = distance
+	
+	-- ตั้งแกนการเคลื่อนที่
+	if axis == "X" then
+		attachment1.Axis = Vector3.new(1, 0, 0)
+	elseif axis == "Y" then
+		attachment1.Axis = Vector3.new(0, 1, 0)
+	else
+		attachment1.Axis = Vector3.new(0, 0, 1)
+	end
+	
+	prismatic.Parent = part
+	
+	-- เก็บ reference
+	part:SetAttribute("_HasConstraint", true)
 end
 
 -- Setup disappearing platform
@@ -157,23 +217,16 @@ function MapManager:startAnimations()
 	self.animationConnection = RunService.Heartbeat:Connect(function(dt)
 		local time = tick()
 		
-		-- Moving platforms
+		-- Moving platforms (ใช้ PrismaticConstraint)
 		for _, part in ipairs(self.movingParts) do
-			local originalPos = part:GetAttribute("OriginalPosition")
-			if originalPos then
-				local axis = part:GetAttribute("MoveAxis") or "X"
+			local prismatic = part:FindFirstChild("MovementConstraint")
+			if prismatic and prismatic:IsA("PrismaticConstraint") then
 				local distance = part:GetAttribute("MoveDistance") or 10
 				local speed = part:GetAttribute("MoveSpeed") or 3
 				
-				local offset = math.sin(time * speed) * distance
-				
-				if axis == "X" then
-					part.Position = originalPos + Vector3.new(offset, 0, 0)
-				elseif axis == "Y" then
-					part.Position = originalPos + Vector3.new(0, offset, 0)
-				else
-					part.Position = originalPos + Vector3.new(0, 0, offset)
-				end
+				-- คำนวณตำแหน่งเป้าหมาย (oscillate)
+				local targetPosition = math.sin(time * speed) * distance
+				prismatic.TargetPosition = targetPosition
 			end
 		end
 		
@@ -234,25 +287,38 @@ function MapManager:getStageIndexFromPosition(position: Vector3): number?
 	return nil
 end
 
--- Check if position is at finish line
+-- Check if position is at finish line (stage สุดท้าย)
 function MapManager:isAtFinishLine(position: Vector3): boolean
 	local lastStage = self.currentStages[#self.currentStages]
 	if lastStage then
 		local endPart = lastStage:FindFirstChild("EndPart")
-		if endPart and endPart:GetAttribute("IsFinishLine") then
+		if endPart then
+			-- ตรวจสอบว่าอยู่บน EndPart ของ stage สุดท้าย
 			local distance = (position - endPart.Position).Magnitude
-			return distance < 15
+			return distance < 20
 		end
 	end
 	return false
 end
 
+-- Get finish line position
+function MapManager:getFinishLinePosition(): Vector3?
+	local lastStage = self.currentStages[#self.currentStages]
+	if lastStage then
+		local endPart = lastStage:FindFirstChild("EndPart")
+		if endPart then
+			return endPart.Position
+		end
+	end
+	return nil
+end
+
 -- Get all checkpoints
-function MapManager:getAllCheckpoints(): {SpawnLocation}
+function MapManager:getAllCheckpoints(): {BasePart}
 	local checkpoints = {}
 	for _, stage in ipairs(self.currentStages) do
 		local checkpoint = stage:FindFirstChild("Checkpoint")
-		if checkpoint and checkpoint:IsA("SpawnLocation") then
+		if checkpoint and checkpoint:IsA("BasePart") then
 			table.insert(checkpoints, checkpoint)
 		end
 	end

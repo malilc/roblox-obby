@@ -48,6 +48,18 @@
     },
 
     "Workspace": {
+      "SpawnLocation": {
+        "$className": "SpawnLocation",
+        "$properties": {
+          "Name": "LobbySpawn",
+          "Anchored": true,
+          "Position": [0, 1, 0],
+          "Size": [8, 1, 8],
+          "Neutral": true,
+          "Color": [0.3, 0.8, 0.3],
+          "Material": "Neon"
+        }
+      },
       "Lobby": {
         "$className": "Folder",
         "Floor": {
@@ -57,21 +69,14 @@
             "Color": [0.3, 0.5, 0.3],
             "Material": "Grass",
             "Size": [100, 2, 100],
-            "Position": [0, -1, 0]
-          }
-        },
-        "SpawnLocation": {
-          "$className": "SpawnLocation",
-          "$properties": {
-            "Anchored": true,
-            "Position": [0, 1, 0],
-            "Size": [6, 1, 6],
-            "Neutral": true
+            "Position": [0, -1, 0],
+            "CustomPhysicalProperties": [0.7, 2.0, 0.1, 1.0, 0.5]
           }
         },
         "StartPortal": {
           "$className": "Part",
           "$properties": {
+            "Name": "StartPortal",
             "Anchored": true,
             "Color": [0.0, 0.8, 0.4],
             "Material": "Neon",
