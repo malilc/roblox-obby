@@ -29,14 +29,22 @@ function GameManager.new()
 	self.startGameRemote = ReplicatedStorage.Remotes.StartGame
 	self.stageCompleteRemote = ReplicatedStorage.Remotes.StageComplete
 	self.playerDiedRemote = ReplicatedStorage.Remotes.PlayerDied
+	self.showStageSelectionRemote = ReplicatedStorage.Remotes.ShowStageSelection
+	self.hideStageSelectionRemote = ReplicatedStorage.Remotes.HideStageSelection
+	self.confirmStageSelectionRemote = ReplicatedStorage.Remotes.ConfirmStageSelection
+	self.countdownUpdateRemote = ReplicatedStorage.Remotes.CountdownUpdate
+	
+	-- Selection zone tracking
+	self.playersInSelectionZone = {} :: {[Player]: boolean}
 	
 	-- Setup
 	self:setupRemotes()
 	self:setupPlayerEvents()
 	self:setupLobby()
+	self:setupSelectionZone()
 	
-	-- Generate initial map
-	self:generateNewMap()
+	-- ไม่สร้าง map ตอนเริ่ม - จะสร้างเมื่อผู้เล่นเลือกด่าน
+	-- self:generateNewMap()
 	
 	return self
 end
@@ -46,6 +54,11 @@ function GameManager:setupRemotes()
 	-- Start game from lobby
 	self.startGameRemote.OnServerEvent:Connect(function(player)
 		self:startGameForPlayer(player)
+	end)
+	
+	-- Confirm stage selection
+	self.confirmStageSelectionRemote.OnServerEvent:Connect(function(player, data)
+		self:onStageSelectionConfirmed(player, data)
 	end)
 end
 
@@ -91,6 +104,7 @@ end
 function GameManager:onPlayerRemoving(player: Player)
 	self.playerStates[player] = nil
 	self.playerCheckpoints[player] = nil
+	self.playersInSelectionZone[player] = nil
 	
 	self.scoreManager:removePlayer(player)
 	self.itemManager:removePlayer(player)
@@ -200,9 +214,9 @@ function GameManager:onPlayerFinished(player: Player)
 	
 	print("[GameManager]", player.Name, "FINISHED THE OBBY!")
 	
-	-- Teleport กลับจุดเริ่มต้นทันที (หลังแสดง message 2 วินาที)
+	-- Teleport กลับ Lobby (หลังแสดง message 2 วินาที)
 	task.delay(2, function()
-		self:teleportToStart(player)
+		self:teleportToLobby(player)
 	end)
 end
 
@@ -226,7 +240,8 @@ function GameManager:teleportToStart(player: Player)
 			if humanoidRootPart then
 				humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 				humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-				humanoidRootPart.CFrame = CFrame.new(startPos)
+				-- Teleport และหันหน้าไปทาง +Z (ไปข้างหน้าในด่าน)
+				humanoidRootPart.CFrame = CFrame.lookAt(startPos, startPos + Vector3.new(0, 0, 1))
 			end
 		end
 	end
@@ -266,8 +281,8 @@ function GameManager:respawnPlayer(player: Player)
 		humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 		humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
 		
-		-- Teleport
-		humanoidRootPart.CFrame = CFrame.new(checkpoint)
+		-- Teleport และหันหน้าไปทาง +Z (ไปข้างหน้าในด่าน)
+		humanoidRootPart.CFrame = CFrame.lookAt(checkpoint, checkpoint + Vector3.new(0, 0, 1))
 		
 		print("[GameManager] Respawned", player.Name, "at checkpoint")
 	end
@@ -278,23 +293,6 @@ end
 
 -- Setup lobby
 function GameManager:setupLobby()
-	local lobby = workspace:FindFirstChild("Lobby")
-	if not lobby then return end
-	
-	-- Setup portal touch
-	local portal = lobby:FindFirstChild("StartPortal")
-	if portal then
-		portal.Touched:Connect(function(hit)
-			local humanoid = hit.Parent:FindFirstChild("Humanoid")
-			if humanoid then
-				local player = Players:GetPlayerFromCharacter(hit.Parent)
-				if player then
-					self:startGameForPlayer(player)
-				end
-			end
-		end)
-	end
-	
 	-- Setup kill brick
 	local killBrick = workspace:FindFirstChild("KillBrick")
 	if killBrick then
@@ -310,12 +308,140 @@ function GameManager:setupLobby()
 	end
 end
 
--- Start game for player
-function GameManager:startGameForPlayer(player: Player)
+-- Setup selection zone
+function GameManager:setupSelectionZone()
+	local lobby = workspace:FindFirstChild("Lobby")
+	if not lobby then return end
+	
+	local selectionZone = lobby:FindFirstChild("SelectionZone")
+	if not selectionZone then return end
+	
+	-- ใช้ loop ตรวจสอบตำแหน่งผู้เล่นแทน Touched events (เสถียรกว่า)
+	task.spawn(function()
+		while true do
+			task.wait(0.2) -- ตรวจสอบทุก 0.2 วินาที
+			
+			for _, player in ipairs(Players:GetPlayers()) do
+				local isInZone = self:isPlayerInSelectionZone(player, selectionZone)
+				local wasInZone = self.playersInSelectionZone[player]
+				
+				if isInZone and not wasInZone then
+					-- เพิ่งเข้า zone
+					if self.playerStates[player] == "Lobby" then
+						self.playersInSelectionZone[player] = true
+						self:onPlayerEnterSelectionZone(player)
+					end
+				elseif not isInZone and wasInZone then
+					-- เพิ่งออกจาก zone
+					self.playersInSelectionZone[player] = nil
+					self:onPlayerLeaveSelectionZone(player)
+				end
+			end
+		end
+	end)
+end
+
+-- ตรวจสอบว่าผู้เล่นอยู่ใน selection zone หรือไม่
+function GameManager:isPlayerInSelectionZone(player: Player, zone: Part): boolean
+	local character = player.Character
+	if not character then return false end
+	
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return false end
+	
+	local playerPos = humanoidRootPart.Position
+	local zonePos = zone.Position
+	local zoneSize = zone.Size
+	
+	-- ตรวจสอบว่าอยู่ใน bounding box ของ zone
+	local halfSize = zoneSize / 2
+	local minBound = zonePos - halfSize
+	local maxBound = zonePos + halfSize
+	
+	return playerPos.X >= minBound.X and playerPos.X <= maxBound.X
+		and playerPos.Y >= minBound.Y - 5 and playerPos.Y <= maxBound.Y + 10 -- เผื่อความสูง
+		and playerPos.Z >= minBound.Z and playerPos.Z <= maxBound.Z
+end
+
+-- Player entered selection zone
+function GameManager:onPlayerEnterSelectionZone(player: Player)
+	-- Show stage selection UI
+	self.showStageSelectionRemote:FireClient(player)
+	print("[GameManager]", player.Name, "entered selection zone")
+end
+
+-- Player left selection zone
+function GameManager:onPlayerLeaveSelectionZone(player: Player)
+	-- Hide stage selection UI
+	self.hideStageSelectionRemote:FireClient(player)
+	print("[GameManager]", player.Name, "left selection zone")
+end
+
+-- Stage selection confirmed
+function GameManager:onStageSelectionConfirmed(player: Player, data: {stageOrder: {number}?, isRandom: boolean?})
 	local state = self.playerStates[player]
 	if state ~= "Lobby" then return end
 	
-	self.playerStates[player] = "Playing"
+	local stageOrder: {number}
+	
+	if data.isRandom then
+		-- Random order
+		stageOrder = self.mapManager:shuffleStages()
+	elseif data.stageOrder and #data.stageOrder > 0 then
+		-- Custom order
+		stageOrder = data.stageOrder
+	else
+		-- Default: use current map order
+		stageOrder = self.mapManager.stageOrder
+	end
+	
+	-- Hide UI
+	self.hideStageSelectionRemote:FireClient(player)
+	
+	-- Start countdown and game
+	self:startGameWithOrder(player, stageOrder)
+end
+
+-- Start game with specific stage order
+function GameManager:startGameWithOrder(player: Player, stageOrder: {number})
+	-- Generate map with new order
+	self.mapManager:generateMapWithOrder(stageOrder)
+	
+	-- Setup map elements
+	self:setupKillParts()
+	self:setupFinishLine()
+	
+	local pickups = self.mapManager:getAllItemPickups()
+	self.itemManager:setupItemPickups(pickups)
+	
+	-- Start countdown
+	self:startCountdown(player, 3)
+end
+
+-- Start countdown
+function GameManager:startCountdown(player: Player, seconds: number)
+	for i = seconds, 1, -1 do
+		self.countdownUpdateRemote:FireClient(player, {
+			number = i,
+			message = if i > 1 then "Starting..." else "GO!"
+		})
+		task.wait(1)
+	end
+	
+	-- Teleport to first stage
+	self:startGameForPlayer(player)
+end
+
+-- Start game for player
+function GameManager:startGameForPlayer(player: Player)
+	local state = self.playerStates[player]
+	-- Only allow starting from Lobby (or if called from countdown, state might already be set)
+	if state == "Finished" then return end
+	
+	-- Set to Playing if not already
+	if state ~= "Playing" then
+		self.playerStates[player] = "Playing"
+	end
 	
 	-- Reset scores
 	self.scoreManager:resetRoundScore(player)
@@ -331,7 +457,11 @@ function GameManager:startGameForPlayer(player: Player)
 		if character then
 			local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 			if humanoidRootPart then
-				humanoidRootPart.CFrame = CFrame.new(startPos)
+				-- Reset velocity
+				humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+				humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+				-- Teleport และหันหน้าไปทาง +Z (ไปข้างหน้าในด่าน)
+				humanoidRootPart.CFrame = CFrame.lookAt(startPos, startPos + Vector3.new(0, 0, 1))
 			end
 		end
 	end

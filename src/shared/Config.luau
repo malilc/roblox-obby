@@ -10,7 +10,7 @@ local Config = {
 	Stages = {
 		Count = 5, -- จำนวนด่านที่จะสุ่ม
 		StageLength = 100, -- ความยาวแต่ละด่าน (studs)
-		StartOffset = Vector3.new(0, 0, 50), -- ตำแหน่งเริ่มต้นของด่านแรก
+		StartOffset = Vector3.new(0, 0, 150), -- ตำแหน่งเริ่มต้นของด่านแรก (ห่างจาก Lobby)
 	},
 
 	-- Score Settings

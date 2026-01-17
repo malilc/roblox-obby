@@ -26,6 +26,18 @@
         },
         "PlayerDied": {
           "$className": "RemoteEvent"
+        },
+        "ShowStageSelection": {
+          "$className": "RemoteEvent"
+        },
+        "HideStageSelection": {
+          "$className": "RemoteEvent"
+        },
+        "ConfirmStageSelection": {
+          "$className": "RemoteEvent"
+        },
+        "CountdownUpdate": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {
@@ -53,7 +65,7 @@
         "$properties": {
           "Name": "LobbySpawn",
           "Anchored": true,
-          "Position": [0, 1, 0],
+          "CFrame": [0, 1, 0, -1, 0, 0, 0, 1, 0, 0, 0, -1],
           "Size": [8, 1, 8],
           "Neutral": true,
           "Color": [0.3, 0.8, 0.3],
@@ -69,20 +81,19 @@
             "Color": [0.3, 0.5, 0.3],
             "Material": "Grass",
             "Size": [100, 2, 100],
-            "Position": [0, -1, 0],
-            "CustomPhysicalProperties": [0.7, 2.0, 0.1, 1.0, 0.5]
+            "Position": [0, -1, 0]
           }
         },
-        "StartPortal": {
+        "SelectionZone": {
           "$className": "Part",
           "$properties": {
-            "Name": "StartPortal",
+            "Name": "SelectionZone",
             "Anchored": true,
-            "Color": [0.0, 0.8, 0.4],
+            "Color": [0.2, 0.6, 1.0],
             "Material": "Neon",
-            "Size": [10, 15, 2],
-            "Position": [0, 7.5, 40],
-            "Transparency": 0.3,
+            "Size": [20, 1, 20],
+            "Position": [0, 1, 30],
+            "Transparency": 0.5,
             "CanCollide": false
           }
         }
@@ -109,7 +120,6 @@
         "Brightness": 2,
         "GlobalShadows": true,
         "Outlines": false,
-        "Technology": "Voxel",
         "ClockTime": 14
       }
     },

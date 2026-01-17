@@ -45,11 +45,18 @@ end
 
 -- สร้าง Map ใหม่
 function MapManager:generateMap()
+	-- สุ่มลำดับ
+	self.stageOrder = self:shuffleStages()
+	self:generateMapWithOrder(self.stageOrder)
+end
+
+-- สร้าง Map ด้วยลำดับที่กำหนด
+function MapManager:generateMapWithOrder(stageOrder: {number})
 	-- Clear existing stages
 	self:clearMap()
 	
-	-- สุ่มลำดับ
-	self.stageOrder = self:shuffleStages()
+	-- ใช้ลำดับที่กำหนด
+	self.stageOrder = stageOrder
 	print("[MapManager] Stage order:", table.concat(self.stageOrder, ", "))
 	
 	local stageCreators = StageTemplates.getStageCreators()

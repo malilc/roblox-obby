@@ -7,6 +7,7 @@ local StarterGui = game:GetService("StarterGui")
 local ScoreUI = require(script.Parent.ScoreUI)
 local ItemUI = require(script.Parent.ItemUI)
 local LeaderboardUI = require(script.Parent.LeaderboardUI)
+local StageSelectionUI = require(script.Parent.StageSelectionUI)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -31,6 +32,7 @@ function MainUI.new()
 	self.scoreUI = ScoreUI.new(screenGui)
 	self.itemUI = ItemUI.new(screenGui)
 	self.leaderboardUI = LeaderboardUI.new(screenGui)
+	self.stageSelectionUI = StageSelectionUI.new(screenGui)
 	
 	-- Setup remote listeners
 	self:setupRemotes()

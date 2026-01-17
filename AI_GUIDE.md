@@ -21,7 +21,8 @@ src/
 │       ├── MainUI.luau          # Controller หลัก
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── ItemUI.luau          # แสดง Push item
-│       └── LeaderboardUI.luau   # Leaderboard
+│       ├── LeaderboardUI.luau   # Leaderboard
+│       └── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
 │
 └── shared/                      # Shared code (server + client)
     ├── Config.luau              # ⭐ ค่า Config ทั้งหมด
@@ -34,15 +35,66 @@ src/
 
 ```
 Workspace/
-├── SpawnLocation          # จุดเกิดเริ่มต้น (ต้องอยู่ใน Workspace โดยตรง!)
+├── SpawnLocation          # จุดเกิดเริ่มต้น (หันไปทาง +Z)
 ├── Lobby/
 │   ├── Floor              # พื้น Lobby
-│   └── StartPortal        # Portal เข้าเกม
+│   └── SelectionZone      # ⭐ Zone เลือกด่าน (สีฟ้า, เดินเข้าไปเพื่อเปิด GUI)
 ├── Stages/                # Folder เก็บด่านที่ generate
 └── KillBrick              # พื้นที่ตายเมื่อตก
 ```
 
-**สำคัญ**: `SpawnLocation` ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder ไม่งั้น Roblox จะไม่รู้จักเป็นจุดเกิด
+**สำคัญ**: 
+- `SpawnLocation` ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
+- `SelectionZone` ใช้ loop-based detection (เสถียรกว่า Touched events)
+
+---
+
+## 🎮 ระบบเลือกด่าน (Stage Selection)
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/server/GameManager.luau` - Logic ฝั่ง Server
+- `src/client/UI/StageSelectionUI.luau` - GUI ฝั่ง Client
+
+### Flow:
+
+```
+ผู้เล่นเดินเข้า SelectionZone (สีฟ้า)
+    ↓
+Server ส่ง ShowStageSelection → Client
+    ↓
+Client แสดง GUI เลือกด่าน
+    ↓
+ผู้เล่นเลือกลำดับด่าน หรือ กด RANDOM
+    ↓
+Client ส่ง ConfirmStageSelection → Server
+    ↓
+Server สร้าง Map ตามลำดับที่เลือก
+    ↓
+Countdown 3, 2, 1
+    ↓
+Teleport ไปด่าน 1
+```
+
+### การเลือกด่าน:
+- **คลิกปุ่มด่าน** - เพิ่มเข้าลำดับ (เช่น 3 → 1 → 5)
+- **คลิกอีกครั้ง** - ลบออกจากลำดับ
+- **ปุ่ม RANDOM** - สุ่มลำดับด่าน
+- **ปุ่ม START** - ต้องเลือกอย่างน้อย 1 ด่านก่อนกดได้
+
+### Zone Detection (Loop-based):
+
+```lua
+-- ตรวจสอบทุก 0.2 วินาที (เสถียรกว่า Touched events)
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+        for _, player in ipairs(Players:GetPlayers()) do
+            local isInZone = self:isPlayerInSelectionZone(player, selectionZone)
+            -- เปรียบเทียบกับสถานะก่อนหน้า แล้ว show/hide UI
+        end
+    end
+end)
+```
 
 ---
 
@@ -203,15 +255,12 @@ end
 
 ---
 
-## 🎲 ระบบสุ่มด่าน
+## 🎲 ระบบสุ่ม/เลือกลำดับด่าน
 
 ### ไฟล์: `src/server/MapManager.luau`
 
 ```lua
--- Seed random เพื่อให้สุ่มได้จริง (ทำอัตโนมัติแล้ว)
-math.randomseed(os.time() + os.clock() * 1000)
-
--- Fisher-Yates shuffle
+-- สุ่มลำดับ (Fisher-Yates shuffle)
 function MapManager:shuffleStages(): {number}
     local stages = {}
     for i = 1, Config.Stages.Count do
@@ -225,9 +274,16 @@ function MapManager:shuffleStages(): {number}
     
     return stages
 end
+
+-- สร้าง Map ด้วยลำดับที่กำหนด
+function MapManager:generateMapWithOrder(stageOrder: {number})
+    self:clearMap()
+    self.stageOrder = stageOrder
+    -- สร้างด่านตามลำดับ...
+end
 ```
 
-**Output ใน Console**: `[GameManager] Stage order: 3, 1, 5, 2, 4`
+**Output ใน Console**: `[MapManager] Stage order: 3, 1, 5, 2, 4`
 
 ---
 
@@ -298,7 +354,7 @@ local Config = {
     Stages = {
         Count = 5,              -- จำนวนด่าน
         StageLength = 100,      -- ความยาวแต่ละด่าน
-        StartOffset = Vector3.new(0, 0, 50),
+        StartOffset = Vector3.new(0, 0, 150), -- ⭐ ห่างจาก Lobby
     },
 
     -- Score Settings
@@ -366,9 +422,13 @@ end
 | `UseItem` | Client → Server | ใช้ Push item |
 | `UpdateScore` | Server → Client | อัพเดทคะแนน |
 | `StageComplete` | Server → Client | ผ่านด่าน |
-| `StartGame` | Client → Server | เริ่มเกมจาก Lobby |
+| `StartGame` | Client → Server | เริ่มเกมจาก Lobby (legacy) |
 | `UpdateLeaderboard` | Server → Client | อัพเดท Leaderboard |
 | `PlayerDied` | Server → Client | แจ้งผู้เล่นตาย |
+| `ShowStageSelection` | Server → Client | ⭐ แสดง GUI เลือกด่าน |
+| `HideStageSelection` | Server → Client | ⭐ ซ่อน GUI เลือกด่าน |
+| `ConfirmStageSelection` | Client → Server | ⭐ ยืนยันการเลือกด่าน |
+| `CountdownUpdate` | Server → Client | ⭐ อัพเดท countdown 3, 2, 1 |
 
 ### เพิ่ม RemoteEvent ใหม่:
 
@@ -411,16 +471,14 @@ end)
 | `ItemUI` | มุมล่างขวา | 👊 Push item (วงกลม 60x60) |
 | `LeaderboardUI` | ขวาบน | 🏆 Toggle button + Leaderboard Panel |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
+| `StageSelectionUI` | กลางจอ | ⭐ เลือกลำดับด่าน + Countdown |
 
-### ScoreUI (Coin Style):
-- **CoinFrame**: เหรียญ 💰 + คะแนน (pop animation เมื่อได้คะแนน)
-- **HighScoreFrame**: 🏆 + High Score
-- **StageFrame**: 🚩 + Progress Bar + "0/5"
-
-### ItemUI (Circular):
-- **วงกลม** 60x60 พิกเซล
-- **👊** Icon + จำนวน
-- **Cooldown overlay** (เต็มจากล่างขึ้นบน)
+### StageSelectionUI:
+- **ปุ่มด่าน 1-5**: คลิกเพื่อเพิ่ม/ลบจากลำดับ
+- **Selected display**: แสดงลำดับที่เลือก (เช่น "3 → 1 → 5")
+- **ปุ่ม RANDOM**: สุ่มลำดับด่าน
+- **ปุ่ม START**: กดได้เมื่อเลือกอย่างน้อย 1 ด่าน
+- **Countdown**: แสดง 3, 2, 1 ก่อน teleport
 
 ### โครงสร้าง UI Module:
 
@@ -462,17 +520,23 @@ self.newUI = NewUI.new(screenGui)
 ```
 Player Joins
     ↓
-Spawn at Lobby (SpawnLocation in Workspace)
+Spawn at Lobby (SpawnLocation หันไปทาง SelectionZone)
     ↓
 GameManager:onPlayerAdded()
     ↓
 ScoreManager:initPlayer() + ItemManager:initPlayer()
     ↓
-Touch StartPortal
+เดินเข้า SelectionZone (สีฟ้า)
     ↓
-GameManager:startGameForPlayer()
+แสดง GUI เลือกด่าน
     ↓
-Teleport to Stage 1 Checkpoint
+เลือกลำดับด่าน หรือ กด RANDOM
+    ↓
+กด START → Server สร้าง Map
+    ↓
+Countdown 3, 2, 1
+    ↓
+Teleport to Stage 1 (หันไปทาง +Z)
     ↓
 Playing (checkPlayerPosition loop)
     ↓
@@ -482,7 +546,7 @@ Touch EndPart of last stage (Finish Line)
     ↓
 GameManager:onPlayerFinished()
     ↓
-Wait 2 seconds → Teleport back to Stage 1
+Wait 2 seconds → Teleport back to Lobby
 ```
 
 ---
@@ -498,11 +562,12 @@ Wait 2 seconds → Teleport back to Stage 1
 ### Debug Output:
 ```
 [Server] Starting Obby Game...
+[GameManager] PlayerName entered selection zone
 [MapManager] Stage order: 3, 1, 5, 2, 4
-[GameManager] Finish line setup at: 0, 0, 550
 [GameManager] PlayerName started the obby!
 [GameManager] PlayerName completed stage 1
 [GameManager] PlayerName FINISHED THE OBBY!
+[GameManager] PlayerName returned to lobby
 ```
 
 ### Commands (เพิ่มเองได้):
@@ -527,6 +592,7 @@ end)
 |----------|-------|----------|
 | `STAGE_LENGTH` | 100 | StageTemplates.luau |
 | `Config.Stages.Count` | 5 | Config.luau |
+| `Config.Stages.StartOffset` | (0, 0, 150) | Config.luau |
 | `Config.KillZoneY` | -20 | Config.luau |
 | `Friction` | 2.0 | StageTemplates.luau |
 
@@ -534,14 +600,18 @@ end)
 
 ## ⚠️ Important Notes
 
-1. **SpawnLocation**: ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
-2. **Checkpoint**: ใช้ `Part` ไม่ใช่ `SpawnLocation` (ไม่งั้นผู้เล่นจะเกิดที่นี่)
-3. **Moving Platform**: ใช้ `PrismaticConstraint` (physics-based) ไม่ใช่ CFrame animation
-4. **Friction**: ทุก Part มี `CustomPhysicalProperties` กับ Friction = 2.0
-5. **Random Seed**: `math.randomseed()` ถูกเรียกใน MapManager แล้ว
-6. **Stage ต้องมี**: StartPart, EndPart, Checkpoint, Obstacles folder, ItemPickups folder
-7. **Position**: Stage วางต่อกันตามแกน Z (ไปข้างหน้า)
-8. **DataStore**: ใช้ `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
-9. **Rojo**: ใช้ `rojo serve` เพื่อ sync กับ Studio
-10. **Item Coin**: ใช้ `createItemPickup()` → Cylinder แนวตั้ง, สีทอง, หมุนรอบ Y, มีแสง
-11. **UI Design**: ใช้ขนาดเล็ก + โปร่งใส เพื่อไม่ให้บังจอ (ดูตาราง UI ด้านบน)
+1. **SpawnLocation**: ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder (หันไปทาง +Z)
+2. **SelectionZone**: ใช้ loop-based detection ทุก 0.2 วินาที (เสถียรกว่า Touched)
+3. **Checkpoint**: ใช้ `Part` ไม่ใช่ `SpawnLocation` (ไม่งั้นผู้เล่นจะเกิดที่นี่)
+4. **Moving Platform**: ใช้ `PrismaticConstraint` (physics-based) ไม่ใช่ CFrame animation
+5. **Friction**: ทุก Part มี `CustomPhysicalProperties` กับ Friction = 2.0
+6. **Random Seed**: `math.randomseed()` ถูกเรียกใน MapManager แล้ว
+7. **Stage ต้องมี**: StartPart, EndPart, Checkpoint, Obstacles folder, ItemPickups folder
+8. **Position**: Stage วางต่อกันตามแกน Z (ไปข้างหน้า)
+9. **DataStore**: ใช้ `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
+10. **Rojo**: ใช้ `rojo serve` เพื่อ sync กับ Studio
+11. **Item Coin**: ใช้ `createItemPickup()` → Cylinder แนวตั้ง, สีทอง, หมุนรอบ Y, มีแสง
+12. **UI Design**: ใช้ขนาดเล็ก + โปร่งใส เพื่อไม่ให้บังจอ
+13. **Map Generation**: ไม่สร้างตอนเริ่มเกม จะสร้างเมื่อผู้เล่นเลือกด่านแล้ว
+14. **Teleport Direction**: ใช้ `CFrame.lookAt()` เพื่อหันหน้าไปทาง +Z
+15. **จบเกม**: กลับไป Lobby (ไม่ใช่ Stage 1)

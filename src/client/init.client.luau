@@ -60,7 +60,7 @@ local function showWelcomeMessage()
 	infoLabel.Size = UDim2.new(1, -40, 0, 60)
 	infoLabel.Position = UDim2.new(0, 20, 0, 70)
 	infoLabel.BackgroundTransparency = 1
-	infoLabel.Text = "Walk through the GREEN PORTAL to start!\nUse [E] to PUSH other players!\nComplete all stages to win!"
+	infoLabel.Text = "Step on the BLUE ZONE to select stages!\nUse [E] to PUSH other players!\nComplete all stages to win!"
 	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	infoLabel.TextSize = 16
 	infoLabel.Font = Enum.Font.Gotham
