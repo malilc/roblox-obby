@@ -25,76 +25,43 @@ function ItemUI.new(parent: ScreenGui)
 end
 
 function ItemUI:createUI()
-	-- Main frame
-	local frame = Instance.new("Frame")
-	frame.Name = "ItemFrame"
-	frame.Size = UDim2.new(0, 120, 0, 140)
-	frame.Position = UDim2.new(1, -140, 1, -160)
-	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-	frame.BackgroundTransparency = 0.3
-	frame.BorderSizePixel = 0
-	frame.Parent = self.parent
-	self.frame = frame
-	
-	-- Corner
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = frame
-	
-	-- Stroke
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(255, 100, 100)
-	stroke.Thickness = 2
-	stroke.Transparency = 0.5
-	stroke.Parent = frame
-	
-	-- Title
-	local title = Instance.new("TextLabel")
-	title.Name = "Title"
-	title.Size = UDim2.new(1, 0, 0, 25)
-	title.Position = UDim2.new(0, 0, 0, 5)
-	title.BackgroundTransparency = 1
-	title.Text = "PUSH"
-	title.TextColor3 = Color3.fromRGB(255, 100, 100)
-	title.TextSize = 16
-	title.Font = Enum.Font.GothamBold
-	title.Parent = frame
-	
-	-- Push button
+	-- Push button (เล็กลง + โปร่งใส + มุมล่างขวา)
 	local button = Instance.new("TextButton")
 	button.Name = "PushButton"
-	button.Size = UDim2.new(0, 80, 0, 80)
-	button.Position = UDim2.new(0.5, -40, 0, 30)
+	button.Size = UDim2.new(0, 60, 0, 60)
+	button.Position = UDim2.new(1, -75, 1, -75)
 	button.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+	button.BackgroundTransparency = 0.3
 	button.BorderSizePixel = 0
 	button.Text = ""
-	button.Parent = frame
+	button.Parent = self.parent
 	self.button = button
+	self.frame = button -- for compatibility
 	
 	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 40)
+	buttonCorner.CornerRadius = UDim.new(0, 30)
 	buttonCorner.Parent = button
 	
-	-- Icon (fist emoji alternative - using text)
+	-- Icon
 	local icon = Instance.new("TextLabel")
 	icon.Name = "Icon"
-	icon.Size = UDim2.new(1, 0, 0.6, 0)
+	icon.Size = UDim2.new(1, 0, 0.65, 0)
 	icon.Position = UDim2.new(0, 0, 0, 0)
 	icon.BackgroundTransparency = 1
 	icon.Text = "👊"
-	icon.TextSize = 36
+	icon.TextSize = 28
 	icon.Parent = button
 	self.icon = icon
 	
 	-- Count label
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "Count"
-	countLabel.Size = UDim2.new(1, 0, 0.4, 0)
-	countLabel.Position = UDim2.new(0, 0, 0.6, 0)
+	countLabel.Size = UDim2.new(1, 0, 0.35, 0)
+	countLabel.Position = UDim2.new(0, 0, 0.65, 0)
 	countLabel.BackgroundTransparency = 1
 	countLabel.Text = "x1"
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	countLabel.TextSize = 18
+	countLabel.TextSize = 14
 	countLabel.Font = Enum.Font.GothamBold
 	countLabel.Parent = button
 	self.countLabel = countLabel
@@ -113,20 +80,20 @@ function ItemUI:createUI()
 	self.cooldownOverlay = cooldownOverlay
 	
 	local overlayCorner = Instance.new("UICorner")
-	overlayCorner.CornerRadius = UDim.new(0, 40)
+	overlayCorner.CornerRadius = UDim.new(0, 30)
 	overlayCorner.Parent = cooldownOverlay
 	
-	-- Hotkey hint
+	-- Hotkey hint (ใต้ปุ่ม)
 	local hint = Instance.new("TextLabel")
 	hint.Name = "Hint"
-	hint.Size = UDim2.new(1, 0, 0, 20)
-	hint.Position = UDim2.new(0, 0, 1, -25)
+	hint.Size = UDim2.new(0, 60, 0, 15)
+	hint.Position = UDim2.new(1, -75, 1, -12)
 	hint.BackgroundTransparency = 1
-	hint.Text = "Press [E]"
-	hint.TextColor3 = Color3.fromRGB(150, 150, 150)
-	hint.TextSize = 12
-	hint.Font = Enum.Font.Gotham
-	hint.Parent = frame
+	hint.Text = "[E]"
+	hint.TextColor3 = Color3.fromRGB(200, 200, 200)
+	hint.TextSize = 11
+	hint.Font = Enum.Font.GothamBold
+	hint.Parent = self.parent
 	
 	-- Button click
 	button.MouseButton1Click:Connect(function()
@@ -158,18 +125,16 @@ end
 
 function ItemUI:playUseEffect()
 	-- Scale effect
-	local originalSize = self.button.Size
-	
 	local shrinkTween = TweenService:Create(self.button, TweenInfo.new(0.1), {
-		Size = UDim2.new(0, 70, 0, 70),
-		Position = UDim2.new(0.5, -35, 0, 35)
+		Size = UDim2.new(0, 50, 0, 50),
+		Position = UDim2.new(1, -70, 1, -70)
 	})
 	shrinkTween:Play()
 	
 	shrinkTween.Completed:Connect(function()
 		local expandTween = TweenService:Create(self.button, TweenInfo.new(0.1), {
-			Size = UDim2.new(0, 80, 0, 80),
-			Position = UDim2.new(0.5, -40, 0, 30)
+			Size = UDim2.new(0, 60, 0, 60),
+			Position = UDim2.new(1, -75, 1, -75)
 		})
 		expandTween:Play()
 	end)

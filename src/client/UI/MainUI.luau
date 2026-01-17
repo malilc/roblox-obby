@@ -97,27 +97,51 @@ function MainUI:onPlayerDied()
 end
 
 function MainUI:showDeathNotification()
+	local TweenService = game:GetService("TweenService")
+	
+	-- เล็กลง + อยู่ด้านบน + โปร่งใส
 	local notification = Instance.new("TextLabel")
 	notification.Name = "DeathNotification"
-	notification.Size = UDim2.new(0, 300, 0, 50)
-	notification.Position = UDim2.new(0.5, -150, 0.4, 0)
-	notification.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-	notification.BackgroundTransparency = 0.3
+	notification.Size = UDim2.new(0, 120, 0, 30)
+	notification.Position = UDim2.new(0.5, -60, 0, 90)
+	notification.AnchorPoint = Vector2.new(0, 0)
+	notification.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	notification.BackgroundTransparency = 0.5
 	notification.BorderSizePixel = 0
-	notification.Text = "Respawning..."
-	notification.TextColor3 = Color3.fromRGB(255, 255, 255)
-	notification.TextSize = 20
-	notification.Font = Enum.Font.GothamMedium
+	notification.Text = "💀 Respawn"
+	notification.TextColor3 = Color3.fromRGB(255, 100, 100)
+	notification.TextSize = 14
+	notification.Font = Enum.Font.GothamBold
+	notification.TextTransparency = 0
 	notification.Parent = self.screenGui
 	
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = UDim.new(0, 6)
 	corner.Parent = notification
 	
-	-- Fade out
-	task.delay(1.5, function()
+	-- Fade in
+	notification.BackgroundTransparency = 1
+	notification.TextTransparency = 1
+	
+	local fadeIn = TweenService:Create(notification, TweenInfo.new(0.2), {
+		BackgroundTransparency = 0.5,
+		TextTransparency = 0
+	})
+	fadeIn:Play()
+	
+	-- Fade out after delay
+	task.delay(1, function()
 		if notification.Parent then
-			notification:Destroy()
+			local fadeOut = TweenService:Create(notification, TweenInfo.new(0.3), {
+				BackgroundTransparency = 1,
+				TextTransparency = 1
+			})
+			fadeOut:Play()
+			fadeOut.Completed:Connect(function()
+				if notification.Parent then
+					notification:Destroy()
+				end
+			end)
 		end
 	end)
 end

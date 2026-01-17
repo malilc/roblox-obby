@@ -80,15 +80,15 @@ function LeaderboardUI:createUI()
 	layout.Padding = UDim.new(0, 5)
 	layout.Parent = scrollFrame
 	
-	-- Toggle button
+	-- Toggle button (มุมบนขวา)
 	local toggleButton = Instance.new("TextButton")
 	toggleButton.Name = "ToggleLeaderboard"
-	toggleButton.Size = UDim2.new(0, 40, 0, 40)
-	toggleButton.Position = UDim2.new(1, -60, 0.5, -20)
+	toggleButton.Size = UDim2.new(0, 35, 0, 35)
+	toggleButton.Position = UDim2.new(1, -45, 0, 10)
 	toggleButton.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
-	toggleButton.BackgroundTransparency = 0.3
+	toggleButton.BackgroundTransparency = 0.5
 	toggleButton.Text = "🏆"
-	toggleButton.TextSize = 24
+	toggleButton.TextSize = 20
 	toggleButton.Parent = self.parent
 	self.toggleButton = toggleButton
 	

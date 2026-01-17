@@ -213,6 +213,19 @@ end
 
 -- Start animations
 function MapManager:startAnimations()
+	-- หา coins ทั้งหมด
+	local coins = {}
+	for _, stage in ipairs(self.currentStages) do
+		local itemPickups = stage:FindFirstChild("ItemPickups")
+		if itemPickups then
+			for _, coin in ipairs(itemPickups:GetChildren()) do
+				if coin:GetAttribute("IsCoin") then
+					table.insert(coins, coin)
+				end
+			end
+		end
+	end
+	
 	-- Animation loop
 	self.animationConnection = RunService.Heartbeat:Connect(function(dt)
 		local time = tick()
@@ -230,10 +243,18 @@ function MapManager:startAnimations()
 			end
 		end
 		
-		-- Spinning parts
+		-- Spinning parts (obstacles)
 		for _, part in ipairs(self.spinningParts) do
 			local spinSpeed = part:GetAttribute("SpinSpeed") or 2
 			part.CFrame = part.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
+		end
+		
+		-- Spinning coins (หมุนรอบแกน Y - แนวตั้ง)
+		for _, coin in ipairs(coins) do
+			if coin.Parent then
+				local spinSpeed = coin:GetAttribute("SpinSpeed") or 3
+				coin.CFrame = coin.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
+			end
 		end
 	end)
 end

@@ -42,46 +42,47 @@ function FlyController:createUI()
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = playerGui
 	
-	-- Fly button
+	-- Fly button (เล็กลง + มุมล่างซ้าย)
 	local flyButton = Instance.new("TextButton")
 	flyButton.Name = "FlyButton"
-	flyButton.Size = UDim2.new(0, 80, 0, 40)
-	flyButton.Position = UDim2.new(0, 20, 1, -60)
+	flyButton.Size = UDim2.new(0, 50, 0, 25)
+	flyButton.Position = UDim2.new(0, 10, 1, -35)
 	flyButton.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-	flyButton.Text = "FLY [F]"
+	flyButton.BackgroundTransparency = 0.4
+	flyButton.Text = "FLY"
 	flyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	flyButton.TextSize = 14
+	flyButton.TextSize = 11
 	flyButton.Font = Enum.Font.GothamBold
 	flyButton.Parent = screenGui
 	self.flyButton = flyButton
 	
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = UDim.new(0, 6)
 	corner.Parent = flyButton
 	
-	-- Speed slider label
+	-- Speed label (ข้างปุ่ม)
 	local speedLabel = Instance.new("TextLabel")
 	speedLabel.Name = "SpeedLabel"
-	speedLabel.Size = UDim2.new(0, 80, 0, 20)
-	speedLabel.Position = UDim2.new(0, 110, 1, -60)
+	speedLabel.Size = UDim2.new(0, 40, 0, 25)
+	speedLabel.Position = UDim2.new(0, 65, 1, -35)
 	speedLabel.BackgroundTransparency = 1
-	speedLabel.Text = "Speed: 50"
+	speedLabel.Text = "50"
 	speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	speedLabel.TextSize = 12
+	speedLabel.TextSize = 11
 	speedLabel.Font = Enum.Font.Gotham
-	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
 	speedLabel.Parent = screenGui
 	self.speedLabel = speedLabel
 	
 	-- Speed up button
 	local speedUpBtn = Instance.new("TextButton")
 	speedUpBtn.Name = "SpeedUp"
-	speedUpBtn.Size = UDim2.new(0, 30, 0, 20)
-	speedUpBtn.Position = UDim2.new(0, 110, 1, -35)
+	speedUpBtn.Size = UDim2.new(0, 20, 0, 25)
+	speedUpBtn.Position = UDim2.new(0, 105, 1, -35)
 	speedUpBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+	speedUpBtn.BackgroundTransparency = 0.4
 	speedUpBtn.Text = "+"
 	speedUpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	speedUpBtn.TextSize = 16
+	speedUpBtn.TextSize = 14
 	speedUpBtn.Font = Enum.Font.GothamBold
 	speedUpBtn.Parent = screenGui
 	
@@ -92,9 +93,10 @@ function FlyController:createUI()
 	-- Speed down button
 	local speedDownBtn = Instance.new("TextButton")
 	speedDownBtn.Name = "SpeedDown"
-	speedDownBtn.Size = UDim2.new(0, 30, 0, 20)
-	speedDownBtn.Position = UDim2.new(0, 145, 1, -35)
+	speedDownBtn.Size = UDim2.new(0, 20, 0, 25)
+	speedDownBtn.Position = UDim2.new(0, 128, 1, -35)
 	speedDownBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
+	speedDownBtn.BackgroundTransparency = 0.4
 	speedDownBtn.Text = "-"
 	speedDownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	speedDownBtn.TextSize = 16
@@ -112,12 +114,12 @@ function FlyController:createUI()
 	
 	speedUpBtn.MouseButton1Click:Connect(function()
 		self.flySpeed = math.min(self.flySpeed + 25, 200)
-		self.speedLabel.Text = "Speed: " .. self.flySpeed
+		self.speedLabel.Text = tostring(self.flySpeed)
 	end)
 	
 	speedDownBtn.MouseButton1Click:Connect(function()
 		self.flySpeed = math.max(self.flySpeed - 25, 25)
-		self.speedLabel.Text = "Speed: " .. self.flySpeed
+		self.speedLabel.Text = tostring(self.flySpeed)
 	end)
 end
 
@@ -139,7 +141,8 @@ function FlyController:startFly()
 	
 	self.isFlying = true
 	self.flyButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-	self.flyButton.Text = "LAND [F]"
+	self.flyButton.BackgroundTransparency = 0.2
+	self.flyButton.Text = "LAND"
 	
 	-- Create BodyGyro for rotation stability
 	self.bodyGyro = Instance.new("BodyGyro")
@@ -191,7 +194,8 @@ function FlyController:stopFly()
 	
 	self.isFlying = false
 	self.flyButton.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-	self.flyButton.Text = "FLY [F]"
+	self.flyButton.BackgroundTransparency = 0.4
+	self.flyButton.Text = "FLY"
 	
 	print("[FlyController] Flying disabled!")
 end

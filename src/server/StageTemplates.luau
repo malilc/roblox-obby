@@ -51,26 +51,43 @@ local function createCheckpoint(position: Vector3): Part
 	return checkpoint
 end
 
--- Helper function สร้าง Item Pickup
+-- Helper function สร้าง Item Pickup (Coin Style)
 local function createItemPickup(position: Vector3): Part
 	local pickup = Instance.new("Part")
 	pickup.Name = "ItemPickup"
 	pickup.Anchored = true
 	pickup.CanCollide = false
-	pickup.Size = Vector3.new(3, 3, 3)
-	pickup.Position = position
-	pickup.Shape = Enum.PartType.Ball
+	pickup.Size = Vector3.new(0.2, 1.5, 1.5) -- แบน (X = ความหนา)
+	pickup.Shape = Enum.PartType.Cylinder
 	pickup.Material = Enum.Material.Neon
-	pickup.Color = Color3.fromRGB(255, 215, 0)
-	pickup.Transparency = 0.3
+	pickup.Color = Color3.fromRGB(255, 200, 50) -- สีทอง
+	pickup.Transparency = 0
 	
-	-- Add sparkles effect
+	-- ยกขึ้น 3 studs + หมุนให้เหรียญตั้งแนวตั้ง
+	local raisedPosition = position + Vector3.new(0, 3, 0)
+	pickup.CFrame = CFrame.new(raisedPosition) * CFrame.Angles(0, 0, math.rad(90))
+	
+	-- Add sparkle effect (น้อยลง)
 	local sparkles = Instance.new("ParticleEmitter")
-	sparkles.Lifetime = NumberRange.new(0.5, 1)
-	sparkles.Rate = 20
-	sparkles.Speed = NumberRange.new(2, 5)
+	sparkles.Lifetime = NumberRange.new(0.3, 0.6)
+	sparkles.Rate = 5
+	sparkles.Speed = NumberRange.new(0.5, 1.5)
+	sparkles.Size = NumberSequence.new(0.2, 0)
 	sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+	sparkles.LightEmission = 1
+	sparkles.SpreadAngle = Vector2.new(180, 180)
 	sparkles.Parent = pickup
+	
+	-- Add PointLight for glow (เบาลง)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 200, 50)
+	light.Brightness = 0.5
+	light.Range = 4
+	light.Parent = pickup
+	
+	-- Spin animation - หมุนรอบแกน Y
+	pickup:SetAttribute("IsCoin", true)
+	pickup:SetAttribute("SpinSpeed", 3)
 	
 	return pickup
 end
