@@ -76,9 +76,9 @@ function MapManager:generateMapWithOrder(stageOrder: {number})
 			-- หา EndPart เพื่อคำนวณตำแหน่งถัดไป
 			local endPart = stage:FindFirstChild("EndPart")
 			if endPart then
-				currentPosition = endPart.Position + Vector3.new(0, 0, 10) -- Gap between stages
+				currentPosition = endPart.Position + Vector3.new(10, 0, 0) -- Gap between stages
 			else
-				currentPosition = currentPosition + Vector3.new(0, 0, Config.Stages.StageLength + 10)
+				currentPosition = currentPosition + Vector3.new(Config.Stages.StageLength + 10, 0, 0)
 			end
 			
 			-- Register animated parts
@@ -304,10 +304,10 @@ function MapManager:getStageIndexFromPosition(position: Vector3): number?
 		local endPart = stage:FindFirstChild("EndPart")
 		
 		if startPart and endPart then
-			local startZ = startPart.Position.Z - 10
-			local endZ = endPart.Position.Z + 10
+			local startX = startPart.Position.X - 10
+			local endX = endPart.Position.X + 10
 			
-			if position.Z >= startZ and position.Z <= endZ then
+			if position.X >= startX and position.X <= endX then
 				return index
 			end
 		end

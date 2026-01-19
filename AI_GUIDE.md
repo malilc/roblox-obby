@@ -347,7 +347,7 @@ end
 local Config = {
     -- Lobby Settings
     Lobby = {
-        SpawnPosition = Vector3.new(0, 5, 0),
+        SpawnPosition = Vector3.new(0, 100, 0),
     },
 
     -- Stage Settings
@@ -372,7 +372,7 @@ local Config = {
         Cooldown = 10,          -- cooldown (วินาที)
     },
 
-    KillZoneY = -20,            -- ความสูงที่ตาย
+    KillZoneY = -120,            -- ความสูงที่ตาย
 }
 ```
 

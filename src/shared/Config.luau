@@ -2,16 +2,16 @@
 local Config = {
 	-- Lobby Settings
 	Lobby = {
-		SpawnPosition = Vector3.new(0, 5, 0),
+		SpawnPosition = Vector3.new(0, 103, 0),
 		TeleporterPosition = Vector3.new(0, 3, 20),
 	},
 
 	-- Stage Settings
-	Stages = {
-		Count = 5, -- จำนวนด่านที่จะสุ่ม
-		StageLength = 100, -- ความยาวแต่ละด่าน (studs)
-		StartOffset = Vector3.new(0, 0, 150), -- ตำแหน่งเริ่มต้นของด่านแรก (ห่างจาก Lobby)
-	},
+Stages = {
+	Count = 5, -- จำนวนด่านที่จะสุ่ม
+	StageLength = 100, -- ความยาวแต่ละด่าน (studs)
+	StartOffset = Vector3.new(-150, 0, 250), -- ตำแหน่งเริ่มต้นของด่านแรก (ทางขวาและหน้า Lobby)
+},
 
 	-- Score Settings
 	Score = {
@@ -36,7 +36,7 @@ local Config = {
 	},
 
 	-- Kill Zone
-	KillZoneY = -20, -- ความสูงที่จะตายเมื่อตกลงไป
+	KillZoneY = -120, -- ความสูงที่จะตายเมื่อตกลงไป
 }
 
 return Config

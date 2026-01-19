@@ -60,12 +60,11 @@
     },
 
     "Workspace": {
-      "SpawnLocation": {
+      " SpawnLocation": {
         "$className": "SpawnLocation",
         "$properties": {
-          "Name": "LobbySpawn",
           "Anchored": true,
-          "CFrame": [0, 1, 0, -1, 0, 0, 0, 1, 0, 0, 0, -1],
+          "CFrame": [0, 103, 0, 1, 0, 0, 0, -1, 0, 0, 0, -1],
           "Size": [8, 1, 8],
           "Neutral": true,
           "Color": [0.3, 0.8, 0.3],
@@ -81,18 +80,17 @@
             "Color": [0.3, 0.5, 0.3],
             "Material": "Grass",
             "Size": [100, 2, 100],
-            "Position": [0, -1, 0]
+            "Position": [0, 99, 0]
           }
         },
         "SelectionZone": {
           "$className": "Part",
           "$properties": {
-            "Name": "SelectionZone",
             "Anchored": true,
             "Color": [0.2, 0.6, 1.0],
             "Material": "Neon",
             "Size": [20, 1, 20],
-            "Position": [0, 1, 30],
+            "Position": [0, 101, 30],
             "Transparency": 0.5,
             "CanCollide": false
           }
@@ -108,7 +106,7 @@
           "Color": [0.7, 0.1, 0.1],
           "Transparency": 0.8,
           "Size": [2000, 1, 2000],
-          "Position": [0, -25, 500],
+          "Position": [0, -120, 500],
           "CanCollide": false
         }
       }

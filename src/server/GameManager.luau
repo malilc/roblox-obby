@@ -240,8 +240,8 @@ function GameManager:teleportToStart(player: Player)
 			if humanoidRootPart then
 				humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 				humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-				-- Teleport และหันหน้าไปทาง +Z (ไปข้างหน้าในด่าน)
-				humanoidRootPart.CFrame = CFrame.lookAt(startPos, startPos + Vector3.new(0, 0, 1))
+			-- Teleport และหันหน้าไปทาง +X (ไปทางซ้ายในด่าน)
+			humanoidRootPart.CFrame = CFrame.lookAt(startPos, startPos + Vector3.new(1, 0, 0))
 			end
 		end
 	end
@@ -460,8 +460,8 @@ function GameManager:startGameForPlayer(player: Player)
 				-- Reset velocity
 				humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 				humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-				-- Teleport และหันหน้าไปทาง +Z (ไปข้างหน้าในด่าน)
-				humanoidRootPart.CFrame = CFrame.lookAt(startPos, startPos + Vector3.new(0, 0, 1))
+			-- Teleport และหันหน้าไปทาง +X (ไปทางซ้ายในด่าน)
+			humanoidRootPart.CFrame = CFrame.lookAt(startPos, startPos + Vector3.new(1, 0, 0))
 			end
 		end
 	end
@@ -489,7 +489,7 @@ function GameManager:teleportToLobby(player: Player)
 			if humanoidRootPart then
 				humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 				humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-				humanoidRootPart.CFrame = CFrame.new(spawn.Position + Vector3.new(0, 3, 0))
+				humanoidRootPart.CFrame = CFrame.new(spawn.Position + Vector3.new(0, 1, 0))
 			end
 		end
 	end

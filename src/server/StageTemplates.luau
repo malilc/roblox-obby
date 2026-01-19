@@ -126,9 +126,9 @@ function StageTemplates.createStage1(startPosition: Vector3): Model
 	
 	for i = 1, platformCount do
 		local offset = Vector3.new(
+			spacing * i,
 			math.random(-5, 5),
-			math.random(-2, 3),
-			spacing * i
+			math.random(-2, 3)
 		)
 		local platform = createPart({
 			Name = "Platform_" .. i,
@@ -140,14 +140,14 @@ function StageTemplates.createStage1(startPosition: Vector3): Model
 	end
 	
 	-- Item pickup กลางด่าน
-	local pickup = createItemPickup(startPosition + Vector3.new(0, 5, STAGE_LENGTH / 2))
+	local pickup = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH / 2, 5, 0))
 	pickup.Parent = itemPickups
 	
 	-- End Part (จุดสิ้นสุด)
 	local endPart = createPart({
 		Name = "EndPart",
 		Size = Vector3.new(10, 2, 10),
-		Position = startPosition + Vector3.new(0, 0, STAGE_LENGTH),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
 		Color = Color3.fromRGB(100, 200, 100),
 	})
 	endPart.Parent = stage
@@ -189,7 +189,7 @@ function StageTemplates.createStage2(startPosition: Vector3): Model
 		local platform = createPart({
 			Name = "MovingPlatform_" .. i,
 			Size = Vector3.new(8, 1, 8),
-			Position = startPosition + Vector3.new(0, 0, spacing * i),
+			Position = startPosition + Vector3.new(spacing * i, 0, 0),
 			Color = Color3.fromRGB(255, 165, 0),
 		})
 		
@@ -203,14 +203,14 @@ function StageTemplates.createStage2(startPosition: Vector3): Model
 	end
 	
 	-- Item pickup
-	local pickup = createItemPickup(startPosition + Vector3.new(0, 8, STAGE_LENGTH / 2))
+	local pickup = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH / 2, 8, 0))
 	pickup.Parent = itemPickups
 	
 	-- End Part
 	local endPart = createPart({
 		Name = "EndPart",
 		Size = Vector3.new(10, 2, 10),
-		Position = startPosition + Vector3.new(0, 0, STAGE_LENGTH),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
 		Color = Color3.fromRGB(200, 150, 100),
 	})
 	endPart.Parent = stage
@@ -253,7 +253,7 @@ function StageTemplates.createStage3(startPosition: Vector3): Model
 		local platform = createPart({
 			Name = "Platform_" .. i,
 			Size = Vector3.new(12, 2, 12),
-			Position = startPosition + Vector3.new(0, 0, spacing * i),
+			Position = startPosition + Vector3.new(spacing * i, 0, 0),
 			Color = Color3.fromRGB(100, 100, 150),
 		})
 		platform.Parent = obstacles
@@ -262,7 +262,7 @@ function StageTemplates.createStage3(startPosition: Vector3): Model
 		local spinner = createPart({
 			Name = "Spinner_" .. i,
 			Size = Vector3.new(20, 2, 2),
-			Position = startPosition + Vector3.new(0, 3, spacing * i),
+			Position = startPosition + Vector3.new(spacing * i, 3, 0),
 			Color = Color3.fromRGB(255, 50, 50),
 		})
 		spinner:SetAttribute("IsSpinning", true)
@@ -272,14 +272,14 @@ function StageTemplates.createStage3(startPosition: Vector3): Model
 	end
 	
 	-- Item pickup
-	local pickup = createItemPickup(startPosition + Vector3.new(0, 10, STAGE_LENGTH / 2))
+	local pickup = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH / 2, 10, 0))
 	pickup.Parent = itemPickups
 	
 	-- End Part
 	local endPart = createPart({
 		Name = "EndPart",
 		Size = Vector3.new(10, 2, 10),
-		Position = startPosition + Vector3.new(0, 0, STAGE_LENGTH),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
 		Color = Color3.fromRGB(150, 100, 200),
 	})
 	endPart.Parent = stage
@@ -319,9 +319,9 @@ function StageTemplates.createStage4(startPosition: Vector3): Model
 	
 	for i = 1, platformCount do
 		local offset = Vector3.new(
+			spacing * i,
 			math.random(-8, 8),
-			math.random(-1, 2),
-			spacing * i
+			math.random(-1, 2)
 		)
 		local platform = createPart({
 			Name = "DisappearingPlatform_" .. i,
@@ -339,14 +339,14 @@ function StageTemplates.createStage4(startPosition: Vector3): Model
 	end
 	
 	-- Item pickup
-	local pickup = createItemPickup(startPosition + Vector3.new(0, 5, STAGE_LENGTH / 2))
+	local pickup = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH / 2, 5, 0))
 	pickup.Parent = itemPickups
 	
 	-- End Part
 	local endPart = createPart({
 		Name = "EndPart",
 		Size = Vector3.new(10, 2, 10),
-		Position = startPosition + Vector3.new(0, 0, STAGE_LENGTH),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
 		Color = Color3.fromRGB(200, 100, 150),
 	})
 	endPart.Parent = stage
@@ -387,7 +387,7 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 		local platform = createPart({
 			Name = "ComboPlat_" .. i,
 			Size = Vector3.new(6, 1, 6),
-			Position = startPosition + Vector3.new(0, 0, sectionLength * 0.25 * i),
+			Position = startPosition + Vector3.new(sectionLength * 0.25 * i, 0, 0),
 			Color = Color3.fromRGB(255, 100, 50),
 		})
 		platform:SetAttribute("IsMoving", true)
@@ -404,7 +404,7 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 	local narrowPath = createPart({
 		Name = "NarrowPath",
 		Size = Vector3.new(4, 2, 30),
-		Position = startPosition + Vector3.new(0, 0, sectionLength * 1.5),
+		Position = startPosition + Vector3.new(sectionLength * 1.5, 0, 0),
 		Color = Color3.fromRGB(100, 100, 100),
 	})
 	narrowPath.Parent = obstacles
@@ -413,7 +413,7 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 		local spinner = createPart({
 			Name = "PathSpinner_" .. i,
 			Size = Vector3.new(15, 1, 1),
-			Position = startPosition + Vector3.new(0, 3, sectionLength + 10 * i),
+			Position = startPosition + Vector3.new(sectionLength + 10 * i, 3, 0),
 			Color = Color3.fromRGB(255, 0, 0),
 		})
 		spinner:SetAttribute("IsSpinning", true)
@@ -428,9 +428,9 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 			Name = "JumpPlat_" .. i,
 			Size = Vector3.new(5 - i * 0.5, 1, 5 - i * 0.5), -- เล็กลงเรื่อยๆ
 			Position = startPosition + Vector3.new(
-				math.random(-5, 5),
+				sectionLength * 2.5 + i * 8,
 				i * 2,
-				sectionLength * 2.5 + i * 8
+				math.random(-5, 5)
 			),
 			Color = Color3.fromRGB(50, 200, 255),
 		})
@@ -438,16 +438,16 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 	end
 	
 	-- Item pickups (มากกว่าด่านอื่น)
-	local pickup1 = createItemPickup(startPosition + Vector3.new(0, 5, sectionLength))
+	local pickup1 = createItemPickup(startPosition + Vector3.new(sectionLength, 5, 0))
 	pickup1.Parent = itemPickups
-	local pickup2 = createItemPickup(startPosition + Vector3.new(0, 8, sectionLength * 3))
+	local pickup2 = createItemPickup(startPosition + Vector3.new(sectionLength * 3, 8, 0))
 	pickup2.Parent = itemPickups
 	
 	-- End Part (Finish Line!)
 	local endPart = createPart({
 		Name = "EndPart",
 		Size = Vector3.new(15, 2, 10),
-		Position = startPosition + Vector3.new(0, 0, STAGE_LENGTH),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
 		Color = Color3.fromRGB(0, 255, 100),
 		Material = Enum.Material.Neon,
 	})
@@ -458,7 +458,7 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 	local banner = createPart({
 		Name = "FinishBanner",
 		Size = Vector3.new(15, 10, 1),
-		Position = startPosition + Vector3.new(0, 8, STAGE_LENGTH + 5),
+		Position = startPosition + Vector3.new(STAGE_LENGTH + 5, 8, 0),
 		Color = Color3.fromRGB(255, 215, 0),
 		Transparency = 0.5,
 		Material = Enum.Material.Neon,
