@@ -520,7 +520,7 @@ self.newUI = NewUI.new(screenGui)
 ```
 Player Joins
     ↓
-Spawn at Lobby (SpawnLocation หันไปทาง SelectionZone)
+Spawn at Lobby (Config.Lobby.SpawnPosition = 0, 103, 0)
     ↓
 GameManager:onPlayerAdded()
     ↓
@@ -536,17 +536,25 @@ ScoreManager:initPlayer() + ItemManager:initPlayer()
     ↓
 Countdown 3, 2, 1
     ↓
-Teleport to Stage 1 (หันไปทาง +Z)
+Teleport to Stage 1 (หันไปทาง +X)
     ↓
-Playing (checkPlayerPosition loop)
+Playing (checkPlayerPosition loop ทุก 0.5 วินาที)
     ↓
 Pass Checkpoint → ScoreManager:addStageScore()
     ↓
 Touch EndPart of last stage (Finish Line)
     ↓
-GameManager:onPlayerFinished()
+GameManager:onPlayerFinished() → Set teleportingToLobby flag
     ↓
-Wait 2 seconds → Teleport back to Lobby
+ScoreManager:addFinishBonus() + Save to DataStore
+    ↓
+Wait 2 seconds
+    ↓
+GameManager:teleportToLobby() → Use Config.Lobby.SpawnPosition
+    ↓
+Clear teleportingToLobby flag after 0.5 วินาที
+    ↓
+Back to Lobby (State = "Lobby")
 ```
 
 ---
@@ -567,8 +575,18 @@ Wait 2 seconds → Teleport back to Lobby
 [GameManager] PlayerName started the obby!
 [GameManager] PlayerName completed stage 1
 [GameManager] PlayerName FINISHED THE OBBY!
+[GameManager] Teleporting PlayerName to lobby at: 0, 103, 0
+[GameManager] Teleport successful for PlayerName
 [GameManager] PlayerName returned to lobby
 ```
+
+### สิ่งที่ต้องทราบเกี่ยวกับ Finish Line:
+- **Touch Detection**: EndPart ของ stage สุดท้ายมี `Touched` event ตรวจจับ
+- **Position Check**: ระบบยังเช็คตำแหน่งด้วย `isAtFinishLine()` (loop-based)
+- **Flag Protection**: ใช้ `teleportingToLobby` flag ป้องกันการเรียกซ้ำ
+- **Teleport**: ใช้ `Config.Lobby.SpawnPosition` แทนการหา SpawnLocation (เสถียรกว่า)
+- **Delay**: รอ 2 วินาทีก่อน teleport
+- **DataStore**: จะ fail ใน Studio ถ้าไม่เปิด API access (ปกติใช้ได้จริง)
 
 ### Commands (เพิ่มเองได้):
 สามารถเพิ่ม admin commands ใน `init.server.luau`:
@@ -592,26 +610,35 @@ end)
 |----------|-------|----------|
 | `STAGE_LENGTH` | 100 | StageTemplates.luau |
 | `Config.Stages.Count` | 5 | Config.luau |
-| `Config.Stages.StartOffset` | (0, 0, 150) | Config.luau |
-| `Config.KillZoneY` | -20 | Config.luau |
+| `Config.Stages.StartOffset` | (-150, 0, 250) | Config.luau |
+| `Config.Lobby.SpawnPosition` | (0, 103, 0) | Config.luau |
+| `Config.KillZoneY` | -120 | Config.luau |
 | `Friction` | 2.0 | StageTemplates.luau |
+| `checkPlayerPosition interval` | 0.5 วินาที | GameManager.luau |
+| `selectionZone interval` | 0.2 วินาที | GameManager.luau |
+| `Finish Line delay` | 2 วินาที | GameManager.luau |
 
 ---
 
 ## ⚠️ Important Notes
 
-1. **SpawnLocation**: ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder (หันไปทาง +Z)
+1. **SpawnLocation**: ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder (หันไปทาง SelectionZone)
 2. **SelectionZone**: ใช้ loop-based detection ทุก 0.2 วินาที (เสถียรกว่า Touched)
 3. **Checkpoint**: ใช้ `Part` ไม่ใช่ `SpawnLocation` (ไม่งั้นผู้เล่นจะเกิดที่นี่)
 4. **Moving Platform**: ใช้ `PrismaticConstraint` (physics-based) ไม่ใช่ CFrame animation
 5. **Friction**: ทุก Part มี `CustomPhysicalProperties` กับ Friction = 2.0
 6. **Random Seed**: `math.randomseed()` ถูกเรียกใน MapManager แล้ว
 7. **Stage ต้องมี**: StartPart, EndPart, Checkpoint, Obstacles folder, ItemPickups folder
-8. **Position**: Stage วางต่อกันตามแกน Z (ไปข้างหน้า)
+8. **Position**: Stage วางต่อกันตามแกน X (ไปทางซ้าย)
 9. **DataStore**: ใช้ `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
 10. **Rojo**: ใช้ `rojo serve` เพื่อ sync กับ Studio
 11. **Item Coin**: ใช้ `createItemPickup()` → Cylinder แนวตั้ง, สีทอง, หมุนรอบ Y, มีแสง
 12. **UI Design**: ใช้ขนาดเล็ก + โปร่งใส เพื่อไม่ให้บังจอ
 13. **Map Generation**: ไม่สร้างตอนเริ่มเกม จะสร้างเมื่อผู้เล่นเลือกด่านแล้ว
-14. **Teleport Direction**: ใช้ `CFrame.lookAt()` เพื่อหันหน้าไปทาง +Z
-15. **จบเกม**: กลับไป Lobby (ไม่ใช่ Stage 1)
+14. **Teleport Direction**: ใช้ `CFrame.lookAt()` เพื่อหันหน้าไปทาง +X (ไปทางซ้าย)
+15. **จบเกม**: กลับไป Lobby โดยใช้ `Config.Lobby.SpawnPosition` (ไม่ใช่ Stage 1)
+16. **Finish Line Detection**: ใช้ทั้ง `Touched` event และ position-based check (double check)
+17. **Teleport Protection**: ใช้ `teleportingToLobby` flag ป้องกันการเรียกซ้ำ
+18. **Lobby Position**: ต้องตรงกับ `Config.Lobby.SpawnPosition = (0, 103, 0)`
+19. **DataStore Error**: ใน Studio จะแจ้ง error ถ้าไม่เปิด API access (ปกติใช้ได้จริง)
+20. **Check Interval**: `checkPlayerPosition` ทำงานทุก 0.5 วินาที

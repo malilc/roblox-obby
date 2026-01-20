@@ -24,6 +24,7 @@ function GameManager.new()
 	-- Player states
 	self.playerStates = {} :: {[Player]: PlayerState}
 	self.playerCheckpoints = {} :: {[Player]: Vector3}
+	self.teleportingToLobby = {} :: {[Player]: boolean} -- Track teleporting players
 	
 	-- Remotes
 	self.startGameRemote = ReplicatedStorage.Remotes.StartGame
@@ -105,10 +106,11 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.playerStates[player] = nil
 	self.playerCheckpoints[player] = nil
 	self.playersInSelectionZone[player] = nil
-	
+	self.teleportingToLobby[player] = nil -- Clear teleport flag
+
 	self.scoreManager:removePlayer(player)
 	self.itemManager:removePlayer(player)
-	
+
 	print("[GameManager] Player left:", player.Name)
 end
 
@@ -145,6 +147,9 @@ end
 function GameManager:checkPlayerPosition(player: Player)
 	local state = self.playerStates[player]
 	if state ~= "Playing" then return end
+
+	-- Skip if teleporting to lobby
+	if self.teleportingToLobby[player] then return end
 	
 	local character = player.Character
 	if not character then return end
@@ -199,6 +204,9 @@ end
 function GameManager:onPlayerFinished(player: Player)
 	local state = self.playerStates[player]
 	if state ~= "Playing" then return end
+
+	-- Mark as teleporting to prevent multiple calls
+	self.teleportingToLobby[player] = true
 	
 	self.playerStates[player] = "Finished"
 	
@@ -217,6 +225,10 @@ function GameManager:onPlayerFinished(player: Player)
 	-- Teleport กลับ Lobby (หลังแสดง message 2 วินาที)
 	task.delay(2, function()
 		self:teleportToLobby(player)
+		-- Clear teleporting flag after teleport
+		task.delay(0.5, function()
+			self.teleportingToLobby[player] = nil
+		end)
 	end)
 end
 
@@ -472,28 +484,36 @@ end
 -- Teleport to lobby
 function GameManager:teleportToLobby(player: Player)
 	self.playerStates[player] = "Lobby"
-	
+
 	-- Reset scores for next round
 	self.scoreManager:resetRoundScore(player)
 	self.itemManager:resetPlayer(player)
-	
+
 	-- Clear checkpoint
 	self.playerCheckpoints[player] = nil
-	
-	-- Teleport to SpawnLocation
-	local spawn = workspace:FindFirstChild("SpawnLocation")
-	if spawn then
-		local character = player.Character
-		if character then
-			local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-			if humanoidRootPart then
-				humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-				humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-				humanoidRootPart.CFrame = CFrame.new(spawn.Position + Vector3.new(0, 1, 0))
-			end
+
+	-- Use Config position directly for more reliable teleport
+	local targetPosition = Config.Lobby.SpawnPosition
+	print("[GameManager] Teleporting", player.Name, "to lobby at:", targetPosition)
+
+	local character = player.Character
+	if character then
+		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+		if humanoidRootPart then
+			-- Reset velocity
+			humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+			humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+
+			-- Teleport to Config position
+			humanoidRootPart.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
+			print("[GameManager] Teleport successful for", player.Name)
+		else
+			warn("[GameManager] Could not find HumanoidRootPart for", player.Name)
 		end
+	else
+		warn("[GameManager] Could not find character for", player.Name)
 	end
-	
+
 	print("[GameManager]", player.Name, "returned to lobby")
 end
 
