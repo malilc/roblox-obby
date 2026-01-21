@@ -12,11 +12,25 @@ src/
 │   ├── MapManager.luau          # จัดการ map/stages + animations
 │   ├── ScoreManager.luau        # ระบบคะแนน + DataStore
 │   ├── ItemManager.luau         # ระบบ Push item
-│   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
+│   ├── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
+│   └── tests/                   # ⭐ Server unit tests (Studio only)
+│       ├── TestRunner.server.luau
+│       ├── GameManagerSpec.luau
+│       ├── ItemManagerSpec.luau
+│       ├── MapManagerSpec.luau
+│       ├── ScoreManagerSpec.luau
+│       └── StageTemplatesSpec.luau
 │
 ├── client/                      # Client-side code
 │   ├── init.client.luau         # Entry point
 │   ├── FlyController.luau       # ระบบบินทดสอบ (กด F)
+│   ├── tests/                   # ⭐ Client unit tests (Studio only)
+│   │   ├── TestRunner.client.luau
+│   │   ├── FlyControllerSpec.luau
+│   │   ├── ItemUISpec.luau
+│   │   ├── LeaderboardUISpec.luau
+│   │   ├── ScoreUISpec.luau
+│   │   └── StageSelectionUISpec.luau
 │   └── UI/
 │       ├── MainUI.luau          # Controller หลัก
 │       ├── ScoreUI.luau         # แสดงคะแนน
@@ -560,6 +574,15 @@ Back to Lobby (State = "Lobby")
 ---
 
 ## 🧪 Testing
+
+### Unit Tests (Studio only)
+- **Server**: `src/server/tests/TestRunner.server.luau` จะรัน `*Spec.luau` ทั้งหมดอัตโนมัติเมื่อกด Play (Server)
+- **Client**: `src/client/tests/TestRunner.client.luau` จะรัน `*Spec.luau` ทั้งหมดอัตโนมัติเมื่อกด Play (Client)
+- **Output**: ดูผลใน Output ของ Studio ด้วย prefix `[Tests]` และ `[ClientTests]`
+
+### Coverage notes
+- ชุดทดสอบเน้น logic ที่ทดสอบได้ใน Studio โดยไม่พึ่ง network/API จริง
+- ส่วนที่พึ่ง DataStore/Players/Remote/Tween/RenderStepped ยังต้องใช้ integration tests หรือเพิ่ม test hooks เพื่อ mock
 
 ### Fly Mode (ทดสอบ):
 - กด **F** เพื่อบิน
