@@ -338,6 +338,27 @@ function GameManager:setupSelectionZone()
 	if not selectionZone then return end
 	
 	-- ใช้ loop ตรวจสอบตำแหน่งผู้เล่นแทน Touched events (เสถียรกว่า)
+	
+	-- Add "Select Stage" Label
+	if not selectionZone:FindFirstChild("StageLabelBillboard") then
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "StageLabelBillboard"
+		billboard.Size = UDim2.new(0, 200, 0, 50)
+		billboard.StudsOffset = Vector3.new(0, 5, 0)
+		billboard.AlwaysOnTop = true
+		billboard.Parent = selectionZone
+		
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = "SELECT STAGE"
+		label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		label.TextStrokeTransparency = 0
+		label.TextSize = 24
+		label.Font = Enum.Font.GothamBold
+		label.Parent = billboard
+	end
+	
 	task.spawn(function()
 		while true do
 			task.wait(0.2) -- ตรวจสอบทุก 0.2 วินาที

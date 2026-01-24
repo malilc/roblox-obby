@@ -36,9 +36,12 @@ src/
 ```
 Workspace/
 ├── SpawnLocation          # จุดเกิดเริ่มต้น (หันไปทาง +Z)
-├── Lobby/
-│   ├── Floor              # พื้น Lobby
-│   └── SelectionZone      # ⭐ Zone เลือกด่าน (สีฟ้า, เดินเข้าไปเพื่อเปิด GUI)
+├── Lobby/                 # Folder เก็บ Lobby ทั้งหมด
+│   ├── MainFloor          # พื้น Cyper Platform
+│   ├── NeonRing           # วงแหวนเรืองแสง
+│   ├── FloatingIslands    # เกาะลอยฟ้า
+│   ├── NeonPillars        # เสาไฟ Neon
+│   └── SelectionZone      # ⭐ Zone เลือกด่าน (มีป้าย "SELECT STAGE")
 ├── Stages/                # Folder เก็บด่านที่ generate
 └── KillBrick              # พื้นที่ตายเมื่อตก
 ```
@@ -58,7 +61,7 @@ Workspace/
 ### Flow:
 
 ```
-ผู้เล่นเดินเข้า SelectionZone (สีฟ้า)
+ผู้เล่นเดินเข้า SelectionZone (เดินหาป้าย "SELECT STAGE")
     ↓
 Server ส่ง ShowStageSelection → Client
     ↓
