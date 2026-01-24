@@ -138,6 +138,9 @@ function ScoreUI:createUI()
 	stageIcon.TextSize = 12
 	stageIcon.Parent = stageFrame
 	
+	-- Hide by default
+	stageFrame.Visible = false
+	
 	-- Stage Progress Bar Background
 	local progressBg = Instance.new("Frame")
 	progressBg.Name = "ProgressBg"
@@ -194,10 +197,23 @@ function ScoreUI:updateScore(data: {[string]: any})
 	
 	if data.currentStage then
 		self.currentStage = data.currentStage
-		self.stageLabel.Text = self.currentStage .. "/" .. self.totalStages
+		
+		-- Update total stages if provided
+		if data.totalStages then
+			self.totalStages = data.totalStages
+		end
+		
+		-- Use completed stages for display (Stage 1 Start -> 0 completed)
+		local displayStage = math.max(0, self.currentStage - 1)
+		
+		if data.isFinished then
+			displayStage = self.totalStages
+		end
+		
+		self.stageLabel.Text = displayStage .. "/" .. self.totalStages
 		
 		-- Update progress bar
-		local progress = self.currentStage / self.totalStages
+		local progress = math.clamp(displayStage / self.totalStages, 0, 1) -- Clamp progress
 		local targetWidth = 80 * progress
 		
 		local tween = TweenService:Create(self.progressFill, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
@@ -332,6 +348,47 @@ function ScoreUI:flashLabel(label: TextLabel, color: Color3)
 			TextColor3 = originalColor
 		})
 		tween:Play()
+	end)
+end
+
+
+
+function ScoreUI:showStageProgress(totalStages: number?)
+	if totalStages then
+		self.totalStages = totalStages
+	end
+	
+	-- Reset display
+	self.currentStage = 0
+	self.stageLabel.Text = "0/" .. self.totalStages
+	self.progressFill.Size = UDim2.new(0, 0, 1, 0)
+	
+	-- Show frame
+	self.stageFrame.Visible = true
+	
+	-- Fade in
+	self.stageFrame.BackgroundTransparency = 1
+	for _, child in ipairs(self.stageFrame:GetChildren()) do
+		if child:IsA("GuiObject") then
+			child.Visible = true
+		end
+	end
+	
+	local fadeIn = TweenService:Create(self.stageFrame, TweenInfo.new(0.5), {
+		BackgroundTransparency = 0.6
+	})
+	fadeIn:Play()
+end
+
+function ScoreUI:hideStageProgress()
+	-- Fade out
+	local fadeOut = TweenService:Create(self.stageFrame, TweenInfo.new(0.5), {
+		BackgroundTransparency = 1
+	})
+	fadeOut:Play()
+	
+	fadeOut.Completed:Connect(function()
+		self.stageFrame.Visible = false
 	end)
 end
 

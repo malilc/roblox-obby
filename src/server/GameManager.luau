@@ -191,13 +191,18 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 		self.playerCheckpoints[player] = checkpointPos
 	end
 	
+	-- Get dynamic total stages
+	local totalStages = #self.mapManager.stageOrder
+	if totalStages == 0 then totalStages = Config.Stages.Count end
+	
 	-- Notify client
 	self.stageCompleteRemote:FireClient(player, {
 		stageIndex = stageIndex,
-		totalStages = Config.Stages.Count,
+		totalStages = totalStages,
+		isStart = (stageIndex == 1),
 	})
 	
-	print("[GameManager]", player.Name, "completed stage", stageIndex)
+	print("[GameManager]", player.Name, if stageIndex == 1 then "started stage 1" else "completed stage " .. (stageIndex - 1))
 end
 
 -- On player finished
@@ -213,11 +218,15 @@ function GameManager:onPlayerFinished(player: Player)
 	self.scoreManager:addFinishBonus(player)
 	self.scoreManager:updateLeaderstats(player)
 	
+	-- Get dynamic total stages
+	local totalStages = #self.mapManager.stageOrder
+	if totalStages == 0 then totalStages = Config.Stages.Count end
+
 	-- Notify client
 	self.stageCompleteRemote:FireClient(player, {
 		finished = true,
-		stageIndex = Config.Stages.Count,
-		totalStages = Config.Stages.Count,
+		stageIndex = totalStages,
+		totalStages = totalStages,
 	})
 	
 	print("[GameManager]", player.Name, "FINISHED THE OBBY!")
@@ -432,10 +441,15 @@ end
 
 -- Start countdown
 function GameManager:startCountdown(player: Player, seconds: number)
+	-- Get dynamic total stages
+	local totalStages = #self.mapManager.stageOrder
+	if totalStages == 0 then totalStages = Config.Stages.Count end
+	
 	for i = seconds, 1, -1 do
 		self.countdownUpdateRemote:FireClient(player, {
 			number = i,
-			message = if i > 1 then "Starting..." else "GO!"
+			message = if i > 1 then "Starting..." else "GO!",
+			totalStages = totalStages,
 		})
 		task.wait(1)
 	end

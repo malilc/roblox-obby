@@ -641,4 +641,6 @@ end)
 17. **Teleport Protection**: ใช้ `teleportingToLobby` flag ป้องกันการเรียกซ้ำ
 18. **Lobby Position**: ต้องตรงกับ `Config.Lobby.SpawnPosition = (0, 103, 0)`
 19. **DataStore Error**: ใน Studio จะแจ้ง error ถ้าไม่เปิด API access (ปกติใช้ได้จริง)
-20. **Check Interval**: `checkPlayerPosition` ทำงานทุก 0.5 วินาที
+21. **Stage Counting**: เริ่มต้นที่ **0/N** (เข้า Stage 1), เข้า Stage 2 เป็น **1/N**, จบเกมเป็น **N/N**
+22. **Stage Visibility**: ซ่อนใน Lobby, แสดงตอน Countdown, ซ่อนเมื่อจบเกม
+23. **Scoring**: เริ่ม Stage 1 ไม่ได้คะแนน, เข้า Stage 2 ได้คะแนน (ถือว่าผ่านด่าน 1)

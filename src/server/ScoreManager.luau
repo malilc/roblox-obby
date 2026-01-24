@@ -102,9 +102,14 @@ function ScoreManager:addStageScore(player: Player, stageIndex: number)
 	end
 	
 	playerData.currentStage = stageIndex
-	playerData.roundScore = playerData.roundScore + Config.Score.PerStage
 	
-	print("[ScoreManager]", player.Name, "passed stage", stageIndex, "- Score:", playerData.roundScore)
+	-- Stage 1 is just starting, no score
+	if stageIndex > 1 then
+		playerData.roundScore = playerData.roundScore + Config.Score.PerStage
+		print("[ScoreManager]", player.Name, "passed stage", stageIndex - 1, "- Score:", playerData.roundScore)
+	else
+		print("[ScoreManager]", player.Name, "started stage 1")
+	end
 	
 	self:sendScoreUpdate(player)
 end

@@ -66,6 +66,15 @@ function MainUI:setupRemotes()
 	playerDied.OnClientEvent:Connect(function()
 		self:onPlayerDied()
 	end)
+	
+	-- Countdown update (Game Start)
+	local countdownUpdate = remotes:WaitForChild("CountdownUpdate")
+	countdownUpdate.OnClientEvent:Connect(function(data)
+		if data.totalStages then
+			-- Show stage UI when game starts
+			self.scoreUI:showStageProgress(data.totalStages)
+		end
+	end)
 end
 
 function MainUI:onScoreUpdate(data: {[string]: any})
@@ -80,13 +89,27 @@ function MainUI:onStageComplete(data: {[string]: any})
 	local stageIndex = data.stageIndex
 	local isFinished = data.finished
 	
-	-- Show notification
-	self.scoreUI:showStageComplete(stageIndex, isFinished)
+	local isStart = data.isStart
+	
+	-- Show notification only if not just starting
+	if not isStart then
+		-- Show completion of previous stage
+		self.scoreUI:showStageComplete(stageIndex - 1, isFinished)
+	end
 	
 	-- Update score UI
 	self.scoreUI:updateScore({
-		currentStage = stageIndex
+		currentStage = stageIndex,
+		totalStages = data.totalStages,
+		isFinished = isFinished -- Pass finish status
 	})
+	
+	-- If finished, hide stage UI after delay
+	if isFinished then
+		task.delay(2.5, function()
+			self.scoreUI:hideStageProgress()
+		end)
+	end
 end
 
 function MainUI:onLeaderboardUpdate(entries: {{userId: number, name: string, highScore: number}})
