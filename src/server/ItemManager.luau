@@ -240,19 +240,47 @@ end
 -- Collect pickup
 function ItemManager:collectPickup(player: Player, pickup: Part)
 	if not pickup.Parent then return end -- Already collected
+	if pickup:GetAttribute("IsCollected") then return end -- Prevent double collection
+	
+	-- Mark as collected
+	pickup:SetAttribute("IsCollected", true)
 	
 	-- Add item
 	self:addPushItem(player, 1)
 	
-	-- Temporarily hide pickup
+	-- Temporarily hide pickup and all its children
 	pickup.Transparency = 1
 	pickup.CanCollide = false
+	
+	-- ซ่อน children ด้วย (เช่น Mesh, ParticleEmitter)
+	for _, child in pairs(pickup:GetDescendants()) do
+		if child:IsA("BasePart") then
+			child.Transparency = 1
+		elseif child:IsA("ParticleEmitter") then
+			child.Enabled = false
+		elseif child:IsA("Light") then
+			child.Enabled = false
+		end
+	end
 	
 	-- Respawn after delay
 	task.delay(15, function()
 		if pickup.Parent then
-			pickup.Transparency = 0.3
+			-- Show pickup again
+			pickup.Transparency = 0
 			pickup.CanCollide = false
+			pickup:SetAttribute("IsCollected", false)
+			
+			-- แสดง children กลับมา
+			for _, child in pairs(pickup:GetDescendants()) do
+				if child:IsA("BasePart") then
+					child.Transparency = 0
+				elseif child:IsA("ParticleEmitter") then
+					child.Enabled = true
+				elseif child:IsA("Light") then
+					child.Enabled = true
+				end
+			end
 		end
 	end)
 end

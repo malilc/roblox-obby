@@ -51,43 +51,55 @@ local function createCheckpoint(position: Vector3): Part
 	return checkpoint
 end
 
--- Helper function สร้าง Item Pickup (Coin Style)
+-- Item Box Mesh Asset ID (ใช้ ID ที่ผู้ใช้ให้มา)
+local ITEM_BOX_MESH_ID = "rbxassetid://6325349064"
+
+-- Helper function สร้าง Item Pickup (Item Box Style)
 local function createItemPickup(position: Vector3): Part
+	-- สร้าง Part หลัก
 	local pickup = Instance.new("Part")
 	pickup.Name = "ItemPickup"
 	pickup.Anchored = true
 	pickup.CanCollide = false
-	pickup.Size = Vector3.new(0.2, 1.5, 1.5) -- แบน (X = ความหนา)
-	pickup.Shape = Enum.PartType.Cylinder
-	pickup.Material = Enum.Material.Neon
-	pickup.Color = Color3.fromRGB(255, 200, 50) -- สีทอง
+	pickup.Size = Vector3.new(3, 3, 3)
 	pickup.Transparency = 0
+	pickup.Material = Enum.Material.SmoothPlastic
+	pickup.Color = Color3.fromRGB(255, 215, 0) -- สีทอง base
 	
-	-- ยกขึ้น 3 studs + หมุนให้เหรียญตั้งแนวตั้ง
+	-- ยกขึ้น 3 studs
 	local raisedPosition = position + Vector3.new(0, 3, 0)
-	pickup.CFrame = CFrame.new(raisedPosition) * CFrame.Angles(0, 0, math.rad(90))
+	pickup.Position = raisedPosition
 	
-	-- Add sparkle effect (น้อยลง)
+	-- เพิ่ม SpecialMesh สำหรับ Item Box
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.FileMesh
+	mesh.MeshId = ITEM_BOX_MESH_ID
+	-- อาจต้องใส่ TextureId ด้วยถ้ามี (เช่น rbxassetid://...)
+	-- mesh.TextureId = "rbxassetid://..." 
+	mesh.Scale = Vector3.new(0.30, 0.30, 0.30) -- ปรับขนาดเป็น 0.30 ตามที่ขอ
+	mesh.Parent = pickup
+	
+	-- Add sparkle effect
 	local sparkles = Instance.new("ParticleEmitter")
 	sparkles.Lifetime = NumberRange.new(0.3, 0.6)
-	sparkles.Rate = 5
+	sparkles.Rate = 8
 	sparkles.Speed = NumberRange.new(0.5, 1.5)
-	sparkles.Size = NumberSequence.new(0.2, 0)
+	sparkles.Size = NumberSequence.new(0.3, 0)
 	sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
 	sparkles.LightEmission = 1
 	sparkles.SpreadAngle = Vector2.new(180, 180)
 	sparkles.Parent = pickup
 	
-	-- Add PointLight for glow (เบาลง)
+	-- Add PointLight for glow
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 200, 50)
-	light.Brightness = 0.5
-	light.Range = 4
+	light.Brightness = 0.8
+	light.Range = 6
 	light.Parent = pickup
 	
 	-- Spin animation - หมุนรอบแกน Y
 	pickup:SetAttribute("IsCoin", true)
-	pickup:SetAttribute("SpinSpeed", 3)
+	pickup:SetAttribute("SpinSpeed", 2)
 	
 	return pickup
 end

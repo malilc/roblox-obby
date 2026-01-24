@@ -153,7 +153,7 @@ end
 |----------|-------------|-------------|
 | `createPart(props)` | `Part` | สร้าง Part พร้อม Friction สูง |
 | `createCheckpoint(pos)` | `Part` | สร้าง Checkpoint (Part สีเขียว Neon) |
-| `createItemPickup(pos)` | `Part` | สร้าง Item pickup (เหรียญทอง Cylinder หมุนได้) |
+| `createItemPickup(pos)` | `Part` | สร้าง Item pickup (Item Box Mesh ID: 6325349064) |
 
 ### ⚠️ สำคัญ: Checkpoint เป็น Part ไม่ใช่ SpawnLocation
 
@@ -226,9 +226,9 @@ coin.Parent = itemPickups
 ```
 
 **createItemPickup สร้าง:**
-- รูปทรง: **Cylinder แนวตั้ง** (แบน)
-- ขนาด: `0.2 x 1.5 x 1.5` (ความหนา x เส้นผ่านศูนย์กลาง)
-- สี: **ทอง** (255, 200, 50) + Neon
+- รูปทรง: **Mesh (Item Box)** ID: 6325349064
+- ขนาด: Scale `0.30, 0.30, 0.30`
+- สี: **ทอง** (255, 215, 0)
 - ยกขึ้น: **+3 studs** จากตำแหน่งที่ให้
 - หมุน: อัตโนมัติรอบแกน Y (ตั้งค่า `IsCoin` attribute)
 - เอฟเฟกต์: Sparkles + PointLight เรืองแสง
@@ -632,7 +632,7 @@ end)
 8. **Position**: Stage วางต่อกันตามแกน X (ไปทางซ้าย)
 9. **DataStore**: ใช้ `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
 10. **Rojo**: ใช้ `rojo serve` เพื่อ sync กับ Studio
-11. **Item Coin**: ใช้ `createItemPickup()` → Cylinder แนวตั้ง, สีทอง, หมุนรอบ Y, มีแสง
+11. **Item Box**: ใช้ `createItemPickup()` → Mesh ID: 6325349064, Scale 0.30, หมุนรอบ Y, มีแสง
 12. **UI Design**: ใช้ขนาดเล็ก + โปร่งใส เพื่อไม่ให้บังจอ
 13. **Map Generation**: ไม่สร้างตอนเริ่มเกม จะสร้างเมื่อผู้เล่นเลือกด่านแล้ว
 14. **Teleport Direction**: ใช้ `CFrame.lookAt()` เพื่อหันหน้าไปทาง +X (ไปทางซ้าย)
