@@ -8,6 +8,7 @@ local ScoreUI = require(script.Parent.ScoreUI)
 local ItemUI = require(script.Parent.ItemUI)
 local LeaderboardUI = require(script.Parent.LeaderboardUI)
 local StageSelectionUI = require(script.Parent.StageSelectionUI)
+local CurrencyUI = require(script.Parent.CurrencyUI)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -33,6 +34,7 @@ function MainUI.new()
 	self.itemUI = ItemUI.new(screenGui)
 	self.leaderboardUI = LeaderboardUI.new(screenGui)
 	self.stageSelectionUI = StageSelectionUI.new(screenGui)
+	self.currencyUI = CurrencyUI.new(screenGui)
 	
 	-- Setup remote listeners
 	self:setupRemotes()
@@ -74,6 +76,12 @@ function MainUI:setupRemotes()
 			-- Show stage UI when game starts
 			self.scoreUI:showStageProgress(data.totalStages)
 		end
+	end)
+	
+	-- Update currency
+	local updateCurrency = remotes:WaitForChild("UpdateCurrency")
+	updateCurrency.OnClientEvent:Connect(function(data)
+		self:onCurrencyUpdate(data)
 	end)
 end
 
@@ -119,6 +127,11 @@ end
 function MainUI:onPlayerDied()
 	-- Could show death notification or effect
 	self:showDeathNotification()
+end
+
+function MainUI:onCurrencyUpdate(data: {[string]: any})
+	-- Update currency UI
+	self.currencyUI:updateCurrency(data)
 end
 
 function MainUI:showDeathNotification()

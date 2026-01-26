@@ -24,9 +24,9 @@ function ScoreUI.new(parent: ScreenGui)
 end
 
 function ScoreUI:createUI()
-	-- === COIN SCORE (มุมบนซ้าย) ===
+	-- === SCORE (มุมบนซ้าย) ===
 	local coinFrame = Instance.new("Frame")
-	coinFrame.Name = "CoinFrame"
+	coinFrame.Name = "ScoreFrame"
 	coinFrame.Size = UDim2.new(0, 100, 0, 36)
 	coinFrame.Position = UDim2.new(0, 10, 0, 10)
 	coinFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -39,14 +39,14 @@ function ScoreUI:createUI()
 	coinCorner.CornerRadius = UDim.new(0, 18)
 	coinCorner.Parent = coinFrame
 	
-	-- Coin Icon
+	-- Score Icon (Star)
 	local coinIcon = Instance.new("TextLabel")
-	coinIcon.Name = "CoinIcon"
+	coinIcon.Name = "ScoreIcon"
 	coinIcon.Size = UDim2.new(0, 30, 0, 30)
 	coinIcon.Position = UDim2.new(0, 3, 0.5, -15)
-	coinIcon.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
+	coinIcon.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
 	coinIcon.BackgroundTransparency = 0
-	coinIcon.Text = "💰"
+	coinIcon.Text = "⭐"
 	coinIcon.TextSize = 18
 	coinIcon.Parent = coinFrame
 	
@@ -54,9 +54,9 @@ function ScoreUI:createUI()
 	coinIconCorner.CornerRadius = UDim.new(1, 0)
 	coinIconCorner.Parent = coinIcon
 	
-	-- Coin stroke (เหรียญ)
+	-- Score stroke
 	local coinStroke = Instance.new("UIStroke")
-	coinStroke.Color = Color3.fromRGB(200, 150, 0)
+	coinStroke.Color = Color3.fromRGB(50, 150, 200)
 	coinStroke.Thickness = 2
 	coinStroke.Parent = coinIcon
 	
@@ -233,7 +233,7 @@ function ScoreUI:updateScore(data: {[string]: any})
 end
 
 function ScoreUI:playCoinAnimation()
-	-- Scale up coin frame
+	-- Scale up score frame
 	local originalSize = self.coinFrame.Size
 	
 	local scaleUp = TweenService:Create(self.coinFrame, TweenInfo.new(0.1), {

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MapManager = require(script.Parent.MapManager)
 local ScoreManager = require(script.Parent.ScoreManager)
 local ItemManager = require(script.Parent.ItemManager)
+local CurrencyManager = require(script.Parent.CurrencyManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 
 local GameManager = {}
@@ -18,8 +19,9 @@ function GameManager.new()
 	
 	-- Managers
 	self.mapManager = MapManager.new()
-	self.scoreManager = ScoreManager.new()
-	self.itemManager = ItemManager.new()
+	self.currencyManager = CurrencyManager.new()
+	self.scoreManager = ScoreManager.new(self.currencyManager) -- Pass CurrencyManager to ScoreManager
+	self.itemManager = ItemManager.new(self.currencyManager) -- Pass CurrencyManager to ItemManager
 	
 	-- Player states
 	self.playerStates = {} :: {[Player]: PlayerState}
@@ -86,6 +88,7 @@ function GameManager:onPlayerAdded(player: Player)
 	-- Initialize managers
 	self.scoreManager:initPlayer(player)
 	self.scoreManager:setupLeaderstats(player)
+	self.currencyManager:initPlayer(player)
 	self.itemManager:initPlayer(player)
 	
 	-- Wait for character
@@ -109,6 +112,7 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.teleportingToLobby[player] = nil -- Clear teleport flag
 
 	self.scoreManager:removePlayer(player)
+	self.currencyManager:removePlayer(player)
 	self.itemManager:removePlayer(player)
 
 	print("[GameManager] Player left:", player.Name)
@@ -185,6 +189,11 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 	self.scoreManager:addStageScore(player, stageIndex)
 	self.scoreManager:updateLeaderstats(player)
 	
+	-- Give currency for completing stage (except stage 1 start)
+	if stageIndex > 1 then
+		self.currencyManager:addCurrency(player, Config.Currency.PerStage)
+	end
+	
 	-- Save checkpoint
 	local checkpointPos = self.mapManager:getCheckpointPosition(stageIndex)
 	if checkpointPos then
@@ -217,6 +226,9 @@ function GameManager:onPlayerFinished(player: Player)
 	
 	self.scoreManager:addFinishBonus(player)
 	self.scoreManager:updateLeaderstats(player)
+	
+	-- Give currency bonus for finishing
+	self.currencyManager:addCurrency(player, Config.Currency.FinishBonus)
 	
 	-- Get dynamic total stages
 	local totalStages = #self.mapManager.stageOrder

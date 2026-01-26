@@ -13,12 +13,13 @@ export type PlayerItemData = {
 	lastPushTime: number,
 }
 
-function ItemManager.new()
+function ItemManager.new(currencyManager: any?)
 	local self = setmetatable({}, ItemManager)
 	
 	self.playerItems = {} :: {[Player]: PlayerItemData}
 	self.itemPickups = {} :: {Part}
 	self.pickupConnections = {} :: {[Part]: RBXScriptConnection}
+	self.currencyManager = currencyManager -- Reference to CurrencyManager
 	
 	-- Remotes
 	self.useItemRemote = ReplicatedStorage.Remotes.UseItem
@@ -245,8 +246,19 @@ function ItemManager:collectPickup(player: Player, pickup: Part)
 	-- Mark as collected
 	pickup:SetAttribute("IsCollected", true)
 	
-	-- Add item
-	self:addPushItem(player, 1)
+	-- Check if it's a coin or push item
+	local isCoin = pickup:GetAttribute("IsCoin") == true
+	
+	if isCoin then
+		-- Collect coin - give currency
+		if self.currencyManager then
+			self.currencyManager:addCurrency(player, Config.Currency.PerCoin)
+			print("[ItemManager]", player.Name, "collected coin - Gained", Config.Currency.PerCoin, "currency")
+		end
+	else
+		-- Collect push item
+		self:addPushItem(player, 1)
+	end
 	
 	-- Temporarily hide pickup and all its children
 	pickup.Transparency = 1

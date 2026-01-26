@@ -37,6 +37,9 @@
         },
         "CountdownUpdate": {
           "$className": "RemoteEvent"
+        },
+        "UpdateCurrency": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

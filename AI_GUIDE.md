@@ -11,7 +11,8 @@ src/
 │   ├── GameManager.luau         # ควบคุมเกมทั้งหมด
 │   ├── MapManager.luau          # จัดการ map/stages + animations
 │   ├── ScoreManager.luau        # ระบบคะแนน + DataStore
-│   ├── ItemManager.luau         # ระบบ Push item
+│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + DataStore
+│   ├── ItemManager.luau         # ระบบ Push item + Coin pickups
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
 │
 ├── client/                      # Client-side code
@@ -20,8 +21,9 @@ src/
 │   └── UI/
 │       ├── MainUI.luau          # Controller หลัก
 │       ├── ScoreUI.luau         # แสดงคะแนน
+│       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # แสดง Push item
-│       ├── LeaderboardUI.luau   # Leaderboard
+│       ├── LeaderboardUI.luau   # Leaderboard (รวม currency)
 │       └── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
 │
 └── shared/                      # Shared code (server + client)
@@ -182,7 +184,7 @@ local checkpoint = Instance.new("SpawnLocation")
 | `MoveSpeed` | number | ความเร็ว |
 | `IsSpinning` | boolean | หมุนรอบแกน Y (สำหรับ Spinner) |
 | `SpinSpeed` | number | ความเร็วหมุน |
-| `IsCoin` | boolean | เหรียญ Item Pickup (หมุนรอบแกน Y แนวตั้ง) |
+| `IsCoin` | boolean | 💰 เหรียญ Item Pickup (หมุนรอบแกน Y แนวตั้ง) - ให้เงินเมื่อเก็บ |
 | `IsDisappearing` | boolean | หายไปเมื่อเหยียบ |
 | `DisappearDelay` | number | วินาทีก่อนหาย |
 | `ReappearDelay` | number | วินาทีก่อนกลับมา |
@@ -225,6 +227,7 @@ spinner.Parent = obstacles
 
 ```lua
 local coin = createItemPickup(startPosition + Vector3.new(0, 5, 20))
+coin:SetAttribute("IsCoin", true) -- 💰 ตั้งค่าเป็นเหรียญ (ให้เงินเมื่อเก็บ)
 coin.Parent = itemPickups
 ```
 
@@ -235,6 +238,12 @@ coin.Parent = itemPickups
 - ยกขึ้น: **+3 studs** จากตำแหน่งที่ให้
 - หมุน: อัตโนมัติรอบแกน Y (ตั้งค่า `IsCoin` attribute)
 - เอฟเฟกต์: Sparkles + PointLight เรืองแสง
+
+**💰 Coin Pickup:**
+- ตั้งค่า `IsCoin = true` เพื่อให้เป็นเหรียญ (ให้เงิน)
+- ถ้าไม่ตั้งค่า `IsCoin` จะเป็น Push Item (ให้ Push item)
+- เมื่อเก็บเหรียญ: ได้เงิน `Config.Currency.PerCoin` (1 เงิน)
+- เมื่อเก็บ Push Item: ได้ Push item +1
 
 ### เพิ่ม Stage ใหม่:
 
@@ -366,6 +375,14 @@ local Config = {
         FinishBonus = 50,       -- โบนัสจบเกม
     },
 
+    -- Currency Settings
+    Currency = {
+        PerStage = 5,           -- 💰 เงินที่ได้เมื่อผ่านด่าน
+        PerCoin = 1,            -- 💰 เงินที่ได้เมื่อเก็บเหรียญ
+        FinishBonus = 25,       -- 💰 โบนัสเงินเมื่อเข้าเส้นชัย
+        StartingAmount = 0,     -- 💰 เงินเริ่มต้นของผู้เล่นใหม่
+    },
+
     -- Push Item Settings
     PushItem = {
         StartingAmount = 1,     -- เริ่มต้นมีกี่ชิ้น
@@ -373,6 +390,14 @@ local Config = {
         Range = 15,             -- ระยะโจมตี
         Force = 100,            -- แรงผลัก
         Cooldown = 10,          -- cooldown (วินาที)
+    },
+
+    -- DataStore
+    DataStore = {
+        Name = "ObbyGameData_v1",
+        ScoreKey = "PlayerScore",
+        HighScoreKey = "HighScore",
+        CurrencyKey = "PlayerCurrency", -- 💰 Key สำหรับเก็บเงิน
     },
 
     KillZoneY = -120,            -- ความสูงที่ตาย
@@ -424,9 +449,10 @@ end
 |-------|-----------|-------|
 | `UseItem` | Client → Server | ใช้ Push item |
 | `UpdateScore` | Server → Client | อัพเดทคะแนน |
+| `UpdateCurrency` | Server → Client | 💰 อัพเดทเงิน |
 | `StageComplete` | Server → Client | ผ่านด่าน |
 | `StartGame` | Client → Server | เริ่มเกมจาก Lobby (legacy) |
-| `UpdateLeaderboard` | Server → Client | อัพเดท Leaderboard |
+| `UpdateLeaderboard` | Server → Client | อัพเดท Leaderboard (รวม currency) |
 | `PlayerDied` | Server → Client | แจ้งผู้เล่นตาย |
 | `ShowStageSelection` | Server → Client | ⭐ แสดง GUI เลือกด่าน |
 | `HideStageSelection` | Server → Client | ⭐ ซ่อน GUI เลือกด่าน |
@@ -470,9 +496,10 @@ end)
 
 | Module | ตำแหน่ง | Description |
 |--------|---------|-------------|
-| `ScoreUI` | มุมบนซ้าย | 💰 คะแนน + 🏆 High Score + 🚩 Progress Bar |
+| `ScoreUI` | มุมบนซ้าย | ⭐ คะแนน + 🏆 High Score + 🚩 Progress Bar |
+| `CurrencyUI` | มุมบนซ้าย (ใต้ StageFrame) | 💰 แสดงเงิน (120x36) |
 | `ItemUI` | มุมล่างขวา | 👊 Push item (วงกลม 60x60) |
-| `LeaderboardUI` | ขวาบน | 🏆 Toggle button + Leaderboard Panel |
+| `LeaderboardUI` | ขวาบน | 🏆 Toggle button + Leaderboard Panel (รวม currency) |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
 | `StageSelectionUI` | กลางจอ | ⭐ เลือกลำดับด่าน + Countdown |
 
@@ -527,7 +554,7 @@ Spawn at Lobby (Config.Lobby.SpawnPosition = 0, 103, 0)
     ↓
 GameManager:onPlayerAdded()
     ↓
-ScoreManager:initPlayer() + ItemManager:initPlayer()
+ScoreManager:initPlayer() + CurrencyManager:initPlayer() + ItemManager:initPlayer()
     ↓
 เดินเข้า SelectionZone (สีฟ้า)
     ↓
@@ -543,13 +570,13 @@ Teleport to Stage 1 (หันไปทาง +X)
     ↓
 Playing (checkPlayerPosition loop ทุก 0.5 วินาที)
     ↓
-Pass Checkpoint → ScoreManager:addStageScore()
+Pass Checkpoint → ScoreManager:addStageScore() + CurrencyManager:addCurrency(PerStage)
     ↓
 Touch EndPart of last stage (Finish Line)
     ↓
 GameManager:onPlayerFinished() → Set teleportingToLobby flag
     ↓
-ScoreManager:addFinishBonus() + Save to DataStore
+ScoreManager:addFinishBonus() + CurrencyManager:addCurrency(FinishBonus) + Save to DataStore
     ↓
 Wait 2 seconds
     ↓
@@ -647,3 +674,8 @@ end)
 21. **Stage Counting**: เริ่มต้นที่ **0/N** (เข้า Stage 1), เข้า Stage 2 เป็น **1/N**, จบเกมเป็น **N/N**
 22. **Stage Visibility**: ซ่อนใน Lobby, แสดงตอน Countdown, ซ่อนเมื่อจบเกม
 23. **Scoring**: เริ่ม Stage 1 ไม่ได้คะแนน, เข้า Stage 2 ได้คะแนน (ถือว่าผ่านด่าน 1)
+24. **💰 Currency System**: แยกจาก Score - ได้เงินเมื่อผ่านด่าน (5), เก็บเหรียญ (1), จบเกม (25)
+25. **💰 Coin Pickups**: ตั้งค่า `IsCoin = true` เพื่อให้เป็นเหรียญ (ให้เงิน), ไม่ตั้งค่า = Push Item
+26. **💰 CurrencyManager**: จัดการเงิน + บันทึกใน DataStore (merge กับ Score data)
+27. **💰 Leaderboard**: แสดง currency ของแต่ละผู้เล่นในคอลัมน์ใหม่
+28. **💰 CurrencyUI**: แสดงเงินที่มุมบนซ้าย (ใต้ StageFrame) - แยกจาก Score

@@ -123,7 +123,7 @@ function LeaderboardUI:toggle()
 	end
 end
 
-function LeaderboardUI:updateLeaderboard(entries: {{userId: number, name: string, highScore: number}})
+function LeaderboardUI:updateLeaderboard(entries: {{userId: number, name: string, highScore: number, currency: number?}})
 	-- Clear existing entries
 	for _, child in ipairs(self.scrollFrame:GetChildren()) do
 		if child:IsA("Frame") then
@@ -144,7 +144,7 @@ function LeaderboardUI:updateLeaderboard(entries: {{userId: number, name: string
 	end
 end
 
-function LeaderboardUI:createEntryFrame(rank: number, entry: {userId: number, name: string, highScore: number}): Frame
+function LeaderboardUI:createEntryFrame(rank: number, entry: {userId: number, name: string, highScore: number, currency: number?}): Frame
 	local frame = Instance.new("Frame")
 	frame.Name = "Entry_" .. rank
 	frame.Size = UDim2.new(1, 0, 0, 35)
@@ -192,7 +192,7 @@ function LeaderboardUI:createEntryFrame(rank: number, entry: {userId: number, na
 	-- Name
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "Name"
-	nameLabel.Size = UDim2.new(0.5, -40, 1, 0)
+	nameLabel.Size = UDim2.new(0.35, -40, 1, 0)
 	nameLabel.Position = UDim2.new(0, 40, 0, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = entry.name
@@ -206,8 +206,8 @@ function LeaderboardUI:createEntryFrame(rank: number, entry: {userId: number, na
 	-- Score
 	local scoreLabel = Instance.new("TextLabel")
 	scoreLabel.Name = "Score"
-	scoreLabel.Size = UDim2.new(0.4, 0, 1, 0)
-	scoreLabel.Position = UDim2.new(0.6, 0, 0, 0)
+	scoreLabel.Size = UDim2.new(0.25, 0, 1, 0)
+	scoreLabel.Position = UDim2.new(0.35, 0, 0, 0)
 	scoreLabel.BackgroundTransparency = 1
 	scoreLabel.Text = tostring(entry.highScore)
 	scoreLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -215,6 +215,19 @@ function LeaderboardUI:createEntryFrame(rank: number, entry: {userId: number, na
 	scoreLabel.Font = Enum.Font.GothamBold
 	scoreLabel.TextXAlignment = Enum.TextXAlignment.Right
 	scoreLabel.Parent = frame
+	
+	-- Currency
+	local currencyLabel = Instance.new("TextLabel")
+	currencyLabel.Name = "Currency"
+	currencyLabel.Size = UDim2.new(0.25, 0, 1, 0)
+	currencyLabel.Position = UDim2.new(0.6, 0, 0, 0)
+	currencyLabel.BackgroundTransparency = 1
+	currencyLabel.Text = "💰 " .. tostring(entry.currency or 0)
+	currencyLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	currencyLabel.TextSize = 14
+	currencyLabel.Font = Enum.Font.GothamBold
+	currencyLabel.TextXAlignment = Enum.TextXAlignment.Right
+	currencyLabel.Parent = frame
 	
 	return frame
 end

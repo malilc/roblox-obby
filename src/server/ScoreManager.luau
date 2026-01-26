@@ -16,11 +16,12 @@ export type PlayerScoreData = {
 	highScore: number,
 }
 
-function ScoreManager.new()
+function ScoreManager.new(currencyManager: any?)
 	local self = setmetatable({}, ScoreManager)
 	
 	self.playerData = {} :: {[Player]: PlayerScoreData}
-	self.leaderboard = {} :: {{userId: number, name: string, highScore: number}}
+	self.leaderboard = {} :: {{userId: number, name: string, highScore: number, currency: number?}}
+	self.currencyManager = currencyManager -- Reference to CurrencyManager
 	
 	-- DataStore
 	pcall(function()
@@ -170,12 +171,19 @@ function ScoreManager:updateLeaderboard(player: Player)
 	local playerData = self.playerData[player]
 	if not playerData then return end
 	
+	-- Get currency if CurrencyManager is available
+	local currency = 0
+	if self.currencyManager then
+		currency = self.currencyManager:getCurrency(player)
+	end
+	
 	-- Check if player exists in leaderboard
 	local found = false
 	for _, entry in ipairs(self.leaderboard) do
 		if entry.userId == player.UserId then
 			entry.highScore = playerData.highScore
 			entry.name = player.Name
+			entry.currency = currency
 			found = true
 			break
 		end
@@ -186,6 +194,7 @@ function ScoreManager:updateLeaderboard(player: Player)
 			userId = player.UserId,
 			name = player.Name,
 			highScore = playerData.highScore,
+			currency = currency,
 		})
 	end
 	

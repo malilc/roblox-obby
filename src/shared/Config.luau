@@ -19,6 +19,14 @@ Stages = {
 		FinishBonus = 50, -- โบนัสเมื่อเข้าเส้นชัย
 	},
 
+	-- Currency Settings
+	Currency = {
+		PerStage = 5, -- เงินที่ได้เมื่อผ่านด่าน
+		PerCoin = 1, -- เงินที่ได้เมื่อเก็บเหรียญ
+		FinishBonus = 25, -- โบนัสเงินเมื่อเข้าเส้นชัย
+		StartingAmount = 0, -- เงินเริ่มต้นของผู้เล่นใหม่
+	},
+
 	-- Push Item Settings
 	PushItem = {
 		StartingAmount = 1, -- จำนวน Push item เริ่มต้น
@@ -33,6 +41,7 @@ Stages = {
 		Name = "ObbyGameData_v1",
 		ScoreKey = "PlayerScore",
 		HighScoreKey = "HighScore",
+		CurrencyKey = "PlayerCurrency",
 	},
 
 	-- Kill Zone
