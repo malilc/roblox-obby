@@ -20,7 +20,6 @@ function ScoreManager.new(currencyManager: any?)
 	local self = setmetatable({}, ScoreManager)
 	
 	self.playerData = {} :: {[Player]: PlayerScoreData}
-	self.leaderboard = {} :: {{userId: number, name: string, highScore: number, currency: number?}}
 	self.currencyManager = currencyManager -- Reference to CurrencyManager
 	
 	-- DataStore
@@ -30,7 +29,6 @@ function ScoreManager.new(currencyManager: any?)
 	
 	-- Remotes
 	self.updateScoreRemote = ReplicatedStorage.Remotes.UpdateScore
-	self.updateLeaderboardRemote = ReplicatedStorage.Remotes.UpdateLeaderboard
 	
 	return self
 end
@@ -136,9 +134,6 @@ function ScoreManager:addFinishBonus(player: Player)
 	-- Save to DataStore
 	self:savePlayerData(player)
 	
-	-- Update leaderboard
-	self:updateLeaderboard(player)
-	
 	self:sendScoreUpdate(player)
 end
 
@@ -164,59 +159,6 @@ function ScoreManager:sendScoreUpdate(player: Player)
 		totalScore = playerData.totalScore,
 		highScore = playerData.highScore,
 	})
-end
-
--- Update leaderboard
-function ScoreManager:updateLeaderboard(player: Player)
-	local playerData = self.playerData[player]
-	if not playerData then return end
-	
-	-- Get currency if CurrencyManager is available
-	local currency = 0
-	if self.currencyManager then
-		currency = self.currencyManager:getCurrency(player)
-	end
-	
-	-- Check if player exists in leaderboard
-	local found = false
-	for _, entry in ipairs(self.leaderboard) do
-		if entry.userId == player.UserId then
-			entry.highScore = playerData.highScore
-			entry.name = player.Name
-			entry.currency = currency
-			found = true
-			break
-		end
-	end
-	
-	if not found then
-		table.insert(self.leaderboard, {
-			userId = player.UserId,
-			name = player.Name,
-			highScore = playerData.highScore,
-			currency = currency,
-		})
-	end
-	
-	-- Sort leaderboard
-	table.sort(self.leaderboard, function(a, b)
-		return a.highScore > b.highScore
-	end)
-	
-	-- Keep top 10
-	while #self.leaderboard > 10 do
-		table.remove(self.leaderboard)
-	end
-	
-	-- Send to all players
-	self:broadcastLeaderboard()
-end
-
--- Broadcast leaderboard to all players
-function ScoreManager:broadcastLeaderboard()
-	for _, player in ipairs(Players:GetPlayers()) do
-		self.updateLeaderboardRemote:FireClient(player, self.leaderboard)
-	end
 end
 
 -- Get player score data
@@ -253,12 +195,22 @@ function ScoreManager:setupLeaderstats(player: Player)
 	roundScore.Value = 0
 	roundScore.Parent = leaderstats
 	
+	local currency = Instance.new("IntValue")
+	currency.Name = "Currency"
+	currency.Value = 0
+	currency.Parent = leaderstats
+	
 	-- Update when player data loads
 	task.spawn(function()
 		task.wait(1)
 		local playerData = self.playerData[player]
 		if playerData then
 			highScore.Value = playerData.highScore
+		end
+		
+		-- Update currency if CurrencyManager is available
+		if self.currencyManager then
+			currency.Value = self.currencyManager:getCurrency(player)
 		end
 	end)
 end
@@ -279,6 +231,14 @@ function ScoreManager:updateLeaderstats(player: Player)
 	local roundScoreStat = leaderstats:FindFirstChild("RoundScore")
 	if roundScoreStat then
 		roundScoreStat.Value = playerData.roundScore
+	end
+	
+	-- Update currency if CurrencyManager is available
+	if self.currencyManager then
+		local currencyStat = leaderstats:FindFirstChild("Currency")
+		if currencyStat then
+			currencyStat.Value = self.currencyManager:getCurrency(player)
+		end
 	end
 end
 

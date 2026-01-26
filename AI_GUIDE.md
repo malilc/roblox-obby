@@ -23,7 +23,6 @@ src/
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # แสดง Push item
-│       ├── LeaderboardUI.luau   # Leaderboard (รวม currency)
 │       └── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
 │
 └── shared/                      # Shared code (server + client)
@@ -452,7 +451,6 @@ end
 | `UpdateCurrency` | Server → Client | 💰 อัพเดทเงิน |
 | `StageComplete` | Server → Client | ผ่านด่าน |
 | `StartGame` | Client → Server | เริ่มเกมจาก Lobby (legacy) |
-| `UpdateLeaderboard` | Server → Client | อัพเดท Leaderboard (รวม currency) |
 | `PlayerDied` | Server → Client | แจ้งผู้เล่นตาย |
 | `ShowStageSelection` | Server → Client | ⭐ แสดง GUI เลือกด่าน |
 | `HideStageSelection` | Server → Client | ⭐ ซ่อน GUI เลือกด่าน |
@@ -488,6 +486,75 @@ end)
 
 ---
 
+## 📊 Roblox Leaderstats
+
+### ไฟล์: `src/server/ScoreManager.luau`
+
+Leaderstats เป็น built-in UI ของ Roblox ที่แสดงสถิติผู้เล่นอัตโนมัติ (แสดงใน PlayerList ด้านขวาของหน้าจอ)
+
+### การทำงาน:
+
+1. **สร้าง leaderstats folder** ใน Player object (ฝั่ง Server)
+2. **เพิ่ม IntValue** ลงใน folder (ชื่อจะเป็นชื่อคอลัมน์ใน UI)
+3. **Roblox แสดง UI อัตโนมัติ** เมื่อมี leaderstats folder
+
+### ฟังก์ชันที่เกี่ยวข้อง:
+
+**`setupLeaderstats(player)`** - สร้าง leaderstats folder และ IntValues:
+- `HighScore`: คะแนนสูงสุด
+- `RoundScore`: คะแนนรอบปัจจุบัน
+- `Currency`: เงิน (💰)
+
+**`updateLeaderstats(player)`** - อัพเดทค่าใน leaderstats:
+- อัพเดท HighScore จาก playerData
+- อัพเดท RoundScore จาก playerData
+- อัพเดท Currency จาก CurrencyManager
+
+### ตัวอย่างการใช้งาน:
+
+```lua
+-- ใน ScoreManager.luau
+function ScoreManager:setupLeaderstats(player: Player)
+    local leaderstats = Instance.new("Folder")
+    leaderstats.Name = "leaderstats"
+    leaderstats.Parent = player
+    
+    -- HighScore
+    local highScore = Instance.new("IntValue")
+    highScore.Name = "HighScore"
+    highScore.Value = 0
+    highScore.Parent = leaderstats
+    
+    -- RoundScore
+    local roundScore = Instance.new("IntValue")
+    roundScore.Name = "RoundScore"
+    roundScore.Value = 0
+    roundScore.Parent = leaderstats
+    
+    -- Currency
+    local currency = Instance.new("IntValue")
+    currency.Name = "Currency"
+    currency.Value = 0
+    currency.Parent = leaderstats
+end
+```
+
+### ข้อควรระวัง:
+
+- **ชื่อ IntValue** จะเป็นชื่อคอลัมน์ใน UI (เช่น "HighScore", "RoundScore", "Currency")
+- **ต้องเป็น IntValue หรือ NumberValue** เท่านั้น (StringValue จะไม่แสดง)
+- **ต้องอยู่ใน folder ชื่อ "leaderstats"** เท่านั้น (case-sensitive)
+- **ต้องอยู่ใน Player object** (ไม่ใช่ Character)
+- **อัพเดทค่า**: เรียก `updateLeaderstats()` เมื่อต้องการอัพเดทค่า (เช่น เมื่อ HighScore เปลี่ยน)
+
+### การอัพเดท Currency:
+
+Currency จะอัพเดทอัตโนมัติเมื่อ:
+- เรียก `updateLeaderstats()` (เช่น เมื่ออัพเดท HighScore)
+- CurrencyManager จะดึงค่า currency ปัจจุบันมาแสดง
+
+---
+
 ## 🎨 การแก้ไข UI
 
 ### ไฟล์หลัก: `src/client/UI/`
@@ -499,7 +566,6 @@ end)
 | `ScoreUI` | มุมบนซ้าย | ⭐ คะแนน + 🏆 High Score + 🚩 Progress Bar |
 | `CurrencyUI` | มุมบนซ้าย (ใต้ StageFrame) | 💰 แสดงเงิน (120x36) |
 | `ItemUI` | มุมล่างขวา | 👊 Push item (วงกลม 60x60) |
-| `LeaderboardUI` | ขวาบน | 🏆 Toggle button + Leaderboard Panel (รวม currency) |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
 | `StageSelectionUI` | กลางจอ | ⭐ เลือกลำดับด่าน + Countdown |
 
@@ -677,5 +743,6 @@ end)
 24. **💰 Currency System**: แยกจาก Score - ได้เงินเมื่อผ่านด่าน (5), เก็บเหรียญ (1), จบเกม (25)
 25. **💰 Coin Pickups**: ตั้งค่า `IsCoin = true` เพื่อให้เป็นเหรียญ (ให้เงิน), ไม่ตั้งค่า = Push Item
 26. **💰 CurrencyManager**: จัดการเงิน + บันทึกใน DataStore (merge กับ Score data)
-27. **💰 Leaderboard**: แสดง currency ของแต่ละผู้เล่นในคอลัมน์ใหม่
-28. **💰 CurrencyUI**: แสดงเงินที่มุมบนซ้าย (ใต้ StageFrame) - แยกจาก Score
+27. **💰 CurrencyUI**: แสดงเงินที่มุมบนซ้าย (ใต้ StageFrame) - แยกจาก Score
+28. **📊 Leaderstats**: Roblox built-in UI แสดง HighScore, RoundScore, Currency - สร้างใน `ScoreManager:setupLeaderstats()`
+29. **📊 Leaderstats Update**: เรียก `updateLeaderstats()` เพื่ออัพเดทค่า (Currency อัพเดทอัตโนมัติจาก CurrencyManager)

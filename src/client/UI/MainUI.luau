@@ -6,7 +6,6 @@ local StarterGui = game:GetService("StarterGui")
 
 local ScoreUI = require(script.Parent.ScoreUI)
 local ItemUI = require(script.Parent.ItemUI)
-local LeaderboardUI = require(script.Parent.LeaderboardUI)
 local StageSelectionUI = require(script.Parent.StageSelectionUI)
 local CurrencyUI = require(script.Parent.CurrencyUI)
 
@@ -32,7 +31,6 @@ function MainUI.new()
 	-- Create UI components
 	self.scoreUI = ScoreUI.new(screenGui)
 	self.itemUI = ItemUI.new(screenGui)
-	self.leaderboardUI = LeaderboardUI.new(screenGui)
 	self.stageSelectionUI = StageSelectionUI.new(screenGui)
 	self.currencyUI = CurrencyUI.new(screenGui)
 	
@@ -55,12 +53,6 @@ function MainUI:setupRemotes()
 	local stageComplete = remotes:WaitForChild("StageComplete")
 	stageComplete.OnClientEvent:Connect(function(data)
 		self:onStageComplete(data)
-	end)
-	
-	-- Leaderboard update
-	local updateLeaderboard = remotes:WaitForChild("UpdateLeaderboard")
-	updateLeaderboard.OnClientEvent:Connect(function(entries)
-		self:onLeaderboardUpdate(entries)
 	end)
 	
 	-- Player died
@@ -118,10 +110,6 @@ function MainUI:onStageComplete(data: {[string]: any})
 			self.scoreUI:hideStageProgress()
 		end)
 	end
-end
-
-function MainUI:onLeaderboardUpdate(entries: {{userId: number, name: string, highScore: number}})
-	self.leaderboardUI:updateLeaderboard(entries)
 end
 
 function MainUI:onPlayerDied()

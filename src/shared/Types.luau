@@ -20,12 +20,6 @@ export type StageData = {
 	CheckpointPosition: Vector3,
 }
 
-export type LeaderboardEntry = {
-	UserId: number,
-	PlayerName: string,
-	Score: number,
-}
-
 export type GameState = "Lobby" | "Playing" | "Finished"
 
 return {}

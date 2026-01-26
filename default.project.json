@@ -20,9 +20,6 @@
         "StartGame": {
           "$className": "RemoteEvent"
         },
-        "UpdateLeaderboard": {
-          "$className": "RemoteEvent"
-        },
         "PlayerDied": {
           "$className": "RemoteEvent"
         },

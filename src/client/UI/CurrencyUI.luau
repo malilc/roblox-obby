@@ -24,7 +24,7 @@ function CurrencyUI:createUI()
 	local currencyFrame = Instance.new("Frame")
 	currencyFrame.Name = "CurrencyFrame"
 	currencyFrame.Size = UDim2.new(0, 120, 0, 36)
-	currencyFrame.Position = UDim2.new(0, 10, 0, 70) -- ใต้ StageFrame (ขยับขึ้น)
+	currencyFrame.Position = UDim2.new(0, 10, 0, 75) -- ใต้ StageFrame (ขยับขึ้น)
 	currencyFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	currencyFrame.BackgroundTransparency = 0.5
 	currencyFrame.BorderSizePixel = 0
