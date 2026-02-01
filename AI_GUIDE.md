@@ -23,7 +23,8 @@ src/
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # แสดง Push item
-│       └── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
+│       ├── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
+│       └── SummaryUI.luau       # 🏆 แสดง Summary จบเกม
 │
 └── shared/                      # Shared code (server + client)
     ├── Config.luau              # ⭐ ค่า Config ทั้งหมด
@@ -376,10 +377,18 @@ local Config = {
 
     -- Currency Settings
     Currency = {
-        PerStage = 5,           -- 💰 เงินที่ได้เมื่อผ่านด่าน
+        PerStage = 5,           -- 💰 Stage Clear bonus (คงที่ต่อด่าน)
         PerCoin = 1,            -- 💰 เงินที่ได้เมื่อเก็บเหรียญ
         FinishBonus = 25,       -- 💰 โบนัสเงินเมื่อเข้าเส้นชัย
         StartingAmount = 0,     -- 💰 เงินเริ่มต้นของผู้เล่นใหม่
+        -- 🎯 รางวัลเมื่อผ่านแต่ละด่าน (Stage Rewards)
+        StageRewards = {
+            3,  -- Stage 1: 3 currency
+            4,  -- Stage 2: 4 currency
+            4,  -- Stage 3: 4 currency
+            5,  -- Stage 4: 5 currency
+            6,  -- Stage 5: 6 currency
+        },
     },
 
     -- Push Item Settings
@@ -568,13 +577,28 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 | `ItemUI` | มุมล่างขวา | 👊 Push item (วงกลม 60x60) |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
 | `StageSelectionUI` | กลางจอ | ⭐ เลือกลำดับด่าน + Countdown |
+| `SummaryUI` | กลางจอ (popup) | 🏆 Summary เมื่อจบเกม |
 
 ### StageSelectionUI:
 - **ปุ่มด่าน 1-5**: คลิกเพื่อเพิ่ม/ลบจากลำดับ
-- **Selected display**: แสดงลำดับที่เลือก (เช่น "3 → 1 → 5")
+- **Selected display**: แสดงลำดับที่เลือก (เช่น "3 → 1 → 5") + รางวัลรวม
 - **ปุ่ม RANDOM**: สุ่มลำดับด่าน
 - **ปุ่ม START**: กดได้เมื่อเลือกอย่างน้อย 1 ด่าน
 - **Countdown**: แสดง 3, 2, 1 ก่อน teleport
+- **Stage Reward**: แสดง `💰 +X` บนแต่ละปุ่มด่าน (รางวัลเมื่อผ่าน)
+
+### SummaryUI (Game Complete):
+- **แสดงเมื่อ**: จบเกม (finish)
+- **Stages Played**: แสดงด่านที่เล่น + รางวัลแต่ละด่าน
+- **STATS**: Score + Time
+- **CURRENCY EARNED** (breakdown):
+  - Coins (X x 1) = +X
+  - Stage Clear (X x 5) = +X
+  - Stage Rewards = +X
+  - Finish Bonus = +25
+  - **TOTAL EARNED** = รวมทั้งหมด
+- **OK Button**: ปิด popup
+- **Auto teleport**: กลับ Lobby หลัง 5 วินาที
 
 ### โครงสร้าง UI Module:
 
@@ -636,15 +660,23 @@ Teleport to Stage 1 (หันไปทาง +X)
     ↓
 Playing (checkPlayerPosition loop ทุก 0.5 วินาที)
     ↓
-Pass Checkpoint → ScoreManager:addStageScore() + CurrencyManager:addCurrency(PerStage)
+Pass Checkpoint → onStageComplete():
+  - ScoreManager:addStageScore()
+  - CurrencyManager:addCurrency(PerStage) ← Stage Clear bonus
+  - CurrencyManager:addCurrency(StageReward) ← Stage Reward ตามด่าน
     ↓
 Touch EndPart of last stage (Finish Line)
     ↓
 GameManager:onPlayerFinished() → Set teleportingToLobby flag
     ↓
-ScoreManager:addFinishBonus() + CurrencyManager:addCurrency(FinishBonus) + Save to DataStore
+Give bonuses for LAST stage:
+  - Stage Clear bonus (PerStage)
+  - Stage Reward (ตามด่านสุดท้าย)
+  - Finish Bonus
     ↓
-Wait 2 seconds
+Show SummaryUI popup (Currency breakdown)
+    ↓
+Wait 5 seconds
     ↓
 GameManager:teleportToLobby() → Use Config.Lobby.SpawnPosition
     ↓
@@ -746,3 +778,8 @@ end)
 27. **💰 CurrencyUI**: แสดงเงินที่มุมบนซ้าย (ใต้ StageFrame) - แยกจาก Score
 28. **📊 Leaderstats**: Roblox built-in UI แสดง HighScore, RoundScore, Currency - สร้างใน `ScoreManager:setupLeaderstats()`
 29. **📊 Leaderstats Update**: เรียก `updateLeaderstats()` เพื่ออัพเดทค่า (Currency อัพเดทอัตโนมัติจาก CurrencyManager)
+30. **🏆 SummaryUI**: แสดง popup เมื่อจบเกม พร้อม Currency breakdown (Coins + Stage Clear + Stage Rewards + Finish Bonus)
+31. **🎯 Stage Rewards**: รางวัลต่อด่านกำหนดใน `Config.Currency.StageRewards` (S1=3, S2=4, S3=4, S4=5, S5=6)
+32. **🎯 Stage Reward Flow**: ให้รางวัลด่านใน `onStageComplete` (ด่าน 1 ถึง N-1) และ `onPlayerFinished` (ด่านสุดท้าย)
+33. **💰 Currency Breakdown**: Coins (เก็บเหรียญ) + Stage Clear (5 ต่อด่าน) + Stage Rewards (ตามด่าน) + Finish Bonus (25)
+34. **⏱️ Summary Delay**: แสดง SummaryUI 5 วินาทีก่อน teleport กลับ Lobby

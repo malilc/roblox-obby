@@ -3,6 +3,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local Config = require(ReplicatedStorage.Shared.Config)
+
 local StageSelectionUI = {}
 StageSelectionUI.__index = StageSelectionUI
 
@@ -166,8 +168,8 @@ function StageSelectionUI:createUI()
 	for i = 1, 5 do
 		local buttonContainer = Instance.new("Frame")
 		buttonContainer.Name = "Stage" .. i .. "Container"
-		buttonContainer.Size = UDim2.new(0, 100, 0, 100)
-		buttonContainer.Position = UDim2.new(0, ((i - 1) % 3) * 120, 0, math.floor((i - 1) / 3) * 120)
+		buttonContainer.Size = UDim2.new(0, 100, 0, 105)
+		buttonContainer.Position = UDim2.new(0, ((i - 1) % 3) * 120, 0, math.floor((i - 1) / 3) * 125)
 		buttonContainer.BackgroundTransparency = 1
 		buttonContainer.Parent = buttonsContainer
 		
@@ -223,15 +225,30 @@ function StageSelectionUI:createUI()
 		-- Stage name
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Name = "Name"
-		nameLabel.Size = UDim2.new(1, 0, 0, 20)
-		nameLabel.Position = UDim2.new(0, 0, 0, 70)
+		nameLabel.Size = UDim2.new(1, 0, 0, 16)
+		nameLabel.Position = UDim2.new(0, 0, 0, 68)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Text = stageNames[i]
-		nameLabel.TextSize = 12
+		nameLabel.TextSize = 11
 		nameLabel.Font = Enum.Font.Gotham
 		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		nameLabel.TextStrokeTransparency = 0.7
 		nameLabel.Parent = button
+		
+		-- Stage Reward indicator (แสดงรางวัลเมื่อผ่านด่าน)
+		local stageReward = Config.Currency.StageRewards[i] or 0
+		local coinLabel = Instance.new("TextLabel")
+		coinLabel.Name = "CoinLabel"
+		coinLabel.Size = UDim2.new(1, 0, 0, 14)
+		coinLabel.Position = UDim2.new(0, 0, 0, 84)
+		coinLabel.BackgroundTransparency = 1
+		coinLabel.Text = "💰 +" .. stageReward
+		coinLabel.TextSize = 10
+		coinLabel.Font = Enum.Font.GothamBold
+		coinLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+		coinLabel.TextStrokeTransparency = 0.5
+		coinLabel.TextStrokeColor3 = Color3.fromRGB(100, 70, 0)
+		coinLabel.Parent = button
 		
 		-- Selected indicator
 		local selectedIndicator = Instance.new("Frame")
@@ -597,7 +614,14 @@ function StageSelectionUI:updateSelectedLabel()
 		self.selectedLabel.Text = "✨ Selected: (none)"
 	else
 		local orderText = table.concat(self.selectedStages, " → ")
-		self.selectedLabel.Text = "✨ Selected: " .. orderText
+		
+		-- คำนวณ total rewards
+		local totalRewards = 0
+		for _, stageNum in ipairs(self.selectedStages) do
+			totalRewards = totalRewards + (Config.Currency.StageRewards[stageNum] or 0)
+		end
+		
+		self.selectedLabel.Text = "✨ " .. orderText .. "  |  💰 +" .. totalRewards .. " rewards"
 	end
 	
 	-- อัพเดทสถานะปุ่ม Start

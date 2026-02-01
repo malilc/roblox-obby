@@ -21,12 +21,18 @@ function GameManager.new()
 	self.mapManager = MapManager.new()
 	self.currencyManager = CurrencyManager.new()
 	self.scoreManager = ScoreManager.new(self.currencyManager) -- Pass CurrencyManager to ScoreManager
-	self.itemManager = ItemManager.new(self.currencyManager) -- Pass CurrencyManager to ItemManager
+	self.itemManager = ItemManager.new(self.currencyManager, self) -- Pass CurrencyManager and GameManager to ItemManager
 	
 	-- Player states
 	self.playerStates = {} :: {[Player]: PlayerState}
 	self.playerCheckpoints = {} :: {[Player]: Vector3}
 	self.teleportingToLobby = {} :: {[Player]: boolean} -- Track teleporting players
+	
+	-- Round statistics for summary
+	self.playerRoundStats = {} :: {[Player]: {
+		startTime: number,
+		coinsCollected: number,
+	}}
 	
 	-- Remotes
 	self.startGameRemote = ReplicatedStorage.Remotes.StartGame
@@ -110,6 +116,7 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.playerCheckpoints[player] = nil
 	self.playersInSelectionZone[player] = nil
 	self.teleportingToLobby[player] = nil -- Clear teleport flag
+	self.playerRoundStats[player] = nil -- Clear round stats
 
 	self.scoreManager:removePlayer(player)
 	self.currencyManager:removePlayer(player)
@@ -191,7 +198,21 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 	
 	-- Give currency for completing stage (except stage 1 start)
 	if stageIndex > 1 then
+		-- Stage Clear bonus (คงที่)
 		self.currencyManager:addCurrency(player, Config.Currency.PerStage)
+		
+		-- Stage Reward (ตามด่านที่ผ่าน)
+		local completedStageNum = self.mapManager.stageOrder[stageIndex - 1] -- ด่านที่เพิ่งผ่าน
+		local stageReward = Config.Currency.StageRewards[completedStageNum] or 0
+		if stageReward > 0 then
+			self.currencyManager:addCurrency(player, stageReward)
+			
+			-- Track stage rewards total
+			local roundStats = self.playerRoundStats[player]
+			if roundStats then
+				roundStats.stageRewardsTotal = (roundStats.stageRewardsTotal or 0) + stageReward
+			end
+		end
 	end
 	
 	-- Save checkpoint
@@ -227,24 +248,69 @@ function GameManager:onPlayerFinished(player: Player)
 	self.scoreManager:addFinishBonus(player)
 	self.scoreManager:updateLeaderstats(player)
 	
-	-- Give currency bonus for finishing
-	self.currencyManager:addCurrency(player, Config.Currency.FinishBonus)
-	
 	-- Get dynamic total stages
 	local totalStages = #self.mapManager.stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.Count end
+	
+	-- Give Stage Clear bonus and Stage Reward for the LAST stage (not given in onStageComplete)
+	if totalStages > 0 then
+		-- Stage Clear bonus for last stage
+		self.currencyManager:addCurrency(player, Config.Currency.PerStage)
+		
+		-- Stage Reward for last stage
+		local lastStageNum = self.mapManager.stageOrder[totalStages]
+		local lastStageReward = Config.Currency.StageRewards[lastStageNum] or 0
+		if lastStageReward > 0 then
+			self.currencyManager:addCurrency(player, lastStageReward)
+			
+			-- Track stage rewards total
+			local roundStats = self.playerRoundStats[player]
+			if roundStats then
+				roundStats.stageRewardsTotal = (roundStats.stageRewardsTotal or 0) + lastStageReward
+			end
+		end
+	end
+	
+	-- Give currency bonus for finishing
+	self.currencyManager:addCurrency(player, Config.Currency.FinishBonus)
 
-	-- Notify client
+	-- Calculate summary data
+	local roundStats = self.playerRoundStats[player]
+	local elapsedTime = tick() - (roundStats and roundStats.startTime or tick())
+	local coinsCollected = roundStats and roundStats.coinsCollected or 0
+	local stageRewardsTotal = roundStats and roundStats.stageRewardsTotal or 0
+
+	-- Get stage order for summary
+	local stageOrder = self.mapManager.stageOrder or {}
+	
+	-- Calculate stages cleared (all stages count now, including last one given in onPlayerFinished)
+	local stagesCleared = totalStages
+
+	-- Notify client with summary data
 	self.stageCompleteRemote:FireClient(player, {
 		finished = true,
 		stageIndex = totalStages,
 		totalStages = totalStages,
+		summary = {
+			-- Stats
+			scoreEarned = self.scoreManager:getRoundScore(player),
+			timeSpent = elapsedTime,
+			-- Currency breakdown
+			coinsCollected = coinsCollected, -- จำนวนเหรียญที่เก็บได้
+			coinValue = Config.Currency.PerCoin, -- มูลค่าต่อเหรียญ
+			stagesCleared = stagesCleared, -- จำนวนด่านที่ผ่าน
+			stageValue = Config.Currency.PerStage, -- มูลค่าต่อด่าน (Stage Clear bonus)
+			stageRewardsTotal = stageRewardsTotal, -- รางวัลตามด่านรวม
+			finishBonus = Config.Currency.FinishBonus, -- โบนัสจบเกม
+			totalCurrency = self.currencyManager:getCurrency(player),
+			stageOrder = stageOrder, -- Stage ที่เลือกเล่น
+		},
 	})
 	
 	print("[GameManager]", player.Name, "FINISHED THE OBBY!")
 	
-	-- Teleport กลับ Lobby (หลังแสดง message 2 วินาที)
-	task.delay(2, function()
+	-- Teleport กลับ Lobby (หลังแสดง Summary 5 วินาที)
+	task.delay(5, function()
 		self:teleportToLobby(player)
 		-- Clear teleporting flag after teleport
 		task.delay(0.5, function()
@@ -506,6 +572,13 @@ function GameManager:startGameForPlayer(player: Player)
 	self.scoreManager:resetRoundScore(player)
 	self.itemManager:resetPlayer(player)
 	
+	-- Initialize round stats for summary
+	self.playerRoundStats[player] = {
+		startTime = tick(),
+		coinsCollected = 0,
+		stageRewardsTotal = 0,
+	}
+	
 	-- Clear checkpoint
 	self.playerCheckpoints[player] = nil
 	
@@ -640,6 +713,15 @@ function GameManager:regenerateMap()
 	
 	-- Generate new map
 	self:generateNewMap()
+end
+
+-- Add coin collected (called by ItemManager)
+function GameManager:addCoinCollected(player: Player)
+	local roundStats = self.playerRoundStats[player]
+	if roundStats then
+		roundStats.coinsCollected = roundStats.coinsCollected + 1
+		print("[GameManager]", player.Name, "collected coin - Total:", roundStats.coinsCollected)
+	end
 end
 
 return GameManager

@@ -151,9 +151,15 @@ function StageTemplates.createStage1(startPosition: Vector3): Model
 		platform.Parent = obstacles
 	end
 	
-	-- Item pickup กลางด่าน
-	local pickup = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH / 2, 5, 0))
-	pickup.Parent = itemPickups
+	-- Stage 1: 3 coins - กระจายตามเส้นทาง
+	local coin1 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.25, 3, 0))
+	coin1.Parent = itemPickups
+	
+	local coin2 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.5, 5, 2))
+	coin2.Parent = itemPickups
+	
+	local coin3 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.75, 4, -1))
+	coin3.Parent = itemPickups
 	
 	-- End Part (จุดสิ้นสุด)
 	local endPart = createPart({
@@ -214,9 +220,18 @@ function StageTemplates.createStage2(startPosition: Vector3): Model
 		platform.Parent = obstacles
 	end
 	
-	-- Item pickup
-	local pickup = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH / 2, 8, 0))
-	pickup.Parent = itemPickups
+	-- Stage 2: 4 coins - บน moving platforms
+	local coin1 = createItemPickup(startPosition + Vector3.new(spacing * 1, 5, 0))
+	coin1.Parent = itemPickups
+	
+	local coin2 = createItemPickup(startPosition + Vector3.new(spacing * 3, 6, 2))
+	coin2.Parent = itemPickups
+	
+	local coin3 = createItemPickup(startPosition + Vector3.new(spacing * 4, 7, -2))
+	coin3.Parent = itemPickups
+	
+	local coin4 = createItemPickup(startPosition + Vector3.new(spacing * 6, 5, 0))
+	coin4.Parent = itemPickups
 	
 	-- End Part
 	local endPart = createPart({
@@ -283,9 +298,18 @@ function StageTemplates.createStage3(startPosition: Vector3): Model
 		spinner.Parent = obstacles
 	end
 	
-	-- Item pickup
-	local pickup = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH / 2, 10, 0))
-	pickup.Parent = itemPickups
+	-- Stage 3: 4 coins - วางบน platforms หลบ spinners
+	local coin1 = createItemPickup(startPosition + Vector3.new(spacing * 1, 8, 4))
+	coin1.Parent = itemPickups
+	
+	local coin2 = createItemPickup(startPosition + Vector3.new(spacing * 2, 9, -4))
+	coin2.Parent = itemPickups
+	
+	local coin3 = createItemPickup(startPosition + Vector3.new(spacing * 4, 10, 3))
+	coin3.Parent = itemPickups
+	
+	local coin4 = createItemPickup(startPosition + Vector3.new(spacing * 5, 8, -3))
+	coin4.Parent = itemPickups
 	
 	-- End Part
 	local endPart = createPart({
@@ -350,9 +374,21 @@ function StageTemplates.createStage4(startPosition: Vector3): Model
 		platform.Parent = obstacles
 	end
 	
-	-- Item pickup
-	local pickup = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH / 2, 5, 0))
-	pickup.Parent = itemPickups
+	-- Stage 4: 5 coins - กระจายตามเส้นทาง disappearing
+	local coin1 = createItemPickup(startPosition + Vector3.new(spacing * 2, 4, 0))
+	coin1.Parent = itemPickups
+	
+	local coin2 = createItemPickup(startPosition + Vector3.new(spacing * 4, 6, 1))
+	coin2.Parent = itemPickups
+	
+	local coin3 = createItemPickup(startPosition + Vector3.new(spacing * 5, 5, -1))
+	coin3.Parent = itemPickups
+	
+	local coin4 = createItemPickup(startPosition + Vector3.new(spacing * 7, 7, 0))
+	coin4.Parent = itemPickups
+	
+	local coin5 = createItemPickup(startPosition + Vector3.new(spacing * 9, 4, 1))
+	coin5.Parent = itemPickups
 	
 	-- End Part
 	local endPart = createPart({
@@ -449,11 +485,27 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 		platform.Parent = obstacles
 	end
 	
-	-- Item pickups (มากกว่าด่านอื่น)
-	local pickup1 = createItemPickup(startPosition + Vector3.new(sectionLength, 5, 0))
-	pickup1.Parent = itemPickups
-	local pickup2 = createItemPickup(startPosition + Vector3.new(sectionLength * 3, 8, 0))
-	pickup2.Parent = itemPickups
+	-- Stage 5: 6 coins - กระจายทั่วทุก section (ด่านยากมีเหรียญมากกว่า)
+	-- Section 1 coins
+	local coin1 = createItemPickup(startPosition + Vector3.new(sectionLength * 0.5, 5, 2))
+	coin1.Parent = itemPickups
+	
+	local coin2 = createItemPickup(startPosition + Vector3.new(sectionLength, 6, -2))
+	coin2.Parent = itemPickups
+	
+	-- Section 2 coins (narrow path)
+	local coin3 = createItemPickup(startPosition + Vector3.new(sectionLength * 1.3, 8, 0))
+	coin3.Parent = itemPickups
+	
+	local coin4 = createItemPickup(startPosition + Vector3.new(sectionLength * 1.7, 7, 0))
+	coin4.Parent = itemPickups
+	
+	-- Section 3 coins (jump platforms)
+	local coin5 = createItemPickup(startPosition + Vector3.new(sectionLength * 2.7, 10, 0))
+	coin5.Parent = itemPickups
+	
+	local coin6 = createItemPickup(startPosition + Vector3.new(sectionLength * 3.2, 12, 0))
+	coin6.Parent = itemPickups
 	
 	-- End Part (Finish Line!)
 	local endPart = createPart({

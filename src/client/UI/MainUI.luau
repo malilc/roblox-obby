@@ -8,6 +8,7 @@ local ScoreUI = require(script.Parent.ScoreUI)
 local ItemUI = require(script.Parent.ItemUI)
 local StageSelectionUI = require(script.Parent.StageSelectionUI)
 local CurrencyUI = require(script.Parent.CurrencyUI)
+local SummaryUI = require(script.Parent.SummaryUI)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -33,6 +34,7 @@ function MainUI.new()
 	self.itemUI = ItemUI.new(screenGui)
 	self.stageSelectionUI = StageSelectionUI.new(screenGui)
 	self.currencyUI = CurrencyUI.new(screenGui)
+	self.summaryUI = SummaryUI.new(screenGui)
 	
 	-- Setup remote listeners
 	self:setupRemotes()
@@ -104,9 +106,17 @@ function MainUI:onStageComplete(data: {[string]: any})
 		isFinished = isFinished -- Pass finish status
 	})
 	
-	-- If finished, hide stage UI after delay
+	-- If finished, show summary and hide stage UI after delay
 	if isFinished then
-		task.delay(2.5, function()
+		-- Show summary UI if summary data is provided
+		if data.summary then
+			-- Small delay to let stage complete notification show first
+			task.delay(0.5, function()
+				self.summaryUI:show(data.summary)
+			end)
+		end
+		
+		task.delay(4, function()
 			self.scoreUI:hideStageProgress()
 		end)
 	end

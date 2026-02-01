@@ -172,6 +172,12 @@ function ScoreManager:getCurrentStage(player: Player): number
 	return playerData and playerData.currentStage or 0
 end
 
+-- Get round score
+function ScoreManager:getRoundScore(player: Player): number
+	local playerData = self.playerData[player]
+	return playerData and playerData.roundScore or 0
+end
+
 -- Remove player data
 function ScoreManager:removePlayer(player: Player)
 	-- Save before removing

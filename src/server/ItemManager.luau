@@ -13,13 +13,14 @@ export type PlayerItemData = {
 	lastPushTime: number,
 }
 
-function ItemManager.new(currencyManager: any?)
+function ItemManager.new(currencyManager: any?, gameManager: any?)
 	local self = setmetatable({}, ItemManager)
 	
 	self.playerItems = {} :: {[Player]: PlayerItemData}
 	self.itemPickups = {} :: {Part}
 	self.pickupConnections = {} :: {[Part]: RBXScriptConnection}
 	self.currencyManager = currencyManager -- Reference to CurrencyManager
+	self.gameManager = gameManager -- Reference to GameManager (for coin tracking)
 	
 	-- Remotes
 	self.useItemRemote = ReplicatedStorage.Remotes.UseItem
@@ -238,6 +239,138 @@ function ItemManager:setupItemPickups(pickups: {Part})
 	end
 end
 
+-- Create coin collection effect
+function ItemManager:createCoinCollectEffect(position: Vector3)
+	-- Create burst particle effect
+	local effectPart = Instance.new("Part")
+	effectPart.Name = "CoinEffect"
+	effectPart.Anchored = true
+	effectPart.CanCollide = false
+	effectPart.Size = Vector3.new(1, 1, 1)
+	effectPart.Position = position
+	effectPart.Transparency = 1
+	effectPart.Parent = workspace
+	
+	-- Gold sparkle burst
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Lifetime = NumberRange.new(0.3, 0.6)
+	sparkles.Rate = 0 -- Use Emit instead
+	sparkles.Speed = NumberRange.new(5, 15)
+	sparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.8),
+		NumberSequenceKeypoint.new(0.5, 0.4),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	sparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 150)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 0)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0))
+	})
+	sparkles.LightEmission = 1
+	sparkles.LightInfluence = 0
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Parent = effectPart
+	
+	-- Emit burst
+	sparkles:Emit(20)
+	
+	-- Ring effect
+	local ring = Instance.new("Part")
+	ring.Name = "Ring"
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.Size = Vector3.new(1, 0.1, 1)
+	ring.Position = position
+	ring.Material = Enum.Material.Neon
+	ring.Color = Color3.fromRGB(255, 215, 0)
+	ring.Transparency = 0.3
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Orientation = Vector3.new(0, 0, 90)
+	ring.Parent = workspace
+	
+	-- Animate ring expanding
+	task.spawn(function()
+		for i = 1, 15 do
+			local scale = 1 + (i * 0.3)
+			ring.Size = Vector3.new(0.1, scale, scale)
+			ring.Transparency = 0.3 + (0.7 * i / 15)
+			task.wait(0.02)
+		end
+		ring:Destroy()
+	end)
+	
+	-- Floating +1 text (using BillboardGui)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 50, 0, 30)
+	billboard.StudsOffset = Vector3.new(0, 2, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Parent = effectPart
+	
+	local plusText = Instance.new("TextLabel")
+	plusText.Size = UDim2.new(1, 0, 1, 0)
+	plusText.BackgroundTransparency = 1
+	plusText.Text = "+1"
+	plusText.TextColor3 = Color3.fromRGB(255, 215, 0)
+	plusText.TextStrokeColor3 = Color3.fromRGB(100, 70, 0)
+	plusText.TextStrokeTransparency = 0
+	plusText.TextSize = 20
+	plusText.Font = Enum.Font.GothamBlack
+	plusText.Parent = billboard
+	
+	-- Animate floating up
+	task.spawn(function()
+		for i = 1, 20 do
+			billboard.StudsOffset = Vector3.new(0, 2 + i * 0.15, 0)
+			plusText.TextTransparency = i / 20
+			plusText.TextStrokeTransparency = i / 20
+			task.wait(0.03)
+		end
+	end)
+	
+	-- Cleanup after effects
+	task.delay(1, function()
+		effectPart:Destroy()
+	end)
+end
+
+-- Create push item collection effect  
+function ItemManager:createPushItemCollectEffect(position: Vector3)
+	local effectPart = Instance.new("Part")
+	effectPart.Name = "PushItemEffect"
+	effectPart.Anchored = true
+	effectPart.CanCollide = false
+	effectPart.Size = Vector3.new(1, 1, 1)
+	effectPart.Position = position
+	effectPart.Transparency = 1
+	effectPart.Parent = workspace
+	
+	-- Blue sparkle burst
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Lifetime = NumberRange.new(0.3, 0.6)
+	sparkles.Rate = 0
+	sparkles.Speed = NumberRange.new(5, 12)
+	sparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.6),
+		NumberSequenceKeypoint.new(0.5, 0.3),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	sparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 200, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 150, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 100, 200))
+	})
+	sparkles.LightEmission = 1
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Parent = effectPart
+	
+	sparkles:Emit(15)
+	
+	-- Cleanup
+	task.delay(1, function()
+		effectPart:Destroy()
+	end)
+end
+
 -- Collect pickup
 function ItemManager:collectPickup(player: Player, pickup: Part)
 	if not pickup.Parent then return end -- Already collected
@@ -248,6 +381,7 @@ function ItemManager:collectPickup(player: Player, pickup: Part)
 	
 	-- Check if it's a coin or push item
 	local isCoin = pickup:GetAttribute("IsCoin") == true
+	local pickupPosition = pickup.Position
 	
 	if isCoin then
 		-- Collect coin - give currency
@@ -255,9 +389,20 @@ function ItemManager:collectPickup(player: Player, pickup: Part)
 			self.currencyManager:addCurrency(player, Config.Currency.PerCoin)
 			print("[ItemManager]", player.Name, "collected coin - Gained", Config.Currency.PerCoin, "currency")
 		end
+		
+		-- Notify GameManager for summary tracking
+		if self.gameManager then
+			self.gameManager:addCoinCollected(player)
+		end
+		
+		-- Create coin collection effect
+		self:createCoinCollectEffect(pickupPosition)
 	else
 		-- Collect push item
 		self:addPushItem(player, 1)
+		
+		-- Create push item collection effect
+		self:createPushItemCollectEffect(pickupPosition)
 	end
 	
 	-- Temporarily hide pickup and all its children

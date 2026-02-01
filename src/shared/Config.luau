@@ -21,10 +21,18 @@ Stages = {
 
 	-- Currency Settings
 	Currency = {
-		PerStage = 5, -- เงินที่ได้เมื่อผ่านด่าน
+		PerStage = 5, -- โบนัสคงที่เมื่อผ่านด่าน
 		PerCoin = 1, -- เงินที่ได้เมื่อเก็บเหรียญ
 		FinishBonus = 25, -- โบนัสเงินเมื่อเข้าเส้นชัย
 		StartingAmount = 0, -- เงินเริ่มต้นของผู้เล่นใหม่
+		-- รางวัลเมื่อผ่านแต่ละด่าน
+		StageRewards = {
+			3, -- Stage 1 (Easy): 3 currency
+			4, -- Stage 2 (Moving): 4 currency
+			4, -- Stage 3 (Spinning): 4 currency
+			5, -- Stage 4 (Disappearing): 5 currency
+			6, -- Stage 5 (Hard): 6 currency
+		},
 	},
 
 	-- Push Item Settings
