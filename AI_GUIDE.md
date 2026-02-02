@@ -439,7 +439,7 @@ local Config = {
 
 | Item | Rarity | Icon | Description |
 |------|--------|------|-------------|
-| Missile | Common | 🚀 | Fire a missile forward. Stuns on hit for 2 sec. |
+| Missile | Common | 🚀 | Fire a homing missile that tracks the nearest target ahead! Knocks down on hit (ล้ม). |
 | Banana | Common | 🍌 | Drop a banana behind you. Makes players slip! |
 | Shield | Uncommon | 🛡️ | Create a shield that blocks 1 attack. |
 | Speed Boost | Uncommon | ⚡ | +50% speed for 3 seconds! |
@@ -467,8 +467,8 @@ itemBox.Parent = itemPickups
 
 | Item | Visual Effect |
 |------|---------------|
-| Missile | Rocket mesh + flame/smoke trails + explosion particles |
-| Banana | Yellow mesh (ID: 6407990721) + sparkles + slip animation (ล้มไปข้างหลัง) |
+| Missile | Rocket mesh + flame/smoke trails + explosion particles + HOMING (tracks target) + FALL EFFECT (ล้มเหมือนกล้วย) |
+| Banana | Yellow mesh (ID: 6407990721) + sparkles + slip animation (ล้มไปข้างหลัง) + works on dummies too |
 | Shield | Force field bubble + hex particles + aura (rising/swirling) + pulsing glow |
 | Speed Boost | Speed lines + aura particles + trail |
 | Swap | Portal ring + swirl particles + teleport flash |
@@ -484,6 +484,38 @@ itemBox.Parent = itemPickups
 -- 5. กระโดดไม่ได้ระหว่างล้ม (loop บังคับ JumpPower = 0)
 -- 6. ลุกขึ้นหลัง 0.5 วินาที (GettingUp state)
 -- เจ้าของกล้วยก็ลื่นได้เหมือนกัน!
+-- Test Dummies ก็ลื่นได้เหมือนกัน!
+```
+
+### Missile Homing System:
+```lua
+-- Homing Missile Parameters:
+-- speed = 60          -- ช้ากว่าปกติเพื่อให้ track ได้
+-- turnSpeed = 6       -- ความเร็วในการหัน (สูง = หันเร็ว)
+-- viewConeAngle = 90  -- องศาจากกลาง (180° total cone)
+-- trackingRange = 120 -- ระยะล็อคเป้าสูงสุด
+
+-- การทำงาน:
+-- 1. ตอนยิง: หาเป้าหมายที่ใกล้ที่สุดใน view cone
+-- 2. isInViewCone() เช็คว่าเป้าอยู่ในมุมมองหรือไม่
+-- 3. ทุก frame: ค่อยๆ หันไปหาเป้า (lerp direction)
+-- 4. CFrame หันหน้าตามทิศที่บิน
+-- 5. ถ้าไม่มีเป้า = ยิงตรงเหมือนเดิม
+
+-- หันหลังก่อนยิง = ยิงคนข้างหลังได้!
+-- เป้าเคลื่อนที่เร็ว = ยังหลบได้
+```
+
+### Missile Hit Effect (Fall):
+```lua
+-- เมื่อโดน Missile จะ:
+-- 1. ลอยขึ้น (Y = 18)
+-- 2. กระเด็นไปข้างหลัง (velocity * -25)
+-- 3. หมุนล้มหงาย (BodyAngularVelocity -10)
+-- 4. เข้า FallingDown state
+-- 5. Visual: 💥⭐💥 หมุนเหนือหัว + particles ควัน/ไฟ
+-- 6. ลุกขึ้นหลัง 0.6 วินาที
+-- ล้มเหมือนกล้วย แต่มี theme ระเบิด!
 ```
 
 ### Sound Effects:
@@ -511,6 +543,24 @@ itemBox.Parent = itemPickups
 ### Weighted Random Item:
 - คนอันดับท้ายมีโอกาสได้ item หายากมากกว่า (catch-up mechanic)
 - ใช้ `catchUpBonus` ใน ItemTypes เพื่อปรับ weight
+
+### ItemManager Key Functions:
+
+| Function | Description |
+|----------|-------------|
+| `useMissile(player, rootPart, itemDef)` | ยิง homing missile |
+| `useBanana(player, rootPart, itemDef)` | วางกล้วย |
+| `useShield(player, itemDef)` | สร้างโล่ป้องกัน |
+| `useSpeedBoost(player, itemDef)` | เพิ่มความเร็ว |
+| `useSwap(player, itemDef)` | สลับตำแหน่งกับคนข้างหน้า |
+| `useLightning(player, itemDef)` | ช็อตทุกคน |
+| `isInViewCone(myPos, lookDir, targetPos, maxAngle)` | เช็คว่าเป้าอยู่ใน view cone |
+| `findMissileTarget(player, myPos, lookDir, maxAngle, maxRange)` | หาเป้าหมายสำหรับ homing missile |
+| `applySlip(player, itemDef)` | ทำให้ player ลื่น (กล้วย) |
+| `applyDummySlip(dummy, itemDef)` | ทำให้ dummy ลื่น |
+| `applyStun(target, duration)` | Stun ธรรมดา (ยืน) |
+| `applyStunWithFall(target, duration)` | Stun + ล้ม (Missile) |
+| `applyDummyStun(dummy, duration)` | Stun dummy (Lightning) |
 
 ### การเพิ่ม Item ใหม่:
 

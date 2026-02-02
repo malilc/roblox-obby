@@ -27,7 +27,7 @@ ItemTypes.Items = {
 	Missile = {
 		id = "Missile",
 		name = "Missile",
-		description = "Fire a missile forward. Stuns on hit for 2 sec.",
+		description = "Fire a homing missile that tracks the nearest target ahead!",
 		icon = "🚀", -- rocket emoji
 		rarity = "Common",
 		weight = 25,
@@ -35,9 +35,13 @@ ItemTypes.Items = {
 		duration = nil,
 		cooldown = 1,
 		-- Effect specifics
-		speed = 80, -- studs/second
+		speed = 60, -- studs/second (slower for homing)
 		stunDuration = 2, -- seconds
 		range = 150, -- max range
+		-- Homing parameters
+		turnSpeed = 6, -- How fast missile turns (higher = tighter tracking)
+		viewConeAngle = 90, -- Degrees from center (180 degree total cone)
+		trackingRange = 120, -- Max distance to acquire target
 	},
 	
 	Banana = {

@@ -523,7 +523,60 @@ end
 
 -- ========== ITEM EFFECTS ==========
 
--- Missile: ยิงไปข้างหน้า
+-- Check if target position is within view cone
+function ItemManager:isInViewCone(myPos: Vector3, lookDir: Vector3, targetPos: Vector3, maxAngleDegrees: number): boolean
+	local toTarget = (targetPos - myPos).Unit
+	local dot = lookDir:Dot(toTarget)
+	local angleRad = math.acos(math.clamp(dot, -1, 1))
+	return math.deg(angleRad) <= maxAngleDegrees
+end
+
+-- Find the nearest target (player or dummy) within view cone for homing missile
+function ItemManager:findMissileTarget(player: Player, myPos: Vector3, lookDirection: Vector3, maxAngle: number, maxRange: number): (BasePart?, Model?)
+	local closestHRP: BasePart? = nil
+	local closestModel: Model? = nil
+	local closestDistance = maxRange
+	
+	-- Check all players
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		if otherPlayer ~= player then
+			local character = otherPlayer.Character
+			if character then
+				local hrp = character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					local distance = (hrp.Position - myPos).Magnitude
+					-- Check if within range and view cone
+					if distance < closestDistance and self:isInViewCone(myPos, lookDirection, hrp.Position, maxAngle) then
+						closestDistance = distance
+						closestHRP = hrp
+						closestModel = character
+					end
+				end
+			end
+		end
+	end
+	
+	-- Check test dummies
+	local dummiesFolder = workspace:FindFirstChild("TestDummies")
+	if dummiesFolder then
+		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
+			local hrp = dummy:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local distance = (hrp.Position - myPos).Magnitude
+				-- Check if within range and view cone
+				if distance < closestDistance and self:isInViewCone(myPos, lookDirection, hrp.Position, maxAngle) then
+					closestDistance = distance
+					closestHRP = hrp
+					closestModel = dummy
+				end
+			end
+		end
+	end
+	
+	return closestHRP, closestModel
+end
+
+-- Missile: ยิง homing missile ติดตามเป้าหมาย
 function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolean
 	local direction = rootPart.CFrame.LookVector
 	local startPos = rootPart.Position + direction * 3 + Vector3.new(0, 1, 0)
@@ -602,7 +655,7 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	-- Fire sound
 	local fireSound = Instance.new("Sound")
 	fireSound.SoundId = "rbxassetid://287390459"
-	fireSound.Volume = 0.5
+	fireSound.Volume = 0.3
 	fireSound.Parent = rootPart
 	fireSound:Play()
 	task.delay(2, function()
@@ -611,22 +664,52 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	
 	table.insert(self.activeProjectiles, missile)
 	
-	-- Move missile
-	local speed = itemDef.speed or 80
+	-- Homing missile parameters
+	local speed = itemDef.speed or 60 -- Slightly slower for homing
 	local maxRange = itemDef.range or 150
+	local turnSpeed = itemDef.turnSpeed or 6 -- How fast missile turns
+	local viewConeAngle = itemDef.viewConeAngle or 90 -- Degrees from center
+	local trackingRange = itemDef.trackingRange or 120 -- Max distance to acquire target
 	local distanceTraveled = 0
+	
+	-- Find initial target within view cone
+	local targetHRP, targetModel = self:findMissileTarget(player, startPos, direction, viewConeAngle, trackingRange)
+	
+	if targetHRP then
+		local targetName = targetModel and targetModel.Name or "Unknown"
+		print("[ItemManager] Missile locked on target:", targetName)
+	else
+		print("[ItemManager] Missile fired without target (straight shot)")
+	end
 	
 	task.spawn(function()
 		while missile.Parent and distanceTraveled < maxRange do
 			local delta = task.wait()
+			
+			-- Homing behavior: gradually turn towards target
+			if targetHRP and targetHRP.Parent then
+				local missilePos = missile.Position
+				local targetPos = targetHRP.Position
+				local toTarget = (targetPos - missilePos).Unit
+				
+				-- Gradually turn towards target (lerp direction)
+				-- turnSpeed controls how quickly the missile can turn
+				local lerpFactor = math.min(turnSpeed * delta, 1)
+				direction = (direction * (1 - lerpFactor) + toTarget * lerpFactor).Unit
+			end
+			
+			-- Move in current direction
 			local move = direction * speed * delta
-			missile.CFrame = missile.CFrame + move
+			local newPos = missile.Position + move
+			
+			-- Update CFrame to face movement direction
+			missile.CFrame = CFrame.lookAt(newPos, newPos + direction)
 			distanceTraveled = distanceTraveled + move.Magnitude
 			
 			-- Check collision with players
 			local hit = self:checkMissileHit(player, missile)
 			if hit then
-				self:applyStun(hit, itemDef.stunDuration or 2)
+				self:applyStunWithFall(hit, itemDef.stunDuration or 2)
 				self:createExplosionEffect(missile.Position)
 				break
 			end
@@ -634,6 +717,8 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 		
 		-- Cleanup
 		if missile.Parent then
+			-- Missile missed - create small explosion at end
+			self:createExplosionEffect(missile.Position)
 			missile:Destroy()
 		end
 		
@@ -787,7 +872,7 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 		end
 	end)
 	
-	-- Touch detection (anyone can slip, including owner)
+	-- Touch detection (anyone can slip, including owner AND dummies)
 	banana.Touched:Connect(function(hit)
 		-- Skip if not active yet or already triggered
 		if not isActive or hasTriggered then return end
@@ -800,11 +885,26 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 		local humanoid = character:FindFirstChild("Humanoid")
 		if not humanoid then return end
 		
+		-- Check if it's a real player or a test dummy
 		local hitPlayer = Players:GetPlayerFromCharacter(character)
-		if not hitPlayer then return end
+		local isDummy = character.Parent and character.Parent.Name == "TestDummies"
+		
+		-- Must be either a player or a dummy
+		if not hitPlayer and not isDummy then return end
 		
 		-- Mark as triggered to prevent multiple slips
 		hasTriggered = true
+		
+		-- Handle dummy slip
+		if isDummy then
+			print("[ItemManager] Dummy", character.Name, "slipped on banana!")
+			self:applyDummySlip(character, itemDef)
+			-- Destroy banana
+			if banana and banana.Parent then
+				banana:Destroy()
+			end
+			return
+		end
 		
 		-- Check if player has shield
 		local data = self.playerItems[hitPlayer]
@@ -1779,6 +1879,273 @@ function ItemManager:applyDummyStun(dummy: Model, duration: number)
 	end)
 	
 	print("[ItemManager] Test dummy struck by lightning!")
+end
+
+-- Apply slip effect to dummy (similar to player slip)
+function ItemManager:applyDummySlip(dummy: Model, itemDef)
+	local hrp = dummy:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	local humanoid = dummy:FindFirstChild("Humanoid")
+	if not humanoid then return end
+	
+	local slipDuration = itemDef.slipDuration or 1.5
+	
+	-- Save original values
+	local originalWalkSpeed = humanoid.WalkSpeed
+	local originalJumpPower = humanoid.JumpPower
+	
+	-- Disable movement
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+	
+	-- Slip sound
+	local slipSound = Instance.new("Sound")
+	slipSound.SoundId = "rbxassetid://129432532096499"
+	slipSound.Volume = 0.8
+	slipSound.Parent = hrp
+	slipSound:Play()
+	task.delay(3, function()
+		if slipSound.Parent then slipSound:Destroy() end
+	end)
+	
+	-- Stars visual
+	local starsGui = Instance.new("BillboardGui")
+	starsGui.Name = "SlipStars"
+	starsGui.Size = UDim2.new(0, 60, 0, 60)
+	starsGui.StudsOffset = Vector3.new(0, 3, 0)
+	starsGui.AlwaysOnTop = true
+	starsGui.Parent = hrp
+	
+	local starsLabel = Instance.new("TextLabel")
+	starsLabel.Size = UDim2.new(1, 0, 1, 0)
+	starsLabel.BackgroundTransparency = 1
+	starsLabel.Text = "⭐🌟⭐"
+	starsLabel.TextSize = 24
+	starsLabel.Parent = starsGui
+	
+	-- Spin animation
+	task.spawn(function()
+		local startTime = tick()
+		while tick() - startTime < slipDuration and starsGui.Parent do
+			starsLabel.Rotation = (tick() - startTime) * 360
+			task.wait()
+		end
+		if starsGui.Parent then starsGui:Destroy() end
+	end)
+	
+	-- Slip particles
+	local slipParticles = Instance.new("ParticleEmitter")
+	slipParticles.Name = "SlipParticles"
+	slipParticles.Lifetime = NumberRange.new(0.3, 0.6)
+	slipParticles.Rate = 30
+	slipParticles.Speed = NumberRange.new(5, 10)
+	slipParticles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	slipParticles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 50))
+	slipParticles.LightEmission = 0.5
+	slipParticles.SpreadAngle = Vector2.new(180, 180)
+	slipParticles.Parent = hrp
+	
+	task.delay(slipDuration, function()
+		if slipParticles.Parent then slipParticles:Destroy() end
+	end)
+	
+	-- Slide + fall effect
+	local slideDirection = hrp.CFrame.LookVector
+	local slideForce = Instance.new("BodyVelocity")
+	slideForce.Velocity = Vector3.new(slideDirection.X * 20, 15, slideDirection.Z * 20)
+	slideForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	slideForce.Parent = hrp
+	
+	local tumble = Instance.new("BodyAngularVelocity")
+	tumble.AngularVelocity = Vector3.new(-8, 0, 0)
+	tumble.MaxTorque = Vector3.new(math.huge, 0, math.huge)
+	tumble.Parent = hrp
+	
+	humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
+	
+	task.delay(0.3, function()
+		if slideForce.Parent then slideForce:Destroy() end
+		if tumble.Parent then tumble:Destroy() end
+	end)
+	
+	task.delay(0.5, function()
+		if humanoid and humanoid.Parent then
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end)
+	
+	-- Restore
+	task.delay(slipDuration, function()
+		if humanoid and humanoid.Parent then
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+			humanoid.WalkSpeed = originalWalkSpeed > 0 and originalWalkSpeed or 8
+			humanoid.JumpPower = originalJumpPower > 0 and originalJumpPower or 30
+		end
+	end)
+end
+
+-- Apply stun with fall effect (for missile hit) - like banana slip but with explosion theme
+function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
+	-- Handle both Player and Model (dummy)
+	local character: Model?
+	local targetName: string
+	local isPlayer = false
+	
+	if typeof(target) == "Instance" and target:IsA("Player") then
+		character = target.Character
+		targetName = target.Name
+		isPlayer = true
+	elseif typeof(target) == "Instance" and target:IsA("Model") then
+		character = target
+		targetName = target.Name
+	end
+	
+	if not character then return end
+	
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	local humanoid = character:FindFirstChild("Humanoid")
+	if not humanoid then return end
+	
+	print("[ItemManager]", targetName, "hit by missile! Falling...")
+	
+	-- Save original values
+	local originalWalkSpeed = humanoid.WalkSpeed
+	local originalJumpPower = humanoid.JumpPower
+	local originalJumpHeight = humanoid.JumpHeight or 7.2
+	
+	-- Flag to track if stun is active
+	local stunActive = true
+	
+	-- Disable movement
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+	
+	-- Continuous enforcement loop (for players)
+	if isPlayer then
+		task.spawn(function()
+			while stunActive and humanoid and humanoid.Parent do
+				humanoid.JumpPower = 0
+				humanoid.JumpHeight = 0
+				humanoid.Jump = false
+				if hrp and hrp.Parent then
+					local vel = hrp.AssemblyLinearVelocity
+					if vel.Y > 3 then
+						hrp.AssemblyLinearVelocity = Vector3.new(vel.X, 3, vel.Z)
+					end
+				end
+				task.wait()
+			end
+		end)
+	end
+	
+	-- Stun stars visual (missile themed - 💥)
+	local starsGui = Instance.new("BillboardGui")
+	starsGui.Name = "MissileStunStars"
+	starsGui.Size = UDim2.new(0, 70, 0, 70)
+	starsGui.StudsOffset = Vector3.new(0, 3, 0)
+	starsGui.AlwaysOnTop = true
+	starsGui.Parent = hrp
+	
+	local starsLabel = Instance.new("TextLabel")
+	starsLabel.Size = UDim2.new(1, 0, 1, 0)
+	starsLabel.BackgroundTransparency = 1
+	starsLabel.Text = "💥⭐💥"
+	starsLabel.TextSize = 26
+	starsLabel.Parent = starsGui
+	
+	-- Spin animation
+	task.spawn(function()
+		local startTime = tick()
+		while tick() - startTime < duration and starsGui.Parent do
+			starsLabel.Rotation = (tick() - startTime) * 360
+			task.wait()
+		end
+		if starsGui.Parent then starsGui:Destroy() end
+	end)
+	
+	-- Smoke/fire particles (missile explosion theme)
+	local stunParticles = Instance.new("ParticleEmitter")
+	stunParticles.Name = "MissileStunParticles"
+	stunParticles.Lifetime = NumberRange.new(0.3, 0.6)
+	stunParticles.Rate = 25
+	stunParticles.Speed = NumberRange.new(3, 8)
+	stunParticles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.8),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	stunParticles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 50)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 100, 100)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 50))
+	})
+	stunParticles.LightEmission = 0.3
+	stunParticles.SpreadAngle = Vector2.new(180, 180)
+	stunParticles.Parent = hrp
+	
+	task.delay(duration, function()
+		if stunParticles.Parent then stunParticles:Destroy() end
+	end)
+	
+	-- Knockback + fall effect (thrown by explosion)
+	local knockbackDir = hrp.CFrame.LookVector * -1 -- Thrown backwards
+	local knockbackForce = Instance.new("BodyVelocity")
+	knockbackForce.Velocity = Vector3.new(
+		knockbackDir.X * 25,
+		18, -- Lift up
+		knockbackDir.Z * 25
+	)
+	knockbackForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	knockbackForce.Parent = hrp
+	
+	-- Tumble rotation
+	local tumble = Instance.new("BodyAngularVelocity")
+	tumble.AngularVelocity = Vector3.new(-10, 0, 0) -- Fall backwards
+	tumble.MaxTorque = Vector3.new(math.huge, 0, math.huge)
+	tumble.Parent = hrp
+	
+	-- Fall state
+	humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
+	
+	-- Remove forces
+	task.delay(0.35, function()
+		if knockbackForce.Parent then knockbackForce:Destroy() end
+		if tumble.Parent then tumble:Destroy() end
+	end)
+	
+	-- Get up
+	task.delay(0.6, function()
+		if humanoid and humanoid.Parent then
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end)
+	
+	-- Restore after duration
+	task.delay(duration, function()
+		stunActive = false
+		
+		if humanoid and humanoid.Parent then
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+			
+			if isPlayer then
+				humanoid.WalkSpeed = originalWalkSpeed > 0 and originalWalkSpeed or 16
+				humanoid.JumpPower = originalJumpPower > 0 and originalJumpPower or 50
+				humanoid.JumpHeight = originalJumpHeight > 0 and originalJumpHeight or 7.2
+			else
+				-- Dummy defaults
+				humanoid.WalkSpeed = originalWalkSpeed > 0 and originalWalkSpeed or 8
+				humanoid.JumpPower = originalJumpPower > 0 and originalJumpPower or 30
+			end
+		end
+	end)
 end
 
 -- Remove slow effect
