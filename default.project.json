@@ -37,6 +37,36 @@
         },
         "UpdateCurrency": {
           "$className": "RemoteEvent"
+        },
+        "CreateMatch": {
+          "$className": "RemoteEvent"
+        },
+        "JoinMatch": {
+          "$className": "RemoteEvent"
+        },
+        "LeaveMatch": {
+          "$className": "RemoteEvent"
+        },
+        "MatchUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "MatchStart": {
+          "$className": "RemoteEvent"
+        },
+        "MatchEnd": {
+          "$className": "RemoteEvent"
+        },
+        "RaceUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "TimeWarning": {
+          "$className": "RemoteEvent"
+        },
+        "SelectClass": {
+          "$className": "RemoteEvent"
+        },
+        "ClassUpdate": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

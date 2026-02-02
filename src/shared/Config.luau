@@ -6,6 +6,17 @@ local Config = {
 		TeleporterPosition = Vector3.new(0, 3, 20),
 	},
 
+	-- Match Settings (Multiplayer Race)
+	Match = {
+		MinPlayers = 1,        -- Solo testing enabled
+		MaxPlayers = 16,       -- Maximum players per match
+		WaitTime = 3,          -- Testing: 3 วิ, Production: 30-60 วิ
+		IsTestingMode = true,  -- Toggle สำหรับ testing
+		TimeLimit = 900,       -- 15 นาที (900 วินาที) per match
+		-- แจ้งเตือนเมื่อเหลือเวลา (วินาที)
+		TimeWarnings = {300, 60, 30, 10}, -- 5min, 1min, 30s, 10s
+	},
+
 	-- Stage Settings
 Stages = {
 	Count = 5, -- จำนวนด่านที่จะสุ่ม

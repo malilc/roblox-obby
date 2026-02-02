@@ -7,6 +7,8 @@ local MapManager = require(script.Parent.MapManager)
 local ScoreManager = require(script.Parent.ScoreManager)
 local ItemManager = require(script.Parent.ItemManager)
 local CurrencyManager = require(script.Parent.CurrencyManager)
+local MatchManager = require(script.Parent.MatchManager)
+local ClassManager = require(script.Parent.ClassManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 
 local GameManager = {}
@@ -21,7 +23,9 @@ function GameManager.new()
 	self.mapManager = MapManager.new()
 	self.currencyManager = CurrencyManager.new()
 	self.scoreManager = ScoreManager.new(self.currencyManager) -- Pass CurrencyManager to ScoreManager
-	self.itemManager = ItemManager.new(self.currencyManager, self) -- Pass CurrencyManager and GameManager to ItemManager
+	self.matchManager = MatchManager.new(self) -- Pass GameManager to MatchManager (create before ItemManager)
+	self.classManager = ClassManager.new() -- Character class system
+	self.itemManager = ItemManager.new(self.currencyManager, self, self.matchManager) -- Pass CurrencyManager, GameManager, and MatchManager to ItemManager
 	
 	-- Player states
 	self.playerStates = {} :: {[Player]: PlayerState}
@@ -96,6 +100,7 @@ function GameManager:onPlayerAdded(player: Player)
 	self.scoreManager:setupLeaderstats(player)
 	self.currencyManager:initPlayer(player)
 	self.itemManager:initPlayer(player)
+	self.classManager:initPlayer(player)
 	
 	-- Wait for character
 	player.CharacterAdded:Connect(function(character)
@@ -121,6 +126,8 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.scoreManager:removePlayer(player)
 	self.currencyManager:removePlayer(player)
 	self.itemManager:removePlayer(player)
+	self.matchManager:removePlayer(player) -- Remove from match
+	self.classManager:removePlayer(player)
 
 	print("[GameManager] Player left:", player.Name)
 end
@@ -225,6 +232,14 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 	local totalStages = #self.mapManager.stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.Count end
 	
+	-- Update MatchManager with progress
+	local character = player.Character
+	local distance = 0
+	if character and character:FindFirstChild("HumanoidRootPart") then
+		distance = character.HumanoidRootPart.Position.X -- Track X position for distance
+	end
+	self.matchManager:updatePlayerProgress(player, stageIndex, distance)
+	
 	-- Notify client
 	self.stageCompleteRemote:FireClient(player, {
 		stageIndex = stageIndex,
@@ -244,6 +259,9 @@ function GameManager:onPlayerFinished(player: Player)
 	self.teleportingToLobby[player] = true
 	
 	self.playerStates[player] = "Finished"
+	
+	-- Notify MatchManager that player finished
+	self.matchManager:playerFinished(player)
 	
 	self.scoreManager:addFinishBonus(player)
 	self.scoreManager:updateLeaderstats(player)

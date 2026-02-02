@@ -220,14 +220,14 @@ end
 
 -- Start animations
 function MapManager:startAnimations()
-	-- หา coins ทั้งหมด
-	local coins = {}
+	-- หา Item Boxes ทั้งหมด
+	local itemBoxes = {}
 	for _, stage in ipairs(self.currentStages) do
 		local itemPickups = stage:FindFirstChild("ItemPickups")
 		if itemPickups then
-			for _, coin in ipairs(itemPickups:GetChildren()) do
-				if coin:GetAttribute("IsCoin") then
-					table.insert(coins, coin)
+			for _, box in ipairs(itemPickups:GetChildren()) do
+				if box:GetAttribute("IsItemBox") or box:GetAttribute("SpinSpeed") then
+					table.insert(itemBoxes, box)
 				end
 			end
 		end
@@ -256,11 +256,11 @@ function MapManager:startAnimations()
 			part.CFrame = part.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
 		end
 		
-		-- Spinning coins (หมุนรอบแกน Y - แนวตั้ง)
-		for _, coin in ipairs(coins) do
-			if coin.Parent then
-				local spinSpeed = coin:GetAttribute("SpinSpeed") or 3
-				coin.CFrame = coin.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
+		-- Spinning Item Boxes (หมุนรอบแกน Y - แนวตั้ง)
+		for _, box in ipairs(itemBoxes) do
+			if box.Parent then
+				local spinSpeed = box:GetAttribute("SpinSpeed") or 3
+				box.CFrame = box.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
 			end
 		end
 	end)

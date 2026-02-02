@@ -20,6 +20,7 @@ function ScoreManager.new(currencyManager: any?)
 	local self = setmetatable({}, ScoreManager)
 	
 	self.playerData = {} :: {[Player]: PlayerScoreData}
+	self.pendingSaves = {} :: {[Player]: boolean} -- Track players needing save
 	self.currencyManager = currencyManager -- Reference to CurrencyManager
 	
 	-- DataStore
@@ -29,6 +30,9 @@ function ScoreManager.new(currencyManager: any?)
 	
 	-- Remotes
 	self.updateScoreRemote = ReplicatedStorage.Remotes.UpdateScore
+	
+	-- Start auto-save loop
+	self:startAutoSave()
 	
 	return self
 end
@@ -131,10 +135,30 @@ function ScoreManager:addFinishBonus(player: Player)
 	
 	print("[ScoreManager]", player.Name, "FINISHED! Round Score:", playerData.roundScore, "Total:", playerData.totalScore)
 	
-	-- Save to DataStore
-	self:savePlayerData(player)
+	-- Mark for pending save (will be saved in auto-save loop or when leaving)
+	self.pendingSaves[player] = true
 	
 	self:sendScoreUpdate(player)
+end
+
+-- Start auto-save loop
+function ScoreManager:startAutoSave()
+	task.spawn(function()
+		while true do
+			task.wait(30) -- Save every 30 seconds
+			self:saveAllPending()
+		end
+	end)
+end
+
+-- Save all pending player data
+function ScoreManager:saveAllPending()
+	for player, isPending in pairs(self.pendingSaves) do
+		if isPending and player.Parent then -- Player still in game
+			self:savePlayerData(player)
+			self.pendingSaves[player] = false
+		end
+	end
 end
 
 -- Reset round score
@@ -180,9 +204,14 @@ end
 
 -- Remove player data
 function ScoreManager:removePlayer(player: Player)
-	-- Save before removing
-	self:savePlayerData(player)
+	-- Save before removing (if pending)
+	if self.pendingSaves[player] then
+		self:savePlayerData(player)
+	end
+	
+	-- Clear data
 	self.playerData[player] = nil
+	self.pendingSaves[player] = nil
 end
 
 -- Setup leaderstats

@@ -17,6 +17,8 @@ function CurrencyManager.new()
 	local self = setmetatable({}, CurrencyManager)
 	
 	self.playerData = {} :: {[Player]: PlayerCurrencyData}
+	self.pendingSaves = {} :: {[Player]: boolean} -- Track players needing save
+	self.lastSaveTime = {} :: {[Player]: number} -- Track last save time
 	
 	-- DataStore
 	pcall(function()
@@ -25,6 +27,9 @@ function CurrencyManager.new()
 	
 	-- Remotes
 	self.updateCurrencyRemote = ReplicatedStorage.Remotes.UpdateCurrency
+	
+	-- Start auto-save loop (save pending data every 30 seconds)
+	self:startAutoSave()
 	
 	return self
 end
@@ -94,13 +99,31 @@ function CurrencyManager:addCurrency(player: Player, amount: number)
 	playerData.currency = playerData.currency + amount
 	print("[CurrencyManager]", player.Name, "gained", amount, "currency - Total:", playerData.currency)
 	
-	-- Save to DataStore (async, don't wait)
-	task.spawn(function()
-		self:savePlayerData(player)
-	end)
+	-- Mark for pending save (will be saved in auto-save loop)
+	self.pendingSaves[player] = true
 	
-	-- Update client
+	-- Update client immediately
 	self:sendCurrencyUpdate(player)
+end
+
+-- Start auto-save loop
+function CurrencyManager:startAutoSave()
+	task.spawn(function()
+		while true do
+			task.wait(30) -- Save every 30 seconds
+			self:saveAllPending()
+		end
+	end)
+end
+
+-- Save all pending player data
+function CurrencyManager:saveAllPending()
+	for player, isPending in pairs(self.pendingSaves) do
+		if isPending and player.Parent then -- Player still in game
+			self:savePlayerData(player)
+			self.pendingSaves[player] = false
+		end
+	end
 end
 
 -- Get player currency
@@ -121,9 +144,15 @@ end
 
 -- Remove player data
 function CurrencyManager:removePlayer(player: Player)
-	-- Save before removing
-	self:savePlayerData(player)
+	-- Save before removing (important!)
+	if self.pendingSaves[player] then
+		self:savePlayerData(player)
+	end
+	
+	-- Clear data
 	self.playerData[player] = nil
+	self.pendingSaves[player] = nil
+	self.lastSaveTime[player] = nil
 end
 
 return CurrencyManager

@@ -54,17 +54,17 @@ end
 -- Item Box Mesh Asset ID (ใช้ ID ที่ผู้ใช้ให้มา)
 local ITEM_BOX_MESH_ID = "rbxassetid://6325349064"
 
--- Helper function สร้าง Item Pickup (Item Box Style)
+-- Helper function สร้าง Item Box (Mario Kart style - ได้ random item)
 local function createItemPickup(position: Vector3): Part
 	-- สร้าง Part หลัก
 	local pickup = Instance.new("Part")
-	pickup.Name = "ItemPickup"
+	pickup.Name = "ItemBox"
 	pickup.Anchored = true
 	pickup.CanCollide = false
 	pickup.Size = Vector3.new(3, 3, 3)
 	pickup.Transparency = 0
-	pickup.Material = Enum.Material.SmoothPlastic
-	pickup.Color = Color3.fromRGB(255, 215, 0) -- สีทอง base
+	pickup.Material = Enum.Material.Neon
+	pickup.Color = Color3.fromRGB(255, 200, 50) -- สีเหลืองสว่าง
 	
 	-- ยกขึ้น 3 studs
 	local raisedPosition = position + Vector3.new(0, 3, 0)
@@ -74,31 +74,36 @@ local function createItemPickup(position: Vector3): Part
 	local mesh = Instance.new("SpecialMesh")
 	mesh.MeshType = Enum.MeshType.FileMesh
 	mesh.MeshId = ITEM_BOX_MESH_ID
-	-- อาจต้องใส่ TextureId ด้วยถ้ามี (เช่น rbxassetid://...)
-	-- mesh.TextureId = "rbxassetid://..." 
-	mesh.Scale = Vector3.new(0.30, 0.30, 0.30) -- ปรับขนาดเป็น 0.30 ตามที่ขอ
+	mesh.Scale = Vector3.new(0.30, 0.30, 0.30)
 	mesh.Parent = pickup
 	
-	-- Add sparkle effect
+	-- Add sparkle effect (Rainbow สำหรับ Item Box)
 	local sparkles = Instance.new("ParticleEmitter")
-	sparkles.Lifetime = NumberRange.new(0.3, 0.6)
-	sparkles.Rate = 8
-	sparkles.Speed = NumberRange.new(0.5, 1.5)
-	sparkles.Size = NumberSequence.new(0.3, 0)
-	sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+	sparkles.Lifetime = NumberRange.new(0.5, 1)
+	sparkles.Rate = 10
+	sparkles.Speed = NumberRange.new(1, 3)
+	sparkles.Size = NumberSequence.new(0.4, 0)
+	sparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)),
+		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 100)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 255, 100)),
+		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(100, 100, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 255)),
+	})
 	sparkles.LightEmission = 1
 	sparkles.SpreadAngle = Vector2.new(180, 180)
 	sparkles.Parent = pickup
 	
-	-- Add PointLight for glow
+	-- Add PointLight for glow (สีม่วงเหลือง)
 	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 200, 50)
-	light.Brightness = 0.8
-	light.Range = 6
+	light.Color = Color3.fromRGB(255, 220, 100)
+	light.Brightness = 1.2
+	light.Range = 8
 	light.Parent = pickup
 	
-	-- Spin animation - หมุนรอบแกน Y
-	pickup:SetAttribute("IsCoin", true)
+	-- Item Box attributes (ไม่ใช่ Coin - จะได้ random item)
+	pickup:SetAttribute("IsItemBox", true)
+	pickup:SetAttribute("IsCoin", false) -- ไม่ใช่เหรียญ - จะได้ item แทน
 	pickup:SetAttribute("SpinSpeed", 2)
 	
 	return pickup

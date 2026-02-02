@@ -10,9 +10,11 @@ src/
 │   ├── init.server.luau         # Entry point - สร้าง GameManager
 │   ├── GameManager.luau         # ควบคุมเกมทั้งหมด
 │   ├── MapManager.luau          # จัดการ map/stages + animations
-│   ├── ScoreManager.luau        # ระบบคะแนน + DataStore
-│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + DataStore
-│   ├── ItemManager.luau         # ระบบ Push item + Coin pickups
+│   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (auto-save ทุก 30วิ)
+│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + DataStore (auto-save ทุก 30วิ)
+│   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Mario Kart
+│   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race
+│   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
 │
 ├── client/                      # Client-side code
@@ -22,13 +24,18 @@ src/
 │       ├── MainUI.luau          # Controller หลัก
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
-│       ├── ItemUI.luau          # แสดง Push item
+│       ├── ItemUI.luau          # 🎯 แสดง Item + Tooltip
 │       ├── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
-│       └── SummaryUI.luau       # 🏆 แสดง Summary จบเกม
+│       ├── SummaryUI.luau       # 🏆 แสดง Summary จบเกม
+│       ├── MatchLobbyUI.luau    # 🏁 UI Matchmaking lobby
+│       ├── ClassSelectionUI.luau # 🎭 UI เลือก Class
+│       └── RaceResultsUI.luau   # 🏁 UI ผลการแข่ง
 │
 └── shared/                      # Shared code (server + client)
     ├── Config.luau              # ⭐ ค่า Config ทั้งหมด
-    └── Types.luau               # Type definitions
+    ├── Types.luau               # Type definitions
+    ├── ItemTypes.luau           # 🎯 นิยาม Items ทั้งหมด
+    └── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด
 ```
 
 ---
@@ -184,7 +191,8 @@ local checkpoint = Instance.new("SpawnLocation")
 | `MoveSpeed` | number | ความเร็ว |
 | `IsSpinning` | boolean | หมุนรอบแกน Y (สำหรับ Spinner) |
 | `SpinSpeed` | number | ความเร็วหมุน |
-| `IsCoin` | boolean | 💰 เหรียญ Item Pickup (หมุนรอบแกน Y แนวตั้ง) - ให้เงินเมื่อเก็บ |
+| `IsItemBox` | boolean | 🎯 Item Box - ให้ random item เมื่อเก็บ |
+| `IsCoin` | boolean | ❌ ไม่ใช้แล้ว (เปลี่ยนเป็น Item Box) |
 | `IsDisappearing` | boolean | หายไปเมื่อเหยียบ |
 | `DisappearDelay` | number | วินาทีก่อนหาย |
 | `ReappearDelay` | number | วินาทีก่อนกลับมา |
@@ -223,27 +231,29 @@ spinner:SetAttribute("IsKillPart", true)
 spinner.Parent = obstacles
 ```
 
-### ตัวอย่าง: Item Coin Pickup
+### ตัวอย่าง: Item Box Pickup
 
 ```lua
-local coin = createItemPickup(startPosition + Vector3.new(0, 5, 20))
-coin:SetAttribute("IsCoin", true) -- 💰 ตั้งค่าเป็นเหรียญ (ให้เงินเมื่อเก็บ)
-coin.Parent = itemPickups
+-- สร้าง Item Box (ให้ random item)
+local itemBox = createItemPickup(startPosition + Vector3.new(0, 5, 20))
+-- IsItemBox = true, IsCoin = false (default จาก createItemPickup)
+itemBox.Parent = itemPickups
 ```
 
 **createItemPickup สร้าง:**
 - รูปทรง: **Mesh (Item Box)** ID: 6325349064
 - ขนาด: Scale `0.30, 0.30, 0.30`
-- สี: **ทอง** (255, 215, 0)
+- สี: **เหลืองสว่าง** (255, 200, 50) + Material Neon
 - ยกขึ้น: **+3 studs** จากตำแหน่งที่ให้
-- หมุน: อัตโนมัติรอบแกน Y (ตั้งค่า `IsCoin` attribute)
-- เอฟเฟกต์: Sparkles + PointLight เรืองแสง
+- หมุน: อัตโนมัติรอบแกน Y
+- เอฟเฟกต์: **Rainbow Sparkles** + PointLight เรืองแสง
+- Attributes: `IsItemBox = true`, `IsCoin = false`
 
-**💰 Coin Pickup:**
-- ตั้งค่า `IsCoin = true` เพื่อให้เป็นเหรียญ (ให้เงิน)
-- ถ้าไม่ตั้งค่า `IsCoin` จะเป็น Push Item (ให้ Push item)
-- เมื่อเก็บเหรียญ: ได้เงิน `Config.Currency.PerCoin` (1 เงิน)
-- เมื่อเก็บ Push Item: ได้ Push item +1
+**🎯 Item Box:**
+- เมื่อเก็บ: ได้ **random item** (Missile, Banana, Shield, etc.)
+- Item ที่ได้ขึ้นอยู่กับ **อันดับในการแข่ง** (catch-up mechanic)
+- คนท้ายมีโอกาสได้ item หายากมากกว่า
+- Respawn หลัง 10 วินาที
 
 ### เพิ่ม Stage ใหม่:
 
@@ -414,38 +424,110 @@ local Config = {
 
 ---
 
-## 🎮 การเพิ่ม Item ใหม่
+## 🎯 Item System (Mario Kart Style)
 
-### ไฟล์ที่ต้องแก้:
-1. `src/server/ItemManager.luau` - Logic
-2. `src/client/UI/ItemUI.luau` - UI
-3. `src/shared/Config.luau` - Config
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/shared/ItemTypes.luau` - นิยาม Items ทั้งหมด
+- `src/server/ItemManager.luau` - Logic ฝั่ง Server
+- `src/client/UI/ItemUI.luau` - UI แสดง Item + Tooltip
 
-### ขั้นตอน:
+### Items ที่มี:
 
-1. เพิ่ม Config ใน `Config.luau`:
+| Item | Rarity | Description |
+|------|--------|-------------|
+| Missile | Common | Fire a missile forward. Stuns on hit for 2 sec. |
+| Banana | Common | Drop a banana behind you. Makes players slip! |
+| Shield | Uncommon | Create a shield that blocks 1 attack. |
+| Speed Boost | Uncommon | +50% speed for 3 seconds! |
+| Swap | Rare | Instantly swap positions with 1st place! |
+| Lightning | Very Rare | Slows ALL other players for 3 sec! |
+
+### Item Box (ใน Stage):
+
+```lua
+-- สร้าง Item Box (ไม่ใช่ Coin - ให้ random item)
+local itemBox = createItemPickup(position)
+itemBox:SetAttribute("IsItemBox", true)
+itemBox:SetAttribute("IsCoin", false) -- ไม่ใช่เหรียญ
+itemBox.Parent = itemPickups
+```
+
+### Weighted Random Item:
+- คนอันดับท้ายมีโอกาสได้ item หายากมากกว่า (catch-up mechanic)
+- ใช้ `catchUpBonus` ใน ItemTypes เพื่อปรับ weight
+
+### การเพิ่ม Item ใหม่:
+
+1. เพิ่มใน `ItemTypes.luau`:
 ```lua
 NewItem = {
-    StartingAmount = 0,
-    MaxAmount = 3,
-    Duration = 5,
-    Cooldown = 15,
+    id = "NewItem",
+    name = "New Item",
+    description = "Item description here",
+    icon = "rbxassetid://...",
+    rarity = "Uncommon",
+    weight = 15,
+    catchUpBonus = 2,
+    duration = 5,
+    cooldown = 1,
 },
 ```
 
-2. เพิ่ม Logic ใน `ItemManager.luau`:
+2. เพิ่ม Logic ใน `ItemManager:executeItemEffect()`:
 ```lua
-function ItemManager:useNewItem(player: Player)
-    -- implement logic
-end
+elseif itemDef.id == "NewItem" then
+    return self:useNewItem(player, itemDef)
 ```
 
-3. เพิ่ม RemoteEvent ใน `default.project.json`:
-```json
-"UseNewItem": {
-    "$className": "RemoteEvent"
-}
+---
+
+## 🎭 Character Class System
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/shared/ClassTypes.luau` - นิยาม Classes
+- `src/server/ClassManager.luau` - Logic ฝั่ง Server
+- `src/client/UI/ClassSelectionUI.luau` - UI เลือก Class
+
+### Classes ที่มี:
+
+| Class | WalkSpeed | JumpPower | Passive |
+|-------|-----------|-----------|---------|
+| Runner | 18.4 (+15%) | 45 (-10%) | Sprint Burst - เพิ่มความเร็วชั่วคราว |
+| Jumper | 14.4 (-10%) | 60 (+20%) | Charged Jump - กระโดดสูงขึ้นเมื่อชาร์จ |
+| Tank | 13.6 (-15%) | 50 (±0%) | Stun Immunity - ไม่โดน stun |
+
+### การเลือก Class:
+- คลิกที่ Class indicator (มุมบนซ้าย) เพื่อเปิด UI
+- เลือก Class แล้วกด CONFIRM
+- Stats จะเปลี่ยนทันที
+
+---
+
+## 🏁 Match/Race System
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/server/MatchManager.luau` - Logic Matchmaking
+- `src/client/UI/MatchLobbyUI.luau` - UI Lobby
+- `src/client/UI/RaceResultsUI.luau` - UI ผลการแข่ง
+
+### Match Settings (Config.luau):
+
+```lua
+Match = {
+    MinPlayers = 1,        -- Solo testing enabled
+    MaxPlayers = 16,       -- Maximum players per match
+    WaitTime = 3,          -- Testing: 3 วิ, Production: 30-60 วิ
+    IsTestingMode = true,  -- Toggle สำหรับ testing
+    TimeLimit = 900,       -- 15 นาที per match
+    TimeWarnings = {300, 60, 30, 10}, -- แจ้งเตือนเมื่อเหลือเวลา
+},
 ```
+
+### Match States:
+- `Waiting` - รอผู้เล่น
+- `Starting` - Countdown ก่อนเริ่ม
+- `Racing` - กำลังแข่ง
+- `Finished` - จบแล้ว
 
 ---
 
@@ -455,8 +537,8 @@ end
 
 | Event | Direction | Usage |
 |-------|-----------|-------|
-| `UseItem` | Client → Server | ใช้ Push item |
-| `UpdateScore` | Server → Client | อัพเดทคะแนน |
+| `UseItem` | Client → Server | ใช้ Item |
+| `UpdateScore` | Server → Client | อัพเดทคะแนน + Item |
 | `UpdateCurrency` | Server → Client | 💰 อัพเดทเงิน |
 | `StageComplete` | Server → Client | ผ่านด่าน |
 | `StartGame` | Client → Server | เริ่มเกมจาก Lobby (legacy) |
@@ -465,6 +547,16 @@ end
 | `HideStageSelection` | Server → Client | ⭐ ซ่อน GUI เลือกด่าน |
 | `ConfirmStageSelection` | Client → Server | ⭐ ยืนยันการเลือกด่าน |
 | `CountdownUpdate` | Server → Client | ⭐ อัพเดท countdown 3, 2, 1 |
+| `CreateMatch` | Client → Server | 🏁 สร้าง Match ใหม่ |
+| `JoinMatch` | Client → Server | 🏁 เข้าร่วม Match |
+| `LeaveMatch` | Client → Server | 🏁 ออกจาก Match |
+| `MatchUpdate` | Server → Client | 🏁 อัพเดทสถานะ Match |
+| `MatchStart` | Server → Client | 🏁 Match เริ่มแล้ว |
+| `MatchEnd` | Server → Client | 🏁 Match จบแล้ว |
+| `RaceUpdate` | Server → Client | 🏁 อัพเดทอันดับ |
+| `TimeWarning` | Server → Client | 🏁 แจ้งเตือนเวลา |
+| `SelectClass` | Client → Server | 🎭 เลือก Class |
+| `ClassUpdate` | Server → Client | 🎭 อัพเดท Class |
 
 ### เพิ่ม RemoteEvent ใหม่:
 
@@ -573,11 +665,14 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 | Module | ตำแหน่ง | Description |
 |--------|---------|-------------|
 | `ScoreUI` | มุมบนซ้าย | ⭐ คะแนน + 🏆 High Score + 🚩 Progress Bar |
-| `CurrencyUI` | มุมบนซ้าย (ใต้ StageFrame) | 💰 แสดงเงิน (120x36) |
-| `ItemUI` | มุมล่างขวา | 👊 Push item (วงกลม 60x60) |
+| `CurrencyUI` | มุมบนซ้าย (ใต้ StageFrame) | 💰 แสดงเงิน |
+| `ClassSelectionUI` | มุมบนซ้าย (ใต้ Currency) | 🎭 แสดง Class + คลิกเพื่อเปลี่ยน |
+| `ItemUI` | มุมล่างขวา | 🎯 Item slot + คลิกเพื่อดู Tooltip |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
 | `StageSelectionUI` | กลางจอ | ⭐ เลือกลำดับด่าน + Countdown |
 | `SummaryUI` | กลางจอ (popup) | 🏆 Summary เมื่อจบเกม |
+| `MatchLobbyUI` | กลางจอ | 🏁 Matchmaking lobby + Rankings |
+| `RaceResultsUI` | กลางจอ (popup) | 🏁 ผลการแข่งขัน |
 
 ### StageSelectionUI:
 - **ปุ่มด่าน 1-5**: คลิกเพื่อเพิ่ม/ลบจากลำดับ
@@ -750,36 +845,52 @@ end)
 
 ## ⚠️ Important Notes
 
-1. **SpawnLocation**: ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder (หันไปทาง SelectionZone)
-2. **SelectionZone**: ใช้ loop-based detection ทุก 0.2 วินาที (เสถียรกว่า Touched)
-3. **Checkpoint**: ใช้ `Part` ไม่ใช่ `SpawnLocation` (ไม่งั้นผู้เล่นจะเกิดที่นี่)
-4. **Moving Platform**: ใช้ `PrismaticConstraint` (physics-based) ไม่ใช่ CFrame animation
-5. **Friction**: ทุก Part มี `CustomPhysicalProperties` กับ Friction = 2.0
-6. **Random Seed**: `math.randomseed()` ถูกเรียกใน MapManager แล้ว
-7. **Stage ต้องมี**: StartPart, EndPart, Checkpoint, Obstacles folder, ItemPickups folder
-8. **Position**: Stage วางต่อกันตามแกน X (ไปทางซ้าย)
-9. **DataStore**: ใช้ `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
-10. **Rojo**: ใช้ `rojo serve` เพื่อ sync กับ Studio
-11. **Item Box**: ใช้ `createItemPickup()` → Mesh ID: 6325349064, Scale 0.30, หมุนรอบ Y, มีแสง
-12. **UI Design**: ใช้ขนาดเล็ก + โปร่งใส เพื่อไม่ให้บังจอ
-13. **Map Generation**: ไม่สร้างตอนเริ่มเกม จะสร้างเมื่อผู้เล่นเลือกด่านแล้ว
-14. **Teleport Direction**: ใช้ `CFrame.lookAt()` เพื่อหันหน้าไปทาง +X (ไปทางซ้าย)
-15. **จบเกม**: กลับไป Lobby โดยใช้ `Config.Lobby.SpawnPosition` (ไม่ใช่ Stage 1)
-16. **Finish Line Detection**: ใช้ทั้ง `Touched` event และ position-based check (double check)
-17. **Teleport Protection**: ใช้ `teleportingToLobby` flag ป้องกันการเรียกซ้ำ
-18. **Lobby Position**: ต้องตรงกับ `Config.Lobby.SpawnPosition = (0, 103, 0)`
-19. **DataStore Error**: ใน Studio จะแจ้ง error ถ้าไม่เปิด API access (ปกติใช้ได้จริง)
-21. **Stage Counting**: เริ่มต้นที่ **0/N** (เข้า Stage 1), เข้า Stage 2 เป็น **1/N**, จบเกมเป็น **N/N**
-22. **Stage Visibility**: ซ่อนใน Lobby, แสดงตอน Countdown, ซ่อนเมื่อจบเกม
-23. **Scoring**: เริ่ม Stage 1 ไม่ได้คะแนน, เข้า Stage 2 ได้คะแนน (ถือว่าผ่านด่าน 1)
-24. **💰 Currency System**: แยกจาก Score - ได้เงินเมื่อผ่านด่าน (5), เก็บเหรียญ (1), จบเกม (25)
-25. **💰 Coin Pickups**: ตั้งค่า `IsCoin = true` เพื่อให้เป็นเหรียญ (ให้เงิน), ไม่ตั้งค่า = Push Item
-26. **💰 CurrencyManager**: จัดการเงิน + บันทึกใน DataStore (merge กับ Score data)
-27. **💰 CurrencyUI**: แสดงเงินที่มุมบนซ้าย (ใต้ StageFrame) - แยกจาก Score
-28. **📊 Leaderstats**: Roblox built-in UI แสดง HighScore, RoundScore, Currency - สร้างใน `ScoreManager:setupLeaderstats()`
-29. **📊 Leaderstats Update**: เรียก `updateLeaderstats()` เพื่ออัพเดทค่า (Currency อัพเดทอัตโนมัติจาก CurrencyManager)
-30. **🏆 SummaryUI**: แสดง popup เมื่อจบเกม พร้อม Currency breakdown (Coins + Stage Clear + Stage Rewards + Finish Bonus)
-31. **🎯 Stage Rewards**: รางวัลต่อด่านกำหนดใน `Config.Currency.StageRewards` (S1=3, S2=4, S3=4, S4=5, S5=6)
-32. **🎯 Stage Reward Flow**: ให้รางวัลด่านใน `onStageComplete` (ด่าน 1 ถึง N-1) และ `onPlayerFinished` (ด่านสุดท้าย)
-33. **💰 Currency Breakdown**: Coins (เก็บเหรียญ) + Stage Clear (5 ต่อด่าน) + Stage Rewards (ตามด่าน) + Finish Bonus (25)
-34. **⏱️ Summary Delay**: แสดง SummaryUI 5 วินาทีก่อน teleport กลับ Lobby
+### 🏗️ Core System
+1. **SpawnLocation**: ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
+2. **SelectionZone**: ใช้ loop-based detection ทุก 0.2 วินาที
+3. **Checkpoint**: ใช้ `Part` ไม่ใช่ `SpawnLocation`
+4. **Moving Platform**: ใช้ `PrismaticConstraint` (physics-based)
+5. **Friction**: ทุก Part มี Friction = 2.0
+6. **Stage ต้องมี**: StartPart, EndPart, Checkpoint, Obstacles folder, ItemPickups folder
+7. **Rojo**: ใช้ `rojo serve` เพื่อ sync กับ Studio
+
+### 💾 DataStore (Auto-save)
+8. **DataStore Name**: `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
+9. **Auto-save**: ทั้ง ScoreManager และ CurrencyManager save ทุก 30 วินาที (ลด request)
+10. **Pending Saves**: ใช้ `pendingSaves` flag เพื่อ track ว่าต้อง save หรือไม่
+11. **On Leave**: Save ทันทีเมื่อผู้เล่นออก (ถ้ามี pending)
+
+### 🎯 Item System (Mario Kart Style)
+12. **Item Box**: ใช้ `createItemPickup()` → ให้ random item (ไม่ใช่เงิน)
+13. **Item Box Attributes**: `IsItemBox = true`, `IsCoin = false`
+14. **Weighted Random**: คนอันดับท้ายได้ item หายากมากกว่า (catch-up)
+15. **Item Tooltip**: คลิกที่ item เพื่อดู description (auto-hide 6 วินาที)
+16. **Item Clear**: เมื่อใช้ item แล้ว Server ส่ง `currentItem = false` ให้ client
+
+### 🎭 Character Class System
+17. **3 Classes**: Runner (+speed), Jumper (+jump), Tank (+resistance)
+18. **Class Indicator**: มุมบนซ้าย - คลิกเพื่อเปิด selection UI
+19. **Stats Apply**: เมื่อเลือก Class หรือ respawn จะ apply stats ใหม่
+20. **Tank Immunity**: Tank ไม่โดน stun จาก Missile/Lightning
+
+### 🏁 Match/Race System
+21. **Match Config**: `Config.Match` - MinPlayers, MaxPlayers, WaitTime, TimeLimit
+22. **Testing Mode**: `IsTestingMode = true` → WaitTime = 3 วินาที
+23. **Time Limit**: 15 นาทีต่อ match พร้อมแจ้งเตือน
+24. **Rankings**: คำนวณจาก stage + distance ใน stage
+
+### 💰 Currency System
+25. **Stage Rewards**: `Config.Currency.StageRewards` (S1=3, S2=4, S3=4, S4=5, S5=6)
+26. **Currency Breakdown**: Stage Clear (5) + Stage Rewards + Finish Bonus (25)
+27. **CurrencyUI**: มุมบนซ้าย (ใต้ StageFrame)
+
+### 🖥️ UI Layout (มุมบนซ้าย จากบนลงล่าง)
+28. **Y=10**: Score Frame (⭐ คะแนน)
+29. **Y=16**: High Score (🏆)
+30. **Y=58**: Stage Frame (🚩 Progress)
+31. **Y=92**: Currency Frame (💰 เงิน)
+32. **Y=140**: Class Indicator (🎭 Class)
+
+### 📊 Leaderstats
+33. **Built-in UI**: แสดง HighScore, RoundScore, Currency
+34. **Update**: เรียก `updateLeaderstats()` เมื่อค่าเปลี่ยน

@@ -9,6 +9,9 @@ local ItemUI = require(script.Parent.ItemUI)
 local StageSelectionUI = require(script.Parent.StageSelectionUI)
 local CurrencyUI = require(script.Parent.CurrencyUI)
 local SummaryUI = require(script.Parent.SummaryUI)
+local MatchLobbyUI = require(script.Parent.MatchLobbyUI)
+local ClassSelectionUI = require(script.Parent.ClassSelectionUI)
+local RaceResultsUI = require(script.Parent.RaceResultsUI)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -35,6 +38,9 @@ function MainUI.new()
 	self.stageSelectionUI = StageSelectionUI.new(screenGui)
 	self.currencyUI = CurrencyUI.new(screenGui)
 	self.summaryUI = SummaryUI.new(screenGui)
+	self.matchLobbyUI = MatchLobbyUI.new(screenGui)
+	self.classSelectionUI = ClassSelectionUI.new(screenGui)
+	self.raceResultsUI = RaceResultsUI.new(screenGui)
 	
 	-- Setup remote listeners
 	self:setupRemotes()
