@@ -72,6 +72,22 @@ function ItemManager:setupTestingRemotes()
 		clearTestItems.Parent = remotes
 	end
 	
+	-- Create SpawnTestDummy remote if not exists
+	local spawnDummy = remotes:FindFirstChild("SpawnTestDummy")
+	if not spawnDummy then
+		spawnDummy = Instance.new("RemoteEvent")
+		spawnDummy.Name = "SpawnTestDummy"
+		spawnDummy.Parent = remotes
+	end
+	
+	-- Create RemoveTestDummies remote if not exists
+	local removeDummies = remotes:FindFirstChild("RemoveTestDummies")
+	if not removeDummies then
+		removeDummies = Instance.new("RemoteEvent")
+		removeDummies.Name = "RemoveTestDummies"
+		removeDummies.Parent = remotes
+	end
+	
 	-- Handle GiveTestItem
 	giveTestItem.OnServerEvent:Connect(function(player, itemId)
 		self:giveTestItem(player, itemId)
@@ -80,6 +96,16 @@ function ItemManager:setupTestingRemotes()
 	-- Handle ClearTestItems
 	clearTestItems.OnServerEvent:Connect(function(player)
 		self:clearTestItems(player)
+	end)
+	
+	-- Handle SpawnTestDummy
+	spawnDummy.OnServerEvent:Connect(function(player)
+		self:spawnTestDummy(player)
+	end)
+	
+	-- Handle RemoveTestDummies
+	removeDummies.OnServerEvent:Connect(function(player)
+		self:removeTestDummies()
 	end)
 	
 	print("[ItemManager] Testing remotes initialized")
@@ -127,6 +153,214 @@ function ItemManager:clearTestItems(player: Player)
 		self:sendItemUpdate(player)
 		print("[ItemManager] Test items cleared for", player.Name)
 	end
+end
+
+-- Spawn a test dummy for testing items (Missile, Swap, Lightning)
+function ItemManager:spawnTestDummy(player: Player)
+	local character = player.Character
+	if not character then return end
+	
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	-- Get or create dummies folder
+	local dummiesFolder = workspace:FindFirstChild("TestDummies")
+	if not dummiesFolder then
+		dummiesFolder = Instance.new("Folder")
+		dummiesFolder.Name = "TestDummies"
+		dummiesFolder.Parent = workspace
+	end
+	
+	-- Create dummy model
+	local dummyCount = #dummiesFolder:GetChildren() + 1
+	local dummy = Instance.new("Model")
+	dummy.Name = "TestDummy_" .. dummyCount
+	
+	-- Spawn position (in front of player)
+	local spawnOffset = hrp.CFrame.LookVector * 15
+	local spawnPos = hrp.Position + spawnOffset + Vector3.new(0, 3, 0)
+	
+	-- Create body parts
+	local torso = Instance.new("Part")
+	torso.Name = "HumanoidRootPart"
+	torso.Size = Vector3.new(2, 2, 1)
+	torso.Position = spawnPos
+	torso.BrickColor = BrickColor.new("Bright blue")
+	torso.Material = Enum.Material.SmoothPlastic
+	torso.Anchored = false
+	torso.CanCollide = true
+	torso.Parent = dummy
+	
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Size = Vector3.new(1.5, 1.5, 1.5)
+	head.Shape = Enum.PartType.Ball
+	head.Position = spawnPos + Vector3.new(0, 2, 0)
+	head.BrickColor = BrickColor.new("Bright yellow")
+	head.Material = Enum.Material.SmoothPlastic
+	head.Anchored = false
+	head.CanCollide = true
+	head.Parent = dummy
+	
+	-- Weld head to torso
+	local headWeld = Instance.new("WeldConstraint")
+	headWeld.Part0 = torso
+	headWeld.Part1 = head
+	headWeld.Parent = head
+	
+	-- Create Humanoid
+	local humanoid = Instance.new("Humanoid")
+	humanoid.MaxHealth = 100
+	humanoid.Health = 100
+	humanoid.WalkSpeed = 8
+	humanoid.JumpPower = 30
+	humanoid.Parent = dummy
+	
+	-- Set primary part
+	dummy.PrimaryPart = torso
+	dummy.Parent = dummiesFolder
+	
+	-- Make dummy "walk" randomly
+	task.spawn(function()
+		while dummy and dummy.Parent do
+			task.wait(math.random(2, 5))
+			if dummy.PrimaryPart then
+				-- Random movement
+				local randomDir = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1)).Unit
+				local moveForce = Instance.new("BodyVelocity")
+				moveForce.Velocity = randomDir * humanoid.WalkSpeed
+				moveForce.MaxForce = Vector3.new(10000, 0, 10000)
+				moveForce.Parent = dummy.PrimaryPart
+				
+				task.delay(1, function()
+					if moveForce.Parent then moveForce:Destroy() end
+				end)
+			end
+		end
+	end)
+	
+	-- Add name tag
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "NameTag"
+	billboard.Size = UDim2.new(0, 100, 0, 30)
+	billboard.StudsOffset = Vector3.new(0, 3, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Parent = torso
+	
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 1, 0)
+	nameLabel.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+	nameLabel.BackgroundTransparency = 0.3
+	nameLabel.Text = "🤖 Dummy " .. dummyCount
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.TextSize = 14
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Parent = billboard
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = nameLabel
+	
+	-- Register dummy as a "fake player" for item targeting
+	self:registerDummy(dummy)
+	
+	print("[ItemManager] Test dummy spawned for", player.Name)
+end
+
+-- Register dummy for item targeting
+function ItemManager:registerDummy(dummy: Model)
+	if not self.testDummies then
+		self.testDummies = {}
+	end
+	table.insert(self.testDummies, dummy)
+	
+	-- Create fake player data for the dummy
+	self.playerItems[dummy] = {
+		itemSlots = {nil, nil},
+		hasShield = false,
+		shieldExpiry = nil,
+		isSlowed = false,
+		slowExpiry = nil,
+		isBoosted = false,
+		boostExpiry = nil,
+	}
+end
+
+-- Remove all test dummies
+function ItemManager:removeTestDummies()
+	local dummiesFolder = workspace:FindFirstChild("TestDummies")
+	if dummiesFolder then
+		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
+			-- Remove from player data
+			if self.playerItems[dummy] then
+				self.playerItems[dummy] = nil
+			end
+			dummy:Destroy()
+		end
+	end
+	
+	if self.testDummies then
+		self.testDummies = {}
+	end
+	
+	print("[ItemManager] All test dummies removed")
+end
+
+-- Get all targetable entities (players + dummies)
+function ItemManager:getTargetableEntities(): {Model}
+	local entities = {}
+	
+	-- Add real players
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character then
+			table.insert(entities, player.Character)
+		end
+	end
+	
+	-- Add test dummies
+	local dummiesFolder = workspace:FindFirstChild("TestDummies")
+	if dummiesFolder then
+		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
+			table.insert(entities, dummy)
+		end
+	end
+	
+	return entities
+end
+
+-- Get player's race progress (stage + distance)
+function ItemManager:getPlayerProgress(player: Player): {currentStage: number, distance: number}?
+	if not self.matchManager then
+		return nil
+	end
+	
+	local room = self.matchManager:getPlayerRoom(player)
+	if not room then
+		return nil
+	end
+	
+	local progress = room.playerProgress[player]
+	if not progress then
+		return nil
+	end
+	
+	return {
+		currentStage = progress.currentStage or 0,
+		distance = progress.distance or 0
+	}
+end
+
+-- Check if target is ahead of player in the race
+function ItemManager:isTargetAhead(myProgress: {currentStage: number, distance: number}, targetProgress: {currentStage: number, distance: number}): boolean
+	-- Target is ahead if they have higher stage
+	if targetProgress.currentStage > myProgress.currentStage then
+		return true
+	end
+	-- Or same stage but greater distance
+	if targetProgress.currentStage == myProgress.currentStage and targetProgress.distance > myProgress.distance then
+		return true
+	end
+	return false
 end
 
 -- Initialize player items
@@ -415,10 +649,12 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	return true
 end
 
--- Check if missile hit any player
-function ItemManager:checkMissileHit(owner: Player, missile: Part): Player?
+-- Check if missile hit any player or dummy
+function ItemManager:checkMissileHit(owner: Player, missile: Part): (Player | Model)?
 	local missilePos = missile.Position
+	local ownerCharacter = owner.Character
 	
+	-- Check real players
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= owner then
 			local character = player.Character
@@ -439,6 +675,28 @@ function ItemManager:checkMissileHit(owner: Player, missile: Part): Player?
 						end
 						return player
 					end
+				end
+			end
+		end
+	end
+	
+	-- Check test dummies
+	local dummiesFolder = workspace:FindFirstChild("TestDummies")
+	if dummiesFolder then
+		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
+			local hrp = dummy:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local distance = (hrp.Position - missilePos).Magnitude
+				if distance < 4 then
+					-- Check if dummy has shield
+					local data = self.playerItems[dummy]
+					if data and data.hasShield then
+						data.hasShield = false
+						data.shieldExpiry = nil
+						print("[ItemManager] Dummy's shield blocked missile!")
+						return nil -- Shield blocked
+					end
+					return dummy
 				end
 			end
 		end
@@ -744,7 +1002,7 @@ function ItemManager:useShield(player: Player, itemDef): boolean
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		if hrp then
 			local activateSound = Instance.new("Sound")
-			activateSound.SoundId = "rbxassetid://130972023" -- Energy/shield activate
+			activateSound.SoundId = "rbxassetid://105300932320033" -- Shield activate
 			activateSound.Volume = 0.5
 			activateSound.Parent = hrp
 			activateSound:Play()
@@ -794,7 +1052,7 @@ function ItemManager:createShieldVisual(player: Player)
 	weld.Part1 = shield
 	weld.Parent = shield
 	
-	-- Hexagon/sparkle particles
+	-- Hexagon/sparkle particles on bubble
 	local particles = Instance.new("ParticleEmitter")
 	particles.Name = "ShieldParticles"
 	particles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
@@ -818,13 +1076,100 @@ function ItemManager:createShieldVisual(player: Player)
 	particles.SpreadAngle = Vector2.new(180, 180)
 	particles.Parent = shield
 	
-	-- Shield glow (no ring - just bubble + particles + glow)
+	-- === AURA EFFECT ===
+	-- Rising aura particles (going upward around character)
+	local auraUp = Instance.new("ParticleEmitter")
+	auraUp.Name = "ShieldAuraUp"
+	auraUp.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	auraUp.Lifetime = NumberRange.new(1, 1.5)
+	auraUp.Rate = 30
+	auraUp.Speed = NumberRange.new(3, 6)
+	auraUp.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(0.5, 0.6),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	auraUp.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 200, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 230, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 255, 255))
+	})
+	auraUp.LightEmission = 1
+	auraUp.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(0.7, 0.7),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	auraUp.EmissionDirection = Enum.NormalId.Top
+	auraUp.SpreadAngle = Vector2.new(30, 30)
+	auraUp.Parent = hrp
+	
+	-- Swirling aura particles (around character)
+	local auraSwirl = Instance.new("ParticleEmitter")
+	auraSwirl.Name = "ShieldAuraSwirl"
+	auraSwirl.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	auraSwirl.Lifetime = NumberRange.new(0.8, 1.2)
+	auraSwirl.Rate = 25
+	auraSwirl.Speed = NumberRange.new(4, 8)
+	auraSwirl.RotSpeed = NumberRange.new(200, 400)
+	auraSwirl.Rotation = NumberRange.new(0, 360)
+	auraSwirl.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.2),
+		NumberSequenceKeypoint.new(0.5, 0.5),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	auraSwirl.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 180, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 220, 255))
+	})
+	auraSwirl.LightEmission = 1
+	auraSwirl.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	auraSwirl.SpreadAngle = Vector2.new(180, 180)
+	auraSwirl.Parent = hrp
+	
+	-- Ground aura ring particles
+	local auraGround = Instance.new("ParticleEmitter")
+	auraGround.Name = "ShieldAuraGround"
+	auraGround.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	auraGround.Lifetime = NumberRange.new(0.5, 0.8)
+	auraGround.Rate = 20
+	auraGround.Speed = NumberRange.new(5, 10)
+	auraGround.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	auraGround.Color = ColorSequence.new(Color3.fromRGB(100, 200, 255))
+	auraGround.LightEmission = 1
+	auraGround.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	auraGround.EmissionDirection = Enum.NormalId.Bottom
+	auraGround.SpreadAngle = Vector2.new(80, 80)
+	auraGround.Parent = hrp
+	
+	-- Shield glow (enhanced)
 	local glow = Instance.new("PointLight")
 	glow.Name = "ShieldGlow"
 	glow.Color = Color3.fromRGB(100, 200, 255)
-	glow.Brightness = 0.5
-	glow.Range = 10
+	glow.Brightness = 1
+	glow.Range = 15
 	glow.Parent = shield
+	
+	-- Pulsing glow animation
+	task.spawn(function()
+		local startTime = tick()
+		while shieldContainer and shieldContainer.Parent and glow and glow.Parent do
+			local elapsed = tick() - startTime
+			local pulse = 0.7 + math.sin(elapsed * 3) * 0.3 -- Pulse between 0.4 and 1.0
+			glow.Brightness = pulse
+			shield.Transparency = 0.6 + math.sin(elapsed * 2) * 0.15 -- Pulse transparency
+			task.wait()
+		end
+	end)
 end
 
 -- Remove shield visual with break effect
@@ -841,7 +1186,7 @@ function ItemManager:removeShieldVisual(player: Player)
 			
 			-- Shield break sound
 			local breakSound = Instance.new("Sound")
-			breakSound.SoundId = "rbxassetid://545298872" -- Glass shatter
+			breakSound.SoundId = "rbxassetid://122218831341898" -- Shield break
 			breakSound.Volume = 0.6
 			breakSound.Parent = hrp
 			breakSound:Play()
@@ -851,6 +1196,16 @@ function ItemManager:removeShieldVisual(player: Player)
 			
 			shieldContainer:Destroy()
 		end
+		
+		-- Remove aura particles from hrp
+		local auraUp = hrp:FindFirstChild("ShieldAuraUp")
+		if auraUp then auraUp:Destroy() end
+		
+		local auraSwirl = hrp:FindFirstChild("ShieldAuraSwirl")
+		if auraSwirl then auraSwirl:Destroy() end
+		
+		local auraGround = hrp:FindFirstChild("ShieldAuraGround")
+		if auraGround then auraGround:Destroy() end
 	end
 end
 
@@ -930,6 +1285,19 @@ function ItemManager:useSpeedBoost(player: Player, itemDef): boolean
 	
 	data.isBoosted = true
 	data.boostExpiry = tick() + (itemDef.duration or 3)
+	
+	-- Speed boost sound
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		local boostSound = Instance.new("Sound")
+		boostSound.SoundId = "rbxassetid://105300932320033" -- Speed boost activate
+		boostSound.Volume = 0.7
+		boostSound.Parent = hrp
+		boostSound:Play()
+		task.delay(3, function()
+			if boostSound.Parent then boostSound:Destroy() end
+		end)
+	end
 	
 	-- Visual effect
 	self:createBoostVisual(player)
@@ -1104,42 +1472,93 @@ end
 
 -- Swap: สลับตำแหน่งกับคนที่ 1
 function ItemManager:useSwap(player: Player, itemDef): boolean
-	if not self.matchManager then return false end
+	local myChar = player.Character
+	if not myChar then return false end
 	
-	local room = self.matchManager:getPlayerRoom(player)
-	if not room then return false end
+	local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+	if not myHRP then return false end
 	
-	local rankings = self.matchManager:calculateRankings(room)
-	if #rankings < 2 then return false end
+	local myPos = myHRP.Position
 	
-	-- Find first place player (that isn't self)
+	-- Get my progress to determine who is ahead
+	local myProgress = self:getPlayerProgress(player)
+	
+	-- Find the NEAREST target that is AHEAD of me
 	local targetPlayer: Player? = nil
-	for _, p in ipairs(rankings) do
-		if p ~= player then
-			targetPlayer = p
-			break
+	local targetChar: Model? = nil
+	local targetHRP: BasePart? = nil
+	local closestDistance = math.huge
+	
+	-- Check all players (only those ahead)
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		if otherPlayer ~= player then
+			local otherChar = otherPlayer.Character
+			if otherChar then
+				local otherHRP = otherChar:FindFirstChild("HumanoidRootPart")
+				if otherHRP then
+					-- Check if this player is ahead
+					local isAhead = false
+					
+					if myProgress then
+						-- Use race progress to determine "ahead"
+						local otherProgress = self:getPlayerProgress(otherPlayer)
+						if otherProgress then
+							isAhead = self:isTargetAhead(myProgress, otherProgress)
+						end
+					else
+						-- Fallback: use Z position (race goes +Z direction)
+						isAhead = otherHRP.Position.Z > myPos.Z
+					end
+					
+					if isAhead then
+						local distance = (otherHRP.Position - myPos).Magnitude
+						if distance < closestDistance then
+							closestDistance = distance
+							targetPlayer = otherPlayer
+							targetChar = otherChar
+							targetHRP = otherHRP
+						end
+					end
+				end
+			end
 		end
 	end
 	
-	if not targetPlayer then return false end
+	-- Also check test dummies (use Z position for ahead check)
+	local dummiesFolder = workspace:FindFirstChild("TestDummies")
+	if dummiesFolder then
+		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
+			local hrp = dummy:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				-- Dummies use Z position to determine "ahead" (race goes +Z)
+				local isAhead = hrp.Position.Z > myPos.Z
+				
+				if isAhead then
+					local distance = (hrp.Position - myPos).Magnitude
+					if distance < closestDistance then
+						closestDistance = distance
+						targetPlayer = nil -- It's a dummy, not a player
+						targetChar = dummy
+						targetHRP = hrp
+					end
+				end
+			end
+		end
+	end
 	
-	local myChar = player.Character
-	local targetChar = targetPlayer.Character
-	
-	if not myChar or not targetChar then return false end
-	
-	local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-	local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-	
-	if not myHRP or not targetHRP then return false end
+	-- No valid target ahead
+	if not targetHRP then
+		print("[ItemManager]", player.Name, "tried to swap but no one is ahead!")
+		return false
+	end
 	
 	-- Store positions
-	local myPos = myHRP.CFrame
-	local targetPos = targetHRP.CFrame
+	local myCFrame = myHRP.CFrame
+	local targetCFrame = targetHRP.CFrame
 	
 	-- Teleport charge-up sound
 	local chargeSound = Instance.new("Sound")
-	chargeSound.SoundId = "rbxassetid://130972023" -- Teleport charge
+	chargeSound.SoundId = "rbxassetid://93826112721753" -- Swap teleport
 	chargeSound.Volume = 0.6
 	chargeSound.PlaybackSpeed = 0.8
 	chargeSound.Parent = myHRP
@@ -1152,14 +1571,15 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 	-- Swap positions after delay
 	task.delay(itemDef.swapDelay or 0.5, function()
 		if myHRP.Parent and targetHRP.Parent then
-			myHRP.CFrame = targetPos
-			targetHRP.CFrame = myPos
+			myHRP.CFrame = targetCFrame
+			targetHRP.CFrame = myCFrame
 			
 			-- Teleport flash at new positions
-			self:createSwapFlash(targetPos.Position)
-			self:createSwapFlash(myPos.Position)
+			self:createSwapFlash(targetCFrame.Position)
+			self:createSwapFlash(myCFrame.Position)
 			
-			print("[ItemManager]", player.Name, "swapped positions with", targetPlayer.Name)
+			local targetName = targetPlayer and targetPlayer.Name or targetChar.Name
+			print("[ItemManager]", player.Name, "swapped positions with", targetName, "(ahead, distance:", math.floor(closestDistance), "studs)")
 		end
 		
 		if chargeSound.Parent then chargeSound:Destroy() end
@@ -1185,6 +1605,7 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 		if thunderSound.Parent then thunderSound:Destroy() end
 	end)
 	
+	-- Affect all other players
 	for _, otherPlayer in ipairs(Players:GetPlayers()) do
 		if otherPlayer ~= player then
 			local data = self.playerItems[otherPlayer]
@@ -1208,6 +1629,19 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 						end
 					end
 				end
+			end
+		end
+	end
+	
+	-- Affect test dummies too
+	local dummiesFolder = workspace:FindFirstChild("TestDummies")
+	if dummiesFolder then
+		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
+			local hrp = dummy:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				self:createLightningStrike(hrp.Position)
+				-- Apply stun to dummy
+				self:applyDummyStun(dummy, itemDef.slowDuration or 3)
 			end
 		end
 	end
@@ -1284,7 +1718,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		
 		-- Zap sound on hit
 		local zapSound = Instance.new("Sound")
-		zapSound.SoundId = "rbxassetid://12222084" -- Electric zap
+		zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
 		zapSound.Volume = 0.4
 		zapSound.PlaybackSpeed = 1.5
 		zapSound.Parent = hrp
@@ -1295,6 +1729,56 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 	end
 	
 	print("[ItemManager]", player.Name, "struck by lightning!")
+end
+
+-- Apply stun to test dummy
+function ItemManager:applyDummyStun(dummy: Model, duration: number)
+	local hrp = dummy:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	local humanoid = dummy:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = 0
+		humanoid.JumpPower = 0
+	end
+	
+	-- Electric spark visual
+	local spark = Instance.new("ParticleEmitter")
+	spark.Name = "LightningSpark"
+	spark.Lifetime = NumberRange.new(0.1, 0.3)
+	spark.Rate = 50
+	spark.Speed = NumberRange.new(5, 15)
+	spark.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	spark.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 100)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 50))
+	})
+	spark.LightEmission = 1
+	spark.SpreadAngle = Vector2.new(180, 180)
+	spark.Parent = hrp
+	
+	-- Zap sound
+	local zapSound = Instance.new("Sound")
+	zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
+	zapSound.Volume = 0.4
+	zapSound.Parent = hrp
+	zapSound:Play()
+	
+	-- Clean up after duration
+	task.delay(duration, function()
+		if humanoid and humanoid.Parent then
+			humanoid.WalkSpeed = 8
+			humanoid.JumpPower = 30
+		end
+		if spark.Parent then spark:Destroy() end
+		if zapSound.Parent then zapSound:Destroy() end
+	end)
+	
+	print("[ItemManager] Test dummy struck by lightning!")
 end
 
 -- Remove slow effect
@@ -1327,8 +1811,19 @@ function ItemManager:removeSlowEffect(player: Player)
 end
 
 -- Apply stun effect
-function ItemManager:applyStun(player: Player, duration: number)
-	local character = player.Character
+function ItemManager:applyStun(target: Player | Model, duration: number)
+	-- Handle both Player and Model (dummy)
+	local character: Model?
+	local targetName: string
+	
+	if typeof(target) == "Instance" and target:IsA("Player") then
+		character = target.Character
+		targetName = target.Name
+	elseif typeof(target) == "Instance" and target:IsA("Model") then
+		character = target
+		targetName = target.Name
+	end
+	
 	if not character then return end
 	
 	local humanoid = character:FindFirstChild("Humanoid")
@@ -1395,7 +1890,7 @@ function ItemManager:applyStun(player: Player, duration: number)
 		end
 	end)
 	
-	print("[ItemManager]", player.Name, "stunned for", duration, "seconds")
+	print("[ItemManager]", targetName, "stunned for", duration, "seconds")
 end
 
 -- ========== VISUAL EFFECTS ==========

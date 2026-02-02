@@ -156,6 +156,60 @@ function ItemTestingUI:createItemButtons()
 		end
 	end
 	
+	-- Separator
+	local separator = Instance.new("TextLabel")
+	separator.Name = "Separator"
+	separator.Size = UDim2.new(1, 0, 0, 25)
+	separator.BackgroundTransparency = 1
+	separator.Text = "── Tools ──"
+	separator.TextColor3 = Color3.fromRGB(255, 200, 100)
+	separator.TextSize = 14
+	separator.Font = Enum.Font.GothamBold
+	separator.LayoutOrder = layoutOrder + 50
+	separator.Parent = self.scrollFrame
+	
+	-- Spawn Dummy button
+	local spawnDummyButton = Instance.new("TextButton")
+	spawnDummyButton.Name = "SpawnDummyButton"
+	spawnDummyButton.Size = UDim2.new(1, 0, 0, 45)
+	spawnDummyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+	spawnDummyButton.Text = "🤖 Spawn Test Dummy"
+	spawnDummyButton.TextColor3 = Color3.fromRGB(150, 150, 255)
+	spawnDummyButton.TextSize = 14
+	spawnDummyButton.Font = Enum.Font.GothamBold
+	spawnDummyButton.LayoutOrder = layoutOrder + 51
+	spawnDummyButton.Parent = self.scrollFrame
+	
+	local spawnCorner = Instance.new("UICorner")
+	spawnCorner.CornerRadius = UDim.new(0, 8)
+	spawnCorner.Parent = spawnDummyButton
+	
+	spawnDummyButton.MouseButton1Click:Connect(function()
+		self:spawnDummy()
+		self:playClickEffect(spawnDummyButton)
+	end)
+	
+	-- Remove Dummy button
+	local removeDummyButton = Instance.new("TextButton")
+	removeDummyButton.Name = "RemoveDummyButton"
+	removeDummyButton.Size = UDim2.new(1, 0, 0, 45)
+	removeDummyButton.BackgroundColor3 = Color3.fromRGB(100, 60, 60)
+	removeDummyButton.Text = "❌ Remove All Dummies"
+	removeDummyButton.TextColor3 = Color3.fromRGB(255, 150, 150)
+	removeDummyButton.TextSize = 14
+	removeDummyButton.Font = Enum.Font.GothamBold
+	removeDummyButton.LayoutOrder = layoutOrder + 52
+	removeDummyButton.Parent = self.scrollFrame
+	
+	local removeCorner = Instance.new("UICorner")
+	removeCorner.CornerRadius = UDim.new(0, 8)
+	removeCorner.Parent = removeDummyButton
+	
+	removeDummyButton.MouseButton1Click:Connect(function()
+		self:removeDummies()
+		self:playClickEffect(removeDummyButton)
+	end)
+	
 	-- Clear items button
 	local clearButton = Instance.new("TextButton")
 	clearButton.Name = "ClearButton"
@@ -280,6 +334,32 @@ function ItemTestingUI:clearItems()
 			print("[ItemTestingUI] Cleared all items")
 		else
 			warn("[ItemTestingUI] ClearTestItems remote not found!")
+		end
+	end
+end
+
+function ItemTestingUI:spawnDummy()
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if remotes then
+		local spawnRemote = remotes:FindFirstChild("SpawnTestDummy")
+		if spawnRemote then
+			spawnRemote:FireServer()
+			print("[ItemTestingUI] Spawning test dummy...")
+		else
+			warn("[ItemTestingUI] SpawnTestDummy remote not found!")
+		end
+	end
+end
+
+function ItemTestingUI:removeDummies()
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if remotes then
+		local removeRemote = remotes:FindFirstChild("RemoveTestDummies")
+		if removeRemote then
+			removeRemote:FireServer()
+			print("[ItemTestingUI] Removing all test dummies...")
+		else
+			warn("[ItemTestingUI] RemoveTestDummies remote not found!")
 		end
 	end
 end

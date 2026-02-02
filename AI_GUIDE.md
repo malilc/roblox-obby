@@ -443,7 +443,7 @@ local Config = {
 | Banana | Common | 🍌 | Drop a banana behind you. Makes players slip! |
 | Shield | Uncommon | 🛡️ | Create a shield that blocks 1 attack. |
 | Speed Boost | Uncommon | ⚡ | +50% speed for 3 seconds! |
-| Swap | Rare | 🔄 | Instantly swap positions with 1st place! |
+| Swap | Rare | 🔄 | Swap positions with the nearest player ahead of you! |
 | Lightning | Epic | ⚡🌩️ | Slows ALL other players for 3 sec! |
 
 ### Dual Item Slots:
@@ -469,7 +469,7 @@ itemBox.Parent = itemPickups
 |------|---------------|
 | Missile | Rocket mesh + flame/smoke trails + explosion particles |
 | Banana | Yellow mesh (ID: 6407990721) + sparkles + slip animation (ล้มไปข้างหลัง) |
-| Shield | Force field bubble + hex particles |
+| Shield | Force field bubble + hex particles + aura (rising/swirling) + pulsing glow |
 | Speed Boost | Speed lines + aura particles + trail |
 | Swap | Portal ring + swirl particles + teleport flash |
 | Lightning | Global screen flash + lightning strikes per player |
@@ -492,16 +492,19 @@ itemBox.Parent = itemPickups
 |------|-------|
 | Banana Drop | rbxassetid://70557734865364 |
 | Banana Slip | rbxassetid://129432532096499 |
-| Shield Activate | rbxassetid://130972023 |
-| Shield Break | rbxassetid://545298872 |
+| Shield Activate | rbxassetid://105300932320033 |
+| Shield Break | rbxassetid://122218831341898 |
+| Speed Boost | rbxassetid://105300932320033 |
 | Missile Fire | rbxassetid://287390459 |
 | Explosion | rbxassetid://287390954 |
-| Swap Teleport | rbxassetid://130972023 |
-| Lightning Zap | rbxassetid://12222084 |
+| Swap Teleport | rbxassetid://93826112721753 |
+| Lightning Zap | rbxassetid://8952019380 |
 
 ### Item Testing UI (Development):
 - กด **T** เพื่อเปิด/ปิดเมนูทดสอบ
 - เลือก item ที่ต้องการให้ตัวเอง
+- กด **"Spawn Test Dummy"** เพื่อสร้าง Dummy สำหรับทดสอบ Missile/Swap/Lightning
+- กด **"Remove All Dummies"** เพื่อลบ Dummies ทั้งหมด
 - กด "Clear All Items" เพื่อล้าง
 - แบ่งกลุ่มตาม rarity
 
@@ -615,6 +618,8 @@ Match = {
 | `ItemEffectEvent` | Server → Client | 🎯 Client-side VFX (screen shake, flash) |
 | `GiveTestItem` | Client → Server | 🧪 ให้ item สำหรับทดสอบ |
 | `ClearTestItems` | Client → Server | 🧪 ล้าง items ทั้งหมด |
+| `SpawnTestDummy` | Client → Server | 🤖 สร้าง Test Dummy |
+| `RemoveTestDummies` | Client → Server | 🤖 ลบ Test Dummies ทั้งหมด |
 
 ### เพิ่ม RemoteEvent ใหม่:
 
@@ -936,8 +941,11 @@ end)
 15. **Item Tooltip**: คลิกที่ item เพื่อดู description (auto-hide 6 วินาที)
 16. **Rarity Colors**: Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง
 17. **Item Icons**: ใช้ emoji (🚀🍌🛡️⚡🔄⚡🌩️)
-18. **Item Testing**: กด T เพื่อเปิดเมนูทดสอบ (dev only)
+18. **Item Testing**: กด T เปิดเมนูทดสอบ + Spawn Dummy สำหรับทดสอบ
 19. **Banana Slip**: ล้มไปข้างหลัง + กระโดดไม่ได้ + เจ้าของก็ลื่นได้
+20. **Swap**: สลับกับคนที่อยู่ **ข้างหน้า** เท่านั้น (ไม่ใช่ข้างหลัง)
+21. **Shield Aura**: มี particles ลอยขึ้น + หมุนรอบตัว + กระพริบเรืองแสง
+22. **Test Dummies**: สร้าง Dummy สำหรับทดสอบ Missile/Swap/Lightning
 
 ### 🎭 Character Class System
 17. **3 Classes**: Runner (+speed), Jumper (+jump), Tank (+resistance)
