@@ -16,7 +16,15 @@ local FlyController = require(script.FlyController)
 local flyController = FlyController.new()
 flyController:setupCharacterEvents()
 
-print("[Client] UI initialized!")
+-- Initialize Item Effects (screen shake, flash, etc.)
+local ItemEffects = require(script.ItemEffects)
+local itemEffects = ItemEffects.new()
+
+-- Initialize Item Testing UI (for development)
+local ItemTestingUI = require(script.UI.ItemTestingUI)
+local itemTestingUI = ItemTestingUI.new()
+
+print("[Client] UI, Effects, and Testing Menu initialized!")
 
 -- Local player reference
 local LocalPlayer = Players.LocalPlayer

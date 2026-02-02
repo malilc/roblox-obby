@@ -1,6 +1,6 @@
 -- ItemTypes: นิยาม Item ทั้งหมดสำหรับเกม (แบบ Mario Kart)
 
-export type ItemRarity = "Common" | "Uncommon" | "Rare" | "VeryRare"
+export type ItemRarity = "Common" | "Uncommon" | "Rare" | "Epic"
 
 export type ItemDefinition = {
 	id: string,
@@ -20,7 +20,7 @@ export type ItemDefinition = {
 
 local ItemTypes = {}
 
--- Item definitions
+-- Item definitions (using emoji text icons for reliability)
 ItemTypes.Items = {
 	-- ========== COMMON ITEMS (พบบ่อย) ==========
 	
@@ -28,7 +28,7 @@ ItemTypes.Items = {
 		id = "Missile",
 		name = "Missile",
 		description = "Fire a missile forward. Stuns on hit for 2 sec.",
-		icon = "rbxassetid://6031075938", -- rocket icon
+		icon = "🚀", -- rocket emoji
 		rarity = "Common",
 		weight = 25,
 		catchUpBonus = 0,
@@ -44,7 +44,7 @@ ItemTypes.Items = {
 		id = "Banana",
 		name = "Banana",
 		description = "Drop a banana behind you. Makes players slip!",
-		icon = "rbxassetid://6031094678", -- banana icon
+		icon = "🍌", -- banana emoji
 		rarity = "Common",
 		weight = 25,
 		catchUpBonus = 0,
@@ -61,7 +61,7 @@ ItemTypes.Items = {
 		id = "Shield",
 		name = "Shield",
 		description = "Create a shield that blocks 1 attack.",
-		icon = "rbxassetid://6031068421", -- shield icon
+		icon = "🛡️", -- shield emoji
 		rarity = "Uncommon",
 		weight = 20,
 		catchUpBonus = 1,
@@ -75,7 +75,7 @@ ItemTypes.Items = {
 		id = "SpeedBoost",
 		name = "Speed Boost",
 		description = "+50% speed for 3 seconds!",
-		icon = "rbxassetid://6031082533", -- lightning bolt icon
+		icon = "⚡", -- lightning bolt emoji
 		rarity = "Uncommon",
 		weight = 18,
 		catchUpBonus = 2,
@@ -92,7 +92,7 @@ ItemTypes.Items = {
 		id = "Swap",
 		name = "Swap",
 		description = "Instantly swap positions with 1st place!",
-		icon = "rbxassetid://6034973115", -- swap arrows icon
+		icon = "🔄", -- swap arrows emoji
 		rarity = "Rare",
 		weight = 8,
 		catchUpBonus = 5,
@@ -102,14 +102,14 @@ ItemTypes.Items = {
 		swapDelay = 0.5,
 	},
 	
-	-- ========== VERY RARE ITEMS ==========
+	-- ========== EPIC ITEMS ==========
 	
 	Lightning = {
 		id = "Lightning",
 		name = "Lightning",
 		description = "Slows ALL other players for 3 sec!",
-		icon = "rbxassetid://6022668898", -- lightning icon
-		rarity = "VeryRare",
+		icon = "⚡🌩️", -- lightning bolt emoji
+		rarity = "Epic",
 		weight = 4,
 		catchUpBonus = 8,
 		duration = 3, -- seconds
@@ -186,7 +186,7 @@ function ItemTypes.getRarityColor(rarity: ItemRarity): Color3
 		return Color3.fromRGB(100, 200, 100) -- Green
 	elseif rarity == "Rare" then
 		return Color3.fromRGB(100, 150, 255) -- Blue
-	elseif rarity == "VeryRare" then
+	elseif rarity == "Epic" then
 		return Color3.fromRGB(200, 100, 255) -- Purple
 	end
 	return Color3.fromRGB(255, 255, 255)
@@ -200,8 +200,8 @@ function ItemTypes.getRarityName(rarity: ItemRarity): string
 		return "Uncommon"
 	elseif rarity == "Rare" then
 		return "Rare"
-	elseif rarity == "VeryRare" then
-		return "Very Rare"
+	elseif rarity == "Epic" then
+		return "Epic"
 	end
 	return "Unknown"
 end

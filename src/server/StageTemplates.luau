@@ -51,12 +51,9 @@ local function createCheckpoint(position: Vector3): Part
 	return checkpoint
 end
 
--- Item Box Mesh Asset ID (ใช้ ID ที่ผู้ใช้ให้มา)
-local ITEM_BOX_MESH_ID = "rbxassetid://6325349064"
-
--- Helper function สร้าง Item Box (Mario Kart style - ได้ random item)
+-- Helper function สร้าง Item Box (Neon Cube Style - Cyberpunk)
 local function createItemPickup(position: Vector3): Part
-	-- สร้าง Part หลัก
+	-- สร้าง Part หลัก - Neon Cube
 	local pickup = Instance.new("Part")
 	pickup.Name = "ItemBox"
 	pickup.Anchored = true
@@ -64,47 +61,55 @@ local function createItemPickup(position: Vector3): Part
 	pickup.Size = Vector3.new(3, 3, 3)
 	pickup.Transparency = 0
 	pickup.Material = Enum.Material.Neon
-	pickup.Color = Color3.fromRGB(255, 200, 50) -- สีเหลืองสว่าง
+	pickup.Color = Color3.fromRGB(150, 100, 255) -- สีม่วง-ฟ้า (cyberpunk style)
 	
 	-- ยกขึ้น 3 studs
 	local raisedPosition = position + Vector3.new(0, 3, 0)
 	pickup.Position = raisedPosition
 	
-	-- เพิ่ม SpecialMesh สำหรับ Item Box
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.FileMesh
-	mesh.MeshId = ITEM_BOX_MESH_ID
-	mesh.Scale = Vector3.new(0.30, 0.30, 0.30)
-	mesh.Parent = pickup
+	-- เพิ่ม Friction สูงเพื่อไม่ให้ลื่น
+	pickup.CustomPhysicalProperties = PhysicalProperties.new(
+		0.7,  -- Density
+		2.0,  -- Friction
+		0.1,  -- Elasticity
+		1.0,  -- FrictionWeight
+		0.5   -- ElasticityWeight
+	)
 	
-	-- Add sparkle effect (Rainbow สำหรับ Item Box)
-	local sparkles = Instance.new("ParticleEmitter")
-	sparkles.Lifetime = NumberRange.new(0.5, 1)
-	sparkles.Rate = 10
-	sparkles.Speed = NumberRange.new(1, 3)
-	sparkles.Size = NumberSequence.new(0.4, 0)
-	sparkles.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)),
-		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 100)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 255, 100)),
-		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(100, 100, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 255)),
+	-- Particle effect - สีน้ำเงิน/ม่วง cyberpunk
+	local particles = Instance.new("ParticleEmitter")
+	particles.Lifetime = NumberRange.new(0.5, 1)
+	particles.Rate = 15
+	particles.Speed = NumberRange.new(2, 5)
+	particles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 0)
 	})
-	sparkles.LightEmission = 1
-	sparkles.SpreadAngle = Vector2.new(180, 180)
-	sparkles.Parent = pickup
+	particles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 150, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 100, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 200, 255)),
+	})
+	particles.LightEmission = 1
+	particles.SpreadAngle = Vector2.new(180, 180)
+	particles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	particles.Parent = pickup
 	
-	-- Add PointLight for glow (สีม่วงเหลือง)
+	-- PointLight สีฟ้า-ม่วง
 	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 220, 100)
-	light.Brightness = 1.2
-	light.Range = 8
+	light.Color = Color3.fromRGB(100, 150, 255)
+	light.Brightness = 2
+	light.Range = 10
 	light.Parent = pickup
 	
 	-- Item Box attributes (ไม่ใช่ Coin - จะได้ random item)
 	pickup:SetAttribute("IsItemBox", true)
 	pickup:SetAttribute("IsCoin", false) -- ไม่ใช่เหรียญ - จะได้ item แทน
 	pickup:SetAttribute("SpinSpeed", 2)
+	pickup:SetAttribute("OriginalY", raisedPosition.Y) -- สำหรับ bobbing animation
 	
 	return pickup
 end

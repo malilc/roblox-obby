@@ -10,7 +10,7 @@ local ItemManager = {}
 ItemManager.__index = ItemManager
 
 export type PlayerItemData = {
-	currentItem: string?, -- Item ID ที่ถืออยู่
+	itemSlots: {string?}, -- Array of 2 item slots [slot1, slot2]
 	lastUseTime: number,
 	hasShield: boolean,
 	shieldExpiry: number?,
@@ -37,10 +37,13 @@ function ItemManager.new(currencyManager: any?, gameManager: any?, matchManager:
 	self.useItemRemote = ReplicatedStorage.Remotes.UseItem
 	self.updateScoreRemote = ReplicatedStorage.Remotes.UpdateScore
 	
-	-- Listen for item use
-	self.useItemRemote.OnServerEvent:Connect(function(player)
-		self:useItem(player)
+	-- Listen for item use (with slot index)
+	self.useItemRemote.OnServerEvent:Connect(function(player, slotIndex)
+		self:useItem(player, slotIndex or 1)
 	end)
+	
+	-- Setup testing remotes (for development)
+	self:setupTestingRemotes()
 	
 	-- Start effect cleanup loop
 	self:startEffectLoop()
@@ -48,10 +51,88 @@ function ItemManager.new(currencyManager: any?, gameManager: any?, matchManager:
 	return self
 end
 
+-- Setup testing remotes for item testing menu
+function ItemManager:setupTestingRemotes()
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if not remotes then return end
+	
+	-- Create GiveTestItem remote if not exists
+	local giveTestItem = remotes:FindFirstChild("GiveTestItem")
+	if not giveTestItem then
+		giveTestItem = Instance.new("RemoteEvent")
+		giveTestItem.Name = "GiveTestItem"
+		giveTestItem.Parent = remotes
+	end
+	
+	-- Create ClearTestItems remote if not exists
+	local clearTestItems = remotes:FindFirstChild("ClearTestItems")
+	if not clearTestItems then
+		clearTestItems = Instance.new("RemoteEvent")
+		clearTestItems.Name = "ClearTestItems"
+		clearTestItems.Parent = remotes
+	end
+	
+	-- Handle GiveTestItem
+	giveTestItem.OnServerEvent:Connect(function(player, itemId)
+		self:giveTestItem(player, itemId)
+	end)
+	
+	-- Handle ClearTestItems
+	clearTestItems.OnServerEvent:Connect(function(player)
+		self:clearTestItems(player)
+	end)
+	
+	print("[ItemManager] Testing remotes initialized")
+end
+
+-- Give a specific item for testing
+function ItemManager:giveTestItem(player: Player, itemId: string)
+	local data = self.playerItems[player]
+	if not data then
+		self:initPlayer(player)
+		data = self.playerItems[player]
+	end
+	
+	local itemDef = ItemTypes.getItem(itemId)
+	if not itemDef then
+		warn("[ItemManager] Invalid item ID for testing:", itemId)
+		return
+	end
+	
+	-- Find empty slot or replace slot 1
+	local slotIndex = self:getFirstEmptySlot(player) or 1
+	data.itemSlots[slotIndex] = itemId
+	
+	self:sendItemUpdate(player)
+	print("[ItemManager] Test item given to", player.Name, ":", itemDef.name, "in slot", slotIndex)
+end
+
+-- Clear all items for testing
+function ItemManager:clearTestItems(player: Player)
+	local data = self.playerItems[player]
+	if data then
+		data.itemSlots = {nil, nil}
+		data.hasShield = false
+		data.shieldExpiry = nil
+		data.isSlowed = false
+		data.slowExpiry = nil
+		data.isBoosted = false
+		data.boostExpiry = nil
+		
+		-- Remove visual effects
+		self:removeShieldVisual(player)
+		self:removeBoostEffect(player)
+		self:removeSlowEffect(player)
+		
+		self:sendItemUpdate(player)
+		print("[ItemManager] Test items cleared for", player.Name)
+	end
+end
+
 -- Initialize player items
 function ItemManager:initPlayer(player: Player)
 	self.playerItems[player] = {
-		currentItem = nil,
+		itemSlots = {nil, nil}, -- 2 item slots
 		lastUseTime = 0,
 		hasShield = false,
 		shieldExpiry = nil,
@@ -62,19 +143,41 @@ function ItemManager:initPlayer(player: Player)
 	}
 end
 
--- Get player's current item
-function ItemManager:getCurrentItem(player: Player): string?
+-- Get player's item in specific slot
+function ItemManager:getItemInSlot(player: Player, slotIndex: number): string?
 	local data = self.playerItems[player]
-	return data and data.currentItem or nil
+	if data and data.itemSlots then
+		return data.itemSlots[slotIndex]
+	end
+	return nil
 end
 
--- Set player's current item
-function ItemManager:setCurrentItem(player: Player, itemId: string?)
+-- Set player's item in specific slot
+function ItemManager:setItemInSlot(player: Player, slotIndex: number, itemId: string?)
 	local data = self.playerItems[player]
-	if data then
-		data.currentItem = itemId
+	if data and data.itemSlots then
+		data.itemSlots[slotIndex] = itemId
 		self:sendItemUpdate(player)
 	end
+end
+
+-- Check if player has any item
+function ItemManager:hasAnyItem(player: Player): boolean
+	local data = self.playerItems[player]
+	if data and data.itemSlots then
+		return data.itemSlots[1] ~= nil or data.itemSlots[2] ~= nil
+	end
+	return false
+end
+
+-- Get first empty slot (returns nil if both full)
+function ItemManager:getFirstEmptySlot(player: Player): number?
+	local data = self.playerItems[player]
+	if data and data.itemSlots then
+		if data.itemSlots[1] == nil then return 1 end
+		if data.itemSlots[2] == nil then return 2 end
+	end
+	return nil
 end
 
 -- Give random item to player based on their rank
@@ -82,9 +185,10 @@ function ItemManager:giveRandomItem(player: Player)
 	local data = self.playerItems[player]
 	if not data then return end
 	
-	-- Don't give if already has item
-	if data.currentItem then
-		print("[ItemManager]", player.Name, "already has item:", data.currentItem)
+	-- Find first empty slot
+	local emptySlot = self:getFirstEmptySlot(player)
+	if not emptySlot then
+		print("[ItemManager]", player.Name, "inventory full! Both slots occupied.")
 		return
 	end
 	
@@ -108,22 +212,33 @@ function ItemManager:giveRandomItem(player: Player)
 	
 	-- Get weighted random item
 	local item = ItemTypes.getWeightedRandomItem(playerRank, totalPlayers)
-	data.currentItem = item.id
+	data.itemSlots[emptySlot] = item.id
 	
-	print("[ItemManager]", player.Name, "got item:", item.name, "(Rank:", playerRank, "/", totalPlayers, ")")
+	print("[ItemManager]", player.Name, "got item:", item.name, "in slot", emptySlot, "(Rank:", playerRank, "/", totalPlayers, ")")
 	
 	self:sendItemUpdate(player)
 end
 
--- Use current item
-function ItemManager:useItem(player: Player)
+-- Use item from specific slot
+function ItemManager:useItem(player: Player, slotIndex: number)
 	local data = self.playerItems[player]
-	if not data or not data.currentItem then
-		print("[ItemManager]", player.Name, "has no item to use")
+	if not data or not data.itemSlots then
+		print("[ItemManager]", player.Name, "has no item data")
 		return
 	end
 	
-	local itemId = data.currentItem
+	-- Validate slot index
+	slotIndex = slotIndex or 1
+	if slotIndex < 1 or slotIndex > 2 then
+		slotIndex = 1
+	end
+	
+	local itemId = data.itemSlots[slotIndex]
+	if not itemId then
+		print("[ItemManager]", player.Name, "has no item in slot", slotIndex)
+		return
+	end
+	
 	local itemDef = ItemTypes.getItem(itemId)
 	if not itemDef then return end
 	
@@ -138,11 +253,11 @@ function ItemManager:useItem(player: Player)
 	local success = self:executeItemEffect(player, itemDef)
 	
 	if success then
-		-- Clear item and update cooldown
-		data.currentItem = nil
+		-- Clear item from slot and update cooldown
+		data.itemSlots[slotIndex] = nil
 		data.lastUseTime = now
 		
-		print("[ItemManager]", player.Name, "used item:", itemDef.name)
+		print("[ItemManager]", player.Name, "used item:", itemDef.name, "from slot", slotIndex)
 		self:sendItemUpdate(player)
 	end
 end
@@ -179,34 +294,86 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	local direction = rootPart.CFrame.LookVector
 	local startPos = rootPart.Position + direction * 3 + Vector3.new(0, 1, 0)
 	
-	-- Create missile
+	-- Create missile with mesh
 	local missile = Instance.new("Part")
 	missile.Name = "Missile"
-	missile.Size = Vector3.new(1, 1, 3)
+	missile.Size = Vector3.new(1, 1, 2)
 	missile.Position = startPos
 	missile.CFrame = CFrame.lookAt(startPos, startPos + direction)
 	missile.Anchored = true
 	missile.CanCollide = false
 	missile.Material = Enum.Material.Neon
-	missile.Color = Color3.fromRGB(255, 100, 50)
+	missile.Color = Color3.fromRGB(255, 80, 30)
 	missile:SetAttribute("Owner", player.UserId)
 	missile.Parent = workspace
 	
-	-- Particle trail
-	local trail = Instance.new("ParticleEmitter")
-	trail.Lifetime = NumberRange.new(0.3, 0.5)
-	trail.Rate = 100
-	trail.Speed = NumberRange.new(0, 0)
-	trail.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
+	-- Add rocket mesh
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.FileMesh
+	mesh.MeshId = "rbxassetid://442793303" -- Rocket mesh
+	mesh.Scale = Vector3.new(0.3, 0.3, 0.3)
+	mesh.Parent = missile
+	
+	-- Fire particle trail (flames)
+	local fireTrail = Instance.new("ParticleEmitter")
+	fireTrail.Name = "FireTrail"
+	fireTrail.Lifetime = NumberRange.new(0.3, 0.5)
+	fireTrail.Rate = 120
+	fireTrail.Speed = NumberRange.new(5, 15)
+	fireTrail.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.5),
+		NumberSequenceKeypoint.new(0.5, 1),
 		NumberSequenceKeypoint.new(1, 0)
 	})
-	trail.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 100)),
+	fireTrail.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 200)),
+		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 150, 50)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 50, 0))
 	})
-	trail.LightEmission = 1
-	trail.Parent = missile
+	fireTrail.LightEmission = 1
+	fireTrail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 0.3),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	fireTrail.EmissionDirection = Enum.NormalId.Back
+	fireTrail.Parent = missile
+	
+	-- Smoke trail
+	local smokeTrail = Instance.new("ParticleEmitter")
+	smokeTrail.Name = "SmokeTrail"
+	smokeTrail.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	smokeTrail.Lifetime = NumberRange.new(0.5, 1)
+	smokeTrail.Rate = 50
+	smokeTrail.Speed = NumberRange.new(2, 5)
+	smokeTrail.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 2)
+	})
+	smokeTrail.Color = ColorSequence.new(Color3.fromRGB(80, 80, 80))
+	smokeTrail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	smokeTrail.EmissionDirection = Enum.NormalId.Back
+	smokeTrail.Parent = missile
+	
+	-- PointLight for glow
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 150, 50)
+	light.Brightness = 2
+	light.Range = 8
+	light.Parent = missile
+	
+	-- Fire sound
+	local fireSound = Instance.new("Sound")
+	fireSound.SoundId = "rbxassetid://287390459"
+	fireSound.Volume = 0.5
+	fireSound.Parent = rootPart
+	fireSound:Play()
+	task.delay(2, function()
+		if fireSound.Parent then fireSound:Destroy() end
+	end)
 	
 	table.insert(self.activeProjectiles, missile)
 	
@@ -283,49 +450,120 @@ end
 -- Banana: วางบนพื้น
 function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	local behindDir = -rootPart.CFrame.LookVector
-	local dropPos = rootPart.Position + behindDir * 3 + Vector3.new(0, -2, 0)
+	local dropPos = rootPart.Position + behindDir * 3 + Vector3.new(0, 0, 0)
 	
-	-- Create banana
+	-- Create banana with mesh
 	local banana = Instance.new("Part")
 	banana.Name = "Banana"
-	banana.Size = Vector3.new(2, 0.5, 2)
+	banana.Size = Vector3.new(3, 2, 3) -- Larger hitbox for better detection (including jumping)
 	banana.Position = dropPos
-	banana.Anchored = true
-	banana.CanCollide = false
+	banana.Anchored = false -- Let it fall with gravity
+	banana.CanCollide = true -- Collide with ground
 	banana.Material = Enum.Material.SmoothPlastic
-	banana.Color = Color3.fromRGB(255, 230, 50)
-	banana.Shape = Enum.PartType.Cylinder
-	banana.Orientation = Vector3.new(0, 0, 90)
+	banana.Color = Color3.fromRGB(255, 230, 50) -- Bright yellow
+	banana.Transparency = 0 -- Visible so mesh renders
 	banana:SetAttribute("Owner", player.UserId)
 	banana:SetAttribute("ExpireTime", tick() + (itemDef.duration or 30))
 	banana.Parent = workspace
 	
+	-- Use actual banana mesh
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.FileMesh
+	mesh.MeshId = "rbxassetid://6407990721" -- Banana mesh
+	mesh.Scale = Vector3.new(0.05, 0.05, 0.05)
+	mesh.Offset = Vector3.new(0, 0.5, 0) -- Raise mesh up to align with ground
+	mesh.Parent = banana
+	
+	-- Anchor after landing (wait for it to settle)
+	task.delay(1.5, function()
+		if banana and banana.Parent then
+			banana.Anchored = true
+			banana.CanCollide = false -- No collision with players after anchored
+		end
+	end)
+	
+	-- Sparkle effect to make it visible
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Name = "BananaSparkle"
+	sparkle.Lifetime = NumberRange.new(0.5, 1)
+	sparkle.Rate = 8
+	sparkle.Speed = NumberRange.new(1, 3)
+	sparkle.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	sparkle.Color = ColorSequence.new(Color3.fromRGB(255, 255, 100))
+	sparkle.LightEmission = 1
+	sparkle.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Parent = banana
+	
+	-- Glow to make it stand out
+	local glow = Instance.new("PointLight")
+	glow.Color = Color3.fromRGB(255, 230, 100)
+	glow.Brightness = 1
+	glow.Range = 6
+	glow.Parent = banana
+	
+	-- Drop sound
+	local dropSound = Instance.new("Sound")
+	dropSound.SoundId = "rbxassetid://70557734865364" -- Banana drop sound
+	dropSound.Volume = 0.4
+	dropSound.Parent = banana
+	dropSound:Play()
+	
 	table.insert(self.placedBananas, banana)
 	
-	-- Touch detection
+	-- Track if banana is active and has been triggered
+	local isActive = false
+	local hasTriggered = false
+	
+	-- Activate banana after it lands (delay to let it settle)
+	task.delay(0.5, function()
+		if banana and banana.Parent then
+			isActive = true
+			banana:SetAttribute("Active", true)
+		end
+	end)
+	
+	-- Touch detection (anyone can slip, including owner)
 	banana.Touched:Connect(function(hit)
-		local humanoid = hit.Parent:FindFirstChild("Humanoid")
-		if humanoid then
-			local hitPlayer = Players:GetPlayerFromCharacter(hit.Parent)
-			if hitPlayer and hitPlayer ~= player then
-				-- Check if player has shield
-				local data = self.playerItems[hitPlayer]
-				if data and data.hasShield then
-					data.hasShield = false
-					data.shieldExpiry = nil
-					self:removeShieldVisual(hitPlayer)
-					self:sendItemUpdate(hitPlayer)
-					print("[ItemManager]", hitPlayer.Name, "'s shield blocked banana!")
-				else
-					self:applySlip(hitPlayer, itemDef)
-				end
-				
-				-- Remove banana
-				if banana.Parent then
-					self:createBananaSlipEffect(banana.Position)
-					banana:Destroy()
-				end
-			end
+		-- Skip if not active yet or already triggered
+		if not isActive or hasTriggered then return end
+		if not banana or not banana.Parent then return end
+		
+		-- Check if hit is a character part (not ground/terrain)
+		local character = hit.Parent
+		if not character then return end
+		
+		local humanoid = character:FindFirstChild("Humanoid")
+		if not humanoid then return end
+		
+		local hitPlayer = Players:GetPlayerFromCharacter(character)
+		if not hitPlayer then return end
+		
+		-- Mark as triggered to prevent multiple slips
+		hasTriggered = true
+		
+		-- Check if player has shield
+		local data = self.playerItems[hitPlayer]
+		if data and data.hasShield then
+			data.hasShield = false
+			data.shieldExpiry = nil
+			self:removeShieldVisual(hitPlayer)
+			self:sendItemUpdate(hitPlayer)
+			print("[ItemManager]", hitPlayer.Name, "'s shield blocked banana!")
+		else
+			self:applySlip(hitPlayer, itemDef)
+		end
+		
+		-- Remove banana
+		if banana.Parent then
+			self:createBananaSlipEffect(banana.Position)
+			banana:Destroy()
 		end
 	end)
 	
@@ -340,26 +578,153 @@ function ItemManager:applySlip(player: Player, itemDef)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 	
+	local humanoid = character:FindFirstChild("Humanoid")
+	if not humanoid then return end
+	
+	local slipDuration = itemDef.slipDuration or 1.5
+	
 	print("[ItemManager]", player.Name, "slipped on banana!")
 	
-	-- Knockback
-	local knockback = Instance.new("BodyVelocity")
-	knockback.Velocity = Vector3.new(
-		(math.random() - 0.5) * (itemDef.knockbackForce or 50),
-		30,
-		(math.random() - 0.5) * (itemDef.knockbackForce or 50)
-	)
-	knockback.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-	knockback.Parent = hrp
+	-- Save original values
+	local originalWalkSpeed = humanoid.WalkSpeed
+	local originalJumpPower = humanoid.JumpPower
+	local originalJumpHeight = humanoid.JumpHeight
 	
-	task.delay(0.3, function()
-		if knockback.Parent then
-			knockback:Destroy()
+	-- Flag to track if slip is active
+	local slipActive = true
+	
+	-- Simple disable: just stop movement and jumping
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+	
+	-- Continuous enforcement loop - keeps preventing jumps
+	task.spawn(function()
+		while slipActive and humanoid and humanoid.Parent do
+			humanoid.JumpPower = 0
+			humanoid.JumpHeight = 0
+			humanoid.Jump = false
+			
+			-- Cap upward velocity only (prevent jumping)
+			if hrp and hrp.Parent then
+				local vel = hrp.AssemblyLinearVelocity
+				if vel.Y > 3 then
+					hrp.AssemblyLinearVelocity = Vector3.new(vel.X, 3, vel.Z)
+				end
+			end
+			
+			task.wait()
 		end
 	end)
 	
-	-- Brief stun
-	self:applyStun(player, itemDef.slipDuration or 1.5)
+	-- Slip sound (play immediately)
+	local slipSound = Instance.new("Sound")
+	slipSound.SoundId = "rbxassetid://129432532096499" -- Banana slip sound
+	slipSound.Volume = 0.8
+	slipSound.PlayOnRemove = false
+	slipSound.Parent = hrp
+	slipSound:Play()
+	task.delay(3, function()
+		if slipSound.Parent then slipSound:Destroy() end
+	end)
+	
+	-- Spinning stars visual
+	local starsGui = Instance.new("BillboardGui")
+	starsGui.Name = "SlipStars"
+	starsGui.Size = UDim2.new(0, 60, 0, 60)
+	starsGui.StudsOffset = Vector3.new(0, 3, 0)
+	starsGui.AlwaysOnTop = true
+	starsGui.Parent = hrp
+	
+	local starsLabel = Instance.new("TextLabel")
+	starsLabel.Size = UDim2.new(1, 0, 1, 0)
+	starsLabel.BackgroundTransparency = 1
+	starsLabel.Text = "⭐🌟⭐"
+	starsLabel.TextSize = 24
+	starsLabel.Parent = starsGui
+	
+	-- Spin animation
+	task.spawn(function()
+		local startTime = tick()
+		while tick() - startTime < slipDuration and starsGui.Parent do
+			starsLabel.Rotation = (tick() - startTime) * 360
+			task.wait()
+		end
+		if starsGui.Parent then starsGui:Destroy() end
+	end)
+	
+	-- Yellow slip particles (at feet level)
+	local slipParticles = Instance.new("ParticleEmitter")
+	slipParticles.Name = "SlipParticles"
+	slipParticles.Lifetime = NumberRange.new(0.3, 0.6)
+	slipParticles.Rate = 30
+	slipParticles.Speed = NumberRange.new(5, 10)
+	slipParticles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	slipParticles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 50))
+	slipParticles.LightEmission = 0.5
+	slipParticles.SpreadAngle = Vector2.new(180, 180)
+	slipParticles.Parent = hrp
+	
+	task.delay(slipDuration, function()
+		if slipParticles.Parent then slipParticles:Destroy() end
+	end)
+	
+	-- Slip effect: slide forward with lift + fall animation
+	local slideDirection = hrp.CFrame.LookVector
+	local slideForce = Instance.new("BodyVelocity")
+	slideForce.Velocity = Vector3.new(
+		slideDirection.X * 20,
+		15, -- Lift up before falling
+		slideDirection.Z * 20
+	)
+	slideForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	slideForce.Parent = hrp
+	
+	-- Add tumble rotation (fall backwards)
+	local tumble = Instance.new("BodyAngularVelocity")
+	tumble.AngularVelocity = Vector3.new(
+		-8, -- Rotate backwards (fall on back)
+		0,
+		0
+	)
+	tumble.MaxTorque = Vector3.new(math.huge, 0, math.huge)
+	tumble.Parent = hrp
+	
+	-- Make character ragdoll/fall state
+	humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
+	
+	-- Remove forces after short time
+	task.delay(0.3, function()
+		if slideForce.Parent then slideForce:Destroy() end
+		if tumble.Parent then tumble:Destroy() end
+	end)
+	
+	-- Get up after a bit
+	task.delay(0.5, function()
+		if humanoid and humanoid.Parent then
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end)
+	
+	-- Restore after slip duration
+	task.delay(slipDuration, function()
+		-- Stop the enforcement loop
+		slipActive = false
+		
+		if humanoid and humanoid.Parent then
+			-- Re-enable jumping
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+			
+			-- Restore movement
+			humanoid.WalkSpeed = originalWalkSpeed > 0 and originalWalkSpeed or 16
+			humanoid.JumpPower = originalJumpPower > 0 and originalJumpPower or 50
+			humanoid.JumpHeight = originalJumpHeight > 0 and originalJumpHeight or 7.2
+		end
+	end)
 end
 
 -- Shield: สร้างโล่ป้องกัน
@@ -372,6 +737,22 @@ function ItemManager:useShield(player: Player, itemDef): boolean
 	
 	-- Create shield visual
 	self:createShieldVisual(player)
+	
+	-- Activation sound
+	local character = player.Character
+	if character then
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local activateSound = Instance.new("Sound")
+			activateSound.SoundId = "rbxassetid://130972023" -- Energy/shield activate
+			activateSound.Volume = 0.5
+			activateSound.Parent = hrp
+			activateSound:Play()
+			task.delay(2, function()
+				if activateSound.Parent then activateSound:Destroy() end
+			end)
+		end
+	end
 	
 	print("[ItemManager]", player.Name, "activated shield!")
 	return true
@@ -389,9 +770,14 @@ function ItemManager:createShieldVisual(player: Player)
 	local existing = hrp:FindFirstChild("ShieldVisual")
 	if existing then existing:Destroy() end
 	
-	-- Create bubble
+	-- Create shield container
+	local shieldContainer = Instance.new("Model")
+	shieldContainer.Name = "ShieldVisual"
+	shieldContainer.Parent = hrp
+	
+	-- Main shield bubble
 	local shield = Instance.new("Part")
-	shield.Name = "ShieldVisual"
+	shield.Name = "ShieldBubble"
 	shield.Size = Vector3.new(8, 8, 8)
 	shield.Shape = Enum.PartType.Ball
 	shield.Anchored = false
@@ -400,27 +786,127 @@ function ItemManager:createShieldVisual(player: Player)
 	shield.Transparency = 0.7
 	shield.Material = Enum.Material.ForceField
 	shield.Color = Color3.fromRGB(100, 200, 255)
-	shield.Parent = hrp
+	shield.Parent = shieldContainer
 	
 	-- Weld to character
 	local weld = Instance.new("WeldConstraint")
 	weld.Part0 = hrp
 	weld.Part1 = shield
 	weld.Parent = shield
+	
+	-- Hexagon/sparkle particles
+	local particles = Instance.new("ParticleEmitter")
+	particles.Name = "ShieldParticles"
+	particles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	particles.Lifetime = NumberRange.new(0.5, 1)
+	particles.Rate = 15
+	particles.Speed = NumberRange.new(0, 2)
+	particles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(0.5, 0.8),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	particles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 220, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 180, 255))
+	})
+	particles.LightEmission = 1
+	particles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	particles.SpreadAngle = Vector2.new(180, 180)
+	particles.Parent = shield
+	
+	-- Shield glow (no ring - just bubble + particles + glow)
+	local glow = Instance.new("PointLight")
+	glow.Name = "ShieldGlow"
+	glow.Color = Color3.fromRGB(100, 200, 255)
+	glow.Brightness = 0.5
+	glow.Range = 10
+	glow.Parent = shield
 end
 
--- Remove shield visual
+-- Remove shield visual with break effect
 function ItemManager:removeShieldVisual(player: Player)
 	local character = player.Character
 	if not character then return end
 	
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
-		local shield = hrp:FindFirstChild("ShieldVisual")
-		if shield then
-			shield:Destroy()
+		local shieldContainer = hrp:FindFirstChild("ShieldVisual")
+		if shieldContainer then
+			-- Create break effect before destroying
+			self:createShieldBreakEffect(hrp.Position)
+			
+			-- Shield break sound
+			local breakSound = Instance.new("Sound")
+			breakSound.SoundId = "rbxassetid://545298872" -- Glass shatter
+			breakSound.Volume = 0.6
+			breakSound.Parent = hrp
+			breakSound:Play()
+			task.delay(2, function()
+				if breakSound.Parent then breakSound:Destroy() end
+			end)
+			
+			shieldContainer:Destroy()
 		end
 	end
+end
+
+-- Shield break effect
+function ItemManager:createShieldBreakEffect(position: Vector3)
+	local effect = Instance.new("Part")
+	effect.Name = "ShieldBreakEffect"
+	effect.Anchored = true
+	effect.CanCollide = false
+	effect.Size = Vector3.new(1, 1, 1)
+	effect.Position = position
+	effect.Transparency = 1
+	effect.Parent = workspace
+	
+	-- Glass shatter particles
+	local shatter = Instance.new("ParticleEmitter")
+	shatter.Name = "ShatterParticles"
+	shatter.Lifetime = NumberRange.new(0.5, 1)
+	shatter.Rate = 0
+	shatter.Speed = NumberRange.new(15, 30)
+	shatter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.8),
+		NumberSequenceKeypoint.new(0.5, 0.5),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	shatter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 240, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 180, 255))
+	})
+	shatter.LightEmission = 1
+	shatter.SpreadAngle = Vector2.new(180, 180)
+	shatter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	shatter.Acceleration = Vector3.new(0, -30, 0)
+	shatter.Parent = effect
+	shatter:Emit(40)
+	
+	-- Blue flash
+	local flash = Instance.new("PointLight")
+	flash.Color = Color3.fromRGB(100, 200, 255)
+	flash.Brightness = 3
+	flash.Range = 15
+	flash.Parent = effect
+	
+	task.spawn(function()
+		for i = 1, 10 do
+			task.wait(0.03)
+			flash.Brightness = 3 * (1 - i / 10)
+		end
+	end)
+	
+	task.delay(1.5, function()
+		effect:Destroy()
+	end)
 end
 
 -- Speed Boost: เพิ่มความเร็ว
@@ -464,24 +950,106 @@ function ItemManager:createBoostVisual(player: Player)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 	
-	-- Speed lines particle
-	local particles = Instance.new("ParticleEmitter")
-	particles.Name = "BoostParticles"
-	particles.Lifetime = NumberRange.new(0.2, 0.4)
-	particles.Rate = 50
-	particles.Speed = NumberRange.new(10, 20)
-	particles.SpreadAngle = Vector2.new(30, 30)
-	particles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.5),
-		NumberSequenceKeypoint.new(1, 0)
+	-- Create container for all boost effects
+	local boostContainer = Instance.new("Model")
+	boostContainer.Name = "BoostEffects"
+	boostContainer.Parent = hrp
+	
+	-- Speed lines particle (motion blur style)
+	local speedLines = Instance.new("ParticleEmitter")
+	speedLines.Name = "SpeedLines"
+	speedLines.Lifetime = NumberRange.new(0.1, 0.2)
+	speedLines.Rate = 100
+	speedLines.Speed = NumberRange.new(30, 50)
+	speedLines.SpreadAngle = Vector2.new(20, 20)
+	speedLines.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(0.5, 1),
+		NumberSequenceKeypoint.new(1, 2)
 	})
-	particles.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 100)),
+	speedLines.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 100)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 200, 0))
 	})
-	particles.LightEmission = 1
-	particles.EmissionDirection = Enum.NormalId.Back
-	particles.Parent = hrp
+	speedLines.LightEmission = 1
+	speedLines.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 0.3),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	speedLines.EmissionDirection = Enum.NormalId.Back
+	speedLines.Parent = hrp
+	
+	-- Aura glow particles
+	local auraParticles = Instance.new("ParticleEmitter")
+	auraParticles.Name = "BoostAura"
+	auraParticles.Lifetime = NumberRange.new(0.3, 0.5)
+	auraParticles.Rate = 40
+	auraParticles.Speed = NumberRange.new(2, 5)
+	auraParticles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0.5),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	auraParticles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 100)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 0))
+	})
+	auraParticles.LightEmission = 1
+	auraParticles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	auraParticles.SpreadAngle = Vector2.new(180, 180)
+	auraParticles.Parent = hrp
+	
+	-- Golden glow light
+	local auraGlow = Instance.new("PointLight")
+	auraGlow.Name = "BoostGlow"
+	auraGlow.Color = Color3.fromRGB(255, 200, 50)
+	auraGlow.Brightness = 1.5
+	auraGlow.Range = 10
+	auraGlow.Parent = hrp
+	
+	-- Create trail on legs/torso if available
+	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	if torso then
+		-- Create attachments for trail
+		local att0 = Instance.new("Attachment")
+		att0.Name = "BoostTrailAtt0"
+		att0.Position = Vector3.new(0, 1, 0)
+		att0.Parent = torso
+		
+		local att1 = Instance.new("Attachment")
+		att1.Name = "BoostTrailAtt1"
+		att1.Position = Vector3.new(0, -1, 0)
+		att1.Parent = torso
+		
+		local trail = Instance.new("Trail")
+		trail.Name = "BoostTrail"
+		trail.Attachment0 = att0
+		trail.Attachment1 = att1
+		trail.Lifetime = 0.4
+		trail.MinLength = 0.1
+		trail.FaceCamera = true
+		trail.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 150)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 200, 50)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 0))
+		})
+		trail.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.3),
+			NumberSequenceKeypoint.new(0.5, 0.6),
+			NumberSequenceKeypoint.new(1, 1)
+		})
+		trail.WidthScale = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0.5)
+		})
+		trail.LightEmission = 0.5
+		trail.Parent = torso
+	end
 end
 
 -- Remove boost effect
@@ -500,8 +1068,31 @@ function ItemManager:removeBoostEffect(player: Player)
 		
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		if hrp then
-			local particles = hrp:FindFirstChild("BoostParticles")
-			if particles then particles:Destroy() end
+			-- Remove all boost effects
+			local speedLines = hrp:FindFirstChild("SpeedLines")
+			if speedLines then speedLines:Destroy() end
+			
+			local auraParticles = hrp:FindFirstChild("BoostAura")
+			if auraParticles then auraParticles:Destroy() end
+			
+			local auraGlow = hrp:FindFirstChild("BoostGlow")
+			if auraGlow then auraGlow:Destroy() end
+			
+			local boostContainer = hrp:FindFirstChild("BoostEffects")
+			if boostContainer then boostContainer:Destroy() end
+		end
+		
+		-- Remove trail and attachments
+		local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+		if torso then
+			local trail = torso:FindFirstChild("BoostTrail")
+			if trail then trail:Destroy() end
+			
+			local att0 = torso:FindFirstChild("BoostTrailAtt0")
+			if att0 then att0:Destroy() end
+			
+			local att1 = torso:FindFirstChild("BoostTrailAtt1")
+			if att1 then att1:Destroy() end
 		end
 	end
 	
@@ -546,7 +1137,15 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 	local myPos = myHRP.CFrame
 	local targetPos = targetHRP.CFrame
 	
-	-- Visual effect before swap
+	-- Teleport charge-up sound
+	local chargeSound = Instance.new("Sound")
+	chargeSound.SoundId = "rbxassetid://130972023" -- Teleport charge
+	chargeSound.Volume = 0.6
+	chargeSound.PlaybackSpeed = 0.8
+	chargeSound.Parent = myHRP
+	chargeSound:Play()
+	
+	-- Visual effect before swap (portal effects)
 	self:createSwapEffect(myHRP.Position)
 	self:createSwapEffect(targetHRP.Position)
 	
@@ -556,8 +1155,14 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 			myHRP.CFrame = targetPos
 			targetHRP.CFrame = myPos
 			
+			-- Teleport flash at new positions
+			self:createSwapFlash(targetPos.Position)
+			self:createSwapFlash(myPos.Position)
+			
 			print("[ItemManager]", player.Name, "swapped positions with", targetPlayer.Name)
 		end
+		
+		if chargeSound.Parent then chargeSound:Destroy() end
 	end)
 	
 	return true
@@ -566,6 +1171,19 @@ end
 -- Lightning: ทำให้ทุกคนช้าลง
 function ItemManager:useLightning(player: Player, itemDef): boolean
 	print("[ItemManager]", player.Name, "used Lightning!")
+	
+	-- Thunder sound (global)
+	local thunderSound = Instance.new("Sound")
+	thunderSound.SoundId = "rbxassetid://1093102664"
+	thunderSound.Volume = 0.8
+	thunderSound.PlaybackSpeed = 1.2
+	thunderSound.RollOffMode = Enum.RollOffMode.Linear
+	thunderSound.RollOffMaxDistance = 1000
+	thunderSound.Parent = workspace
+	thunderSound:Play()
+	task.delay(5, function()
+		if thunderSound.Parent then thunderSound:Destroy() end
+	end)
 	
 	for _, otherPlayer in ipairs(Players:GetPlayers()) do
 		if otherPlayer ~= player then
@@ -580,6 +1198,15 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 					print("[ItemManager]", otherPlayer.Name, "'s shield blocked lightning!")
 				else
 					self:applyLightningSlow(otherPlayer, itemDef)
+					
+					-- Create lightning strike on each player
+					local character = otherPlayer.Character
+					if character then
+						local hrp = character:FindFirstChild("HumanoidRootPart")
+						if hrp then
+							self:createLightningStrike(hrp.Position)
+						end
+					end
 				end
 			end
 		end
@@ -615,19 +1242,56 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 	data.isSlowed = true
 	data.slowExpiry = tick() + (itemDef.duration or 3)
 	
-	-- Shrink effect
+	-- Electric shock visual
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
-		-- Add lightning particles
+		-- Main spark particles
 		local spark = Instance.new("ParticleEmitter")
 		spark.Name = "LightningSpark"
 		spark.Lifetime = NumberRange.new(0.1, 0.3)
-		spark.Rate = 30
-		spark.Speed = NumberRange.new(5, 10)
-		spark.Size = NumberSequence.new(0.3)
-		spark.Color = ColorSequence.new(Color3.fromRGB(255, 255, 100))
+		spark.Rate = 50
+		spark.Speed = NumberRange.new(5, 15)
+		spark.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.5),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		spark.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 100)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 50))
+		})
 		spark.LightEmission = 1
+		spark.SpreadAngle = Vector2.new(180, 180)
 		spark.Parent = hrp
+		
+		-- Electric glow
+		local electricGlow = Instance.new("PointLight")
+		electricGlow.Name = "ElectricGlow"
+		electricGlow.Color = Color3.fromRGB(255, 255, 150)
+		electricGlow.Brightness = 1
+		electricGlow.Range = 8
+		electricGlow.Parent = hrp
+		
+		-- Flickering effect
+		task.spawn(function()
+			local duration = itemDef.duration or 3
+			local startTime = tick()
+			while tick() - startTime < duration and electricGlow.Parent do
+				electricGlow.Brightness = 0.5 + math.random() * 1.5
+				task.wait(0.05 + math.random() * 0.1)
+			end
+		end)
+		
+		-- Zap sound on hit
+		local zapSound = Instance.new("Sound")
+		zapSound.SoundId = "rbxassetid://12222084" -- Electric zap
+		zapSound.Volume = 0.4
+		zapSound.PlaybackSpeed = 1.5
+		zapSound.Parent = hrp
+		zapSound:Play()
+		task.delay(1, function()
+			if zapSound.Parent then zapSound:Destroy() end
+		end)
 	end
 	
 	print("[ItemManager]", player.Name, "struck by lightning!")
@@ -650,6 +1314,9 @@ function ItemManager:removeSlowEffect(player: Player)
 		if hrp then
 			local spark = hrp:FindFirstChild("LightningSpark")
 			if spark then spark:Destroy() end
+			
+			local electricGlow = hrp:FindFirstChild("ElectricGlow")
+			if electricGlow then electricGlow:Destroy() end
 		end
 	end
 	
@@ -667,16 +1334,33 @@ function ItemManager:applyStun(player: Player, duration: number)
 	local humanoid = character:FindFirstChild("Humanoid")
 	if not humanoid then return end
 	
-	-- Disable movement
-	local originalWalkSpeed = humanoid.WalkSpeed
-	local originalJumpPower = humanoid.JumpPower
+	-- Check if already stunned - don't overwrite original values
+	local isAlreadyStunned = character:GetAttribute("IsStunned")
+	local originalWalkSpeed = character:GetAttribute("OriginalWalkSpeed") or humanoid.WalkSpeed
+	local originalJumpPower = character:GetAttribute("OriginalJumpPower") or humanoid.JumpPower
 	
+	-- Only save original values if not already stunned
+	if not isAlreadyStunned and humanoid.WalkSpeed > 0 then
+		character:SetAttribute("OriginalWalkSpeed", humanoid.WalkSpeed)
+		character:SetAttribute("OriginalJumpPower", humanoid.JumpPower)
+		originalWalkSpeed = humanoid.WalkSpeed
+		originalJumpPower = humanoid.JumpPower
+	end
+	
+	-- Mark as stunned
+	character:SetAttribute("IsStunned", true)
+	
+	-- Disable movement
 	humanoid.WalkSpeed = 0
 	humanoid.JumpPower = 0
 	
 	-- Visual effect
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
+		-- Remove existing stun visual if any
+		local existingStun = hrp:FindFirstChild("StunVisual")
+		if existingStun then existingStun:Destroy() end
+		
 		local stunVisual = Instance.new("BillboardGui")
 		stunVisual.Name = "StunVisual"
 		stunVisual.Size = UDim2.new(0, 50, 0, 50)
@@ -700,9 +1384,14 @@ function ItemManager:applyStun(player: Player, duration: number)
 	
 	-- Restore after duration
 	task.delay(duration, function()
-		if humanoid.Parent then
-			humanoid.WalkSpeed = originalWalkSpeed
-			humanoid.JumpPower = originalJumpPower
+		if humanoid.Parent and character.Parent then
+			-- Only restore if this is the latest stun (check attribute)
+			character:SetAttribute("IsStunned", false)
+			humanoid.WalkSpeed = originalWalkSpeed or 16
+			humanoid.JumpPower = originalJumpPower or 50
+			-- Clear stored values
+			character:SetAttribute("OriginalWalkSpeed", nil)
+			character:SetAttribute("OriginalJumpPower", nil)
 		end
 	end)
 	
@@ -712,39 +1401,114 @@ end
 -- ========== VISUAL EFFECTS ==========
 
 function ItemManager:createExplosionEffect(position: Vector3)
-	local explosion = Instance.new("Part")
-	explosion.Anchored = true
-	explosion.CanCollide = false
-	explosion.Size = Vector3.new(1, 1, 1)
-	explosion.Position = position
-	explosion.Transparency = 1
-	explosion.Parent = workspace
+	-- Use Roblox built-in explosion visual (no damage)
+	local builtInExplosion = Instance.new("Explosion")
+	builtInExplosion.BlastRadius = 0
+	builtInExplosion.BlastPressure = 0
+	builtInExplosion.Position = position
+	builtInExplosion.Parent = workspace
 	
-	local particles = Instance.new("ParticleEmitter")
-	particles.Lifetime = NumberRange.new(0.3, 0.6)
-	particles.Rate = 0
-	particles.Speed = NumberRange.new(10, 30)
-	particles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 2),
+	-- Additional particle effects
+	local effectPart = Instance.new("Part")
+	effectPart.Name = "ExplosionEffect"
+	effectPart.Anchored = true
+	effectPart.CanCollide = false
+	effectPart.Size = Vector3.new(1, 1, 1)
+	effectPart.Position = position
+	effectPart.Transparency = 1
+	effectPart.Parent = workspace
+	
+	-- Fire burst particles
+	local fireBurst = Instance.new("ParticleEmitter")
+	fireBurst.Name = "FireBurst"
+	fireBurst.Lifetime = NumberRange.new(0.3, 0.6)
+	fireBurst.Rate = 0
+	fireBurst.Speed = NumberRange.new(15, 40)
+	fireBurst.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 3),
+		NumberSequenceKeypoint.new(0.5, 2),
 		NumberSequenceKeypoint.new(1, 0)
 	})
-	particles.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 50)),
+	fireBurst.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 200)),
+		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 150, 50)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 50, 0))
 	})
-	particles.LightEmission = 1
-	particles.SpreadAngle = Vector2.new(180, 180)
-	particles.Parent = explosion
+	fireBurst.LightEmission = 1
+	fireBurst.SpreadAngle = Vector2.new(180, 180)
+	fireBurst.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 0.3),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	fireBurst.Parent = effectPart
+	fireBurst:Emit(40)
 	
-	particles:Emit(30)
+	-- Smoke cloud
+	local smokeCloud = Instance.new("ParticleEmitter")
+	smokeCloud.Name = "SmokeCloud"
+	smokeCloud.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	smokeCloud.Lifetime = NumberRange.new(1, 2)
+	smokeCloud.Rate = 0
+	smokeCloud.Speed = NumberRange.new(5, 15)
+	smokeCloud.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2),
+		NumberSequenceKeypoint.new(0.5, 4),
+		NumberSequenceKeypoint.new(1, 6)
+	})
+	smokeCloud.Color = ColorSequence.new(Color3.fromRGB(50, 50, 50))
+	smokeCloud.SpreadAngle = Vector2.new(180, 180)
+	smokeCloud.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	smokeCloud.Parent = effectPart
+	smokeCloud:Emit(20)
 	
-	task.delay(1, function()
-		explosion:Destroy()
+	-- Sparks
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Name = "Sparks"
+	sparks.Lifetime = NumberRange.new(0.5, 1)
+	sparks.Rate = 0
+	sparks.Speed = NumberRange.new(20, 50)
+	sparks.Size = NumberSequence.new(0.3, 0)
+	sparks.Color = ColorSequence.new(Color3.fromRGB(255, 200, 100))
+	sparks.LightEmission = 1
+	sparks.SpreadAngle = Vector2.new(180, 180)
+	sparks.Acceleration = Vector3.new(0, -50, 0)
+	sparks.Parent = effectPart
+	sparks:Emit(30)
+	
+	-- PointLight flash
+	local flash = Instance.new("PointLight")
+	flash.Color = Color3.fromRGB(255, 150, 50)
+	flash.Brightness = 5
+	flash.Range = 20
+	flash.Parent = effectPart
+	
+	-- Explosion sound
+	local explosionSound = Instance.new("Sound")
+	explosionSound.SoundId = "rbxassetid://287390954"
+	explosionSound.Volume = 0.7
+	explosionSound.Parent = effectPart
+	explosionSound:Play()
+	
+	-- Fade out light
+	task.spawn(function()
+		for i = 1, 10 do
+			task.wait(0.03)
+			flash.Brightness = 5 * (1 - i / 10)
+		end
+	end)
+	
+	task.delay(2, function()
+		effectPart:Destroy()
 	end)
 end
 
 function ItemManager:createBananaSlipEffect(position: Vector3)
 	local effect = Instance.new("Part")
+	effect.Name = "BananaSlipEffect"
 	effect.Anchored = true
 	effect.CanCollide = false
 	effect.Size = Vector3.new(1, 1, 1)
@@ -752,58 +1516,354 @@ function ItemManager:createBananaSlipEffect(position: Vector3)
 	effect.Transparency = 1
 	effect.Parent = workspace
 	
-	local particles = Instance.new("ParticleEmitter")
-	particles.Lifetime = NumberRange.new(0.3, 0.5)
-	particles.Rate = 0
-	particles.Speed = NumberRange.new(5, 15)
-	particles.Size = NumberSequence.new(0.5)
-	particles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 50))
-	particles.LightEmission = 0.5
-	particles.SpreadAngle = Vector2.new(180, 180)
-	particles.Parent = effect
+	-- Yellow banana burst
+	local bananaBurst = Instance.new("ParticleEmitter")
+	bananaBurst.Name = "BananaBurst"
+	bananaBurst.Lifetime = NumberRange.new(0.3, 0.6)
+	bananaBurst.Rate = 0
+	bananaBurst.Speed = NumberRange.new(10, 25)
+	bananaBurst.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	bananaBurst.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 150)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 200, 50))
+	})
+	bananaBurst.LightEmission = 0.8
+	bananaBurst.SpreadAngle = Vector2.new(180, 180)
+	bananaBurst.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	bananaBurst.Parent = effect
+	bananaBurst:Emit(25)
 	
-	particles:Emit(20)
+	-- Sparkle debris
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Name = "Sparkles"
+	sparkles.Lifetime = NumberRange.new(0.5, 1)
+	sparkles.Rate = 0
+	sparkles.Speed = NumberRange.new(5, 15)
+	sparkles.Size = NumberSequence.new(0.3, 0)
+	sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 255, 200))
+	sparkles.LightEmission = 1
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Acceleration = Vector3.new(0, -30, 0)
+	sparkles.Parent = effect
+	sparkles:Emit(15)
 	
-	task.delay(1, function()
+	-- Brief yellow flash
+	local flash = Instance.new("PointLight")
+	flash.Color = Color3.fromRGB(255, 230, 100)
+	flash.Brightness = 2
+	flash.Range = 8
+	flash.Parent = effect
+	
+	task.spawn(function()
+		for i = 1, 5 do
+			task.wait(0.05)
+			flash.Brightness = 2 * (1 - i / 5)
+		end
+	end)
+	
+	task.delay(1.5, function()
 		effect:Destroy()
 	end)
 end
 
 function ItemManager:createSwapEffect(position: Vector3)
-	local effect = Instance.new("Part")
-	effect.Anchored = true
-	effect.CanCollide = false
-	effect.Size = Vector3.new(6, 6, 6)
-	effect.Shape = Enum.PartType.Ball
-	effect.Position = position
-	effect.Transparency = 0.5
-	effect.Material = Enum.Material.Neon
-	effect.Color = Color3.fromRGB(200, 100, 255)
-	effect.Parent = workspace
+	-- Portal container
+	local portalContainer = Instance.new("Model")
+	portalContainer.Name = "SwapPortal"
+	portalContainer.Parent = workspace
 	
+	-- Main portal ring (horizontal)
+	local portalRing = Instance.new("Part")
+	portalRing.Name = "PortalRing"
+	portalRing.Anchored = true
+	portalRing.CanCollide = false
+	portalRing.Size = Vector3.new(0.5, 8, 8)
+	portalRing.Shape = Enum.PartType.Cylinder
+	portalRing.Position = position
+	portalRing.Orientation = Vector3.new(0, 0, 90)
+	portalRing.Transparency = 0.3
+	portalRing.Material = Enum.Material.Neon
+	portalRing.Color = Color3.fromRGB(180, 80, 255)
+	portalRing.Parent = portalContainer
+	
+	-- Portal center glow
+	local portalCenter = Instance.new("Part")
+	portalCenter.Name = "PortalCenter"
+	portalCenter.Anchored = true
+	portalCenter.CanCollide = false
+	portalCenter.Size = Vector3.new(6, 6, 6)
+	portalCenter.Shape = Enum.PartType.Ball
+	portalCenter.Position = position
+	portalCenter.Transparency = 0.6
+	portalCenter.Material = Enum.Material.Neon
+	portalCenter.Color = Color3.fromRGB(150, 50, 200)
+	portalCenter.Parent = portalContainer
+	
+	-- Swirl particles
+	local swirlParticles = Instance.new("ParticleEmitter")
+	swirlParticles.Name = "SwirlParticles"
+	swirlParticles.Lifetime = NumberRange.new(0.5, 1)
+	swirlParticles.Rate = 60
+	swirlParticles.Speed = NumberRange.new(3, 8)
+	swirlParticles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(0.5, 1),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	swirlParticles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 100, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 50, 200)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 50, 150))
+	})
+	swirlParticles.LightEmission = 1
+	swirlParticles.Rotation = NumberRange.new(0, 360)
+	swirlParticles.RotSpeed = NumberRange.new(180, 360)
+	swirlParticles.SpreadAngle = Vector2.new(180, 180)
+	swirlParticles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 0.3),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	swirlParticles.Parent = portalCenter
+	
+	-- Portal glow
+	local portalGlow = Instance.new("PointLight")
+	portalGlow.Color = Color3.fromRGB(180, 80, 255)
+	portalGlow.Brightness = 3
+	portalGlow.Range = 15
+	portalGlow.Parent = portalCenter
+	
+	-- Animate portal (expand and spin)
+	task.spawn(function()
+		local startTime = tick()
+		local duration = 0.6
+		
+		while tick() - startTime < duration and portalContainer.Parent do
+			local progress = (tick() - startTime) / duration
+			
+			-- Spin the ring
+			portalRing.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90)) * CFrame.Angles(0, tick() * 5, 0)
+			
+			-- Expand and fade
+			local scale = 1 + progress * 0.5
+			portalRing.Size = Vector3.new(0.5 * scale, 8 * scale, 8 * scale)
+			portalCenter.Size = Vector3.new(6 * scale, 6 * scale, 6 * scale)
+			
+			portalRing.Transparency = 0.3 + progress * 0.7
+			portalCenter.Transparency = 0.6 + progress * 0.4
+			portalGlow.Brightness = 3 * (1 - progress)
+			
+			task.wait()
+		end
+		
+		portalContainer:Destroy()
+	end)
+end
+
+-- Flash effect when swap completes
+function ItemManager:createSwapFlash(position: Vector3)
+	local flash = Instance.new("Part")
+	flash.Name = "SwapFlash"
+	flash.Anchored = true
+	flash.CanCollide = false
+	flash.Size = Vector3.new(1, 1, 1)
+	flash.Position = position
+	flash.Transparency = 1
+	flash.Parent = workspace
+	
+	-- Arrival burst
+	local arrivalBurst = Instance.new("ParticleEmitter")
+	arrivalBurst.Lifetime = NumberRange.new(0.3, 0.5)
+	arrivalBurst.Rate = 0
+	arrivalBurst.Speed = NumberRange.new(15, 30)
+	arrivalBurst.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	arrivalBurst.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 80, 255))
+	})
+	arrivalBurst.LightEmission = 1
+	arrivalBurst.SpreadAngle = Vector2.new(180, 180)
+	arrivalBurst.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	arrivalBurst.Parent = flash
+	arrivalBurst:Emit(30)
+	
+	-- Flash light
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(200, 100, 255)
+	light.Brightness = 5
+	light.Range = 15
+	light.Parent = flash
+	
+	-- Fade light
 	task.spawn(function()
 		for i = 1, 10 do
-			effect.Size = effect.Size + Vector3.new(0.5, 0.5, 0.5)
-			effect.Transparency = 0.5 + (0.5 * i / 10)
-			task.wait(0.05)
+			task.wait(0.03)
+			light.Brightness = 5 * (1 - i / 10)
 		end
-		effect:Destroy()
+	end)
+	
+	task.delay(1, function()
+		flash:Destroy()
 	end)
 end
 
 function ItemManager:createLightningEffect()
-	-- Screen flash effect would be handled client-side
-	-- Here we just create a brief light
-	local light = Instance.new("PointLight")
-	light.Brightness = 10
-	light.Range = 500
-	light.Color = Color3.fromRGB(255, 255, 200)
-	light.Parent = workspace.CurrentCamera or workspace
+	-- Global lightning flash effect
+	-- Create multiple bright lights across the map for dramatic effect
+	local flashContainer = Instance.new("Model")
+	flashContainer.Name = "LightningFlash"
+	flashContainer.Parent = workspace
 	
-	task.delay(0.3, function()
-		if light.Parent then
-			light:Destroy()
+	-- Multiple flash lights
+	for i = 1, 3 do
+		local light = Instance.new("PointLight")
+		light.Brightness = 15
+		light.Range = 1000
+		light.Color = Color3.fromRGB(255, 255, 200)
+		light.Parent = workspace
+		
+		-- Flicker effect
+		task.spawn(function()
+			for j = 1, 6 do
+				light.Brightness = math.random(5, 20)
+				task.wait(0.05)
+			end
+			light.Brightness = 0
+		end)
+		
+		task.delay(0.5, function()
+			if light.Parent then light:Destroy() end
+		end)
+	end
+	
+	-- Sky lighting effect (if Lighting service exists)
+	local Lighting = game:GetService("Lighting")
+	local originalAmbient = Lighting.Ambient
+	local originalBrightness = Lighting.Brightness
+	
+	-- Flash the sky
+	task.spawn(function()
+		for i = 1, 3 do
+			Lighting.Ambient = Color3.fromRGB(255, 255, 200)
+			Lighting.Brightness = 3
+			task.wait(0.05)
+			Lighting.Ambient = originalAmbient
+			Lighting.Brightness = originalBrightness
+			task.wait(0.1)
 		end
+	end)
+	
+	task.delay(1, function()
+		flashContainer:Destroy()
+	end)
+end
+
+-- Create lightning strike effect on a specific position
+function ItemManager:createLightningStrike(position: Vector3)
+	local strikeContainer = Instance.new("Model")
+	strikeContainer.Name = "LightningStrike"
+	strikeContainer.Parent = workspace
+	
+	-- Lightning bolt (vertical beam effect)
+	local skyHeight = 100
+	local boltStart = position + Vector3.new(0, skyHeight, 0)
+	local boltEnd = position
+	
+	-- Create multiple segments for zigzag effect
+	local numSegments = 8
+	local segmentHeight = skyHeight / numSegments
+	local lastPos = boltStart
+	
+	for i = 1, numSegments do
+		local segmentOffset = Vector3.new(
+			(math.random() - 0.5) * 8, -- Random X offset
+			0,
+			(math.random() - 0.5) * 8  -- Random Z offset
+		)
+		
+		local nextPos
+		if i == numSegments then
+			nextPos = boltEnd
+		else
+			nextPos = boltStart - Vector3.new(0, segmentHeight * i, 0) + segmentOffset
+		end
+		
+		-- Create bolt segment
+		local segment = Instance.new("Part")
+		segment.Name = "BoltSegment" .. i
+		segment.Anchored = true
+		segment.CanCollide = false
+		segment.Material = Enum.Material.Neon
+		segment.Color = Color3.fromRGB(255, 255, 200)
+		
+		local direction = (nextPos - lastPos)
+		local length = direction.Magnitude
+		segment.Size = Vector3.new(0.5, length, 0.5)
+		segment.CFrame = CFrame.lookAt(lastPos, nextPos) * CFrame.new(0, 0, -length/2) * CFrame.Angles(math.rad(90), 0, 0)
+		segment.Parent = strikeContainer
+		
+		lastPos = nextPos
+	end
+	
+	-- Impact particles at strike point
+	local impactEffect = Instance.new("Part")
+	impactEffect.Anchored = true
+	impactEffect.CanCollide = false
+	impactEffect.Size = Vector3.new(1, 1, 1)
+	impactEffect.Position = position
+	impactEffect.Transparency = 1
+	impactEffect.Parent = strikeContainer
+	
+	local impactBurst = Instance.new("ParticleEmitter")
+	impactBurst.Lifetime = NumberRange.new(0.3, 0.6)
+	impactBurst.Rate = 0
+	impactBurst.Speed = NumberRange.new(15, 30)
+	impactBurst.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+	impactBurst.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 150)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 100))
+	})
+	impactBurst.LightEmission = 1
+	impactBurst.SpreadAngle = Vector2.new(180, 180)
+	impactBurst.Parent = impactEffect
+	impactBurst:Emit(30)
+	
+	-- Impact glow
+	local impactGlow = Instance.new("PointLight")
+	impactGlow.Color = Color3.fromRGB(255, 255, 200)
+	impactGlow.Brightness = 5
+	impactGlow.Range = 20
+	impactGlow.Parent = impactEffect
+	
+	-- Fade out the bolt
+	task.spawn(function()
+		task.wait(0.1)
+		for i = 1, 10 do
+			for _, part in ipairs(strikeContainer:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.Transparency = i / 10
+				end
+			end
+			impactGlow.Brightness = 5 * (1 - i / 10)
+			task.wait(0.03)
+		end
+		strikeContainer:Destroy()
 	end)
 end
 
@@ -1007,24 +2067,31 @@ function ItemManager:sendItemUpdate(player: Player)
 	local data = self.playerItems[player]
 	if not data then return end
 	
-	-- ใช้ false แทน nil เพื่อให้ client รู้ว่า item หาย
-	local itemInfo: any = false
-	if data.currentItem then
-		local itemDef = ItemTypes.getItem(data.currentItem)
-		if itemDef then
-			itemInfo = {
-				id = itemDef.id,
-				name = itemDef.name,
-				description = itemDef.description, -- เพิ่ม description
-				icon = itemDef.icon,
-				rarity = itemDef.rarity,
-				rarityColor = {ItemTypes.getRarityColor(itemDef.rarity):ToHex()},
-			}
+	-- สร้าง array ของ 2 slots
+	local itemSlots = {}
+	for slotIndex = 1, 2 do
+		local itemId = data.itemSlots[slotIndex]
+		if itemId then
+			local itemDef = ItemTypes.getItem(itemId)
+			if itemDef then
+				itemSlots[slotIndex] = {
+					id = itemDef.id,
+					name = itemDef.name,
+					description = itemDef.description,
+					icon = itemDef.icon,
+					rarity = itemDef.rarity,
+					rarityColor = {ItemTypes.getRarityColor(itemDef.rarity):ToHex()},
+				}
+			else
+				itemSlots[slotIndex] = false -- item not found
+			end
+		else
+			itemSlots[slotIndex] = false -- empty slot
 		end
 	end
 	
 	self.updateScoreRemote:FireClient(player, {
-		currentItem = itemInfo, -- false = ไม่มี item, table = มี item
+		itemSlots = itemSlots, -- Array of 2: false = empty, table = has item
 		hasShield = data.hasShield,
 		isBoosted = data.isBoosted,
 		isSlowed = data.isSlowed,
@@ -1048,7 +2115,7 @@ function ItemManager:resetPlayer(player: Player)
 	end
 	
 	self.playerItems[player] = {
-		currentItem = nil,
+		itemSlots = {nil, nil}, -- 2 empty slots
 		lastUseTime = 0,
 		hasShield = false,
 		shieldExpiry = nil,

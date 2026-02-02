@@ -20,11 +20,13 @@ src/
 ├── client/                      # Client-side code
 │   ├── init.client.luau         # Entry point
 │   ├── FlyController.luau       # ระบบบินทดสอบ (กด F)
+│   ├── ItemEffects.luau         # 🎯 Screen effects (shake, flash, zoom)
 │   └── UI/
 │       ├── MainUI.luau          # Controller หลัก
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
-│       ├── ItemUI.luau          # 🎯 แสดง Item + Tooltip
+│       ├── ItemUI.luau          # 🎯 แสดง Item (2 slots) + Tooltip
+│       ├── ItemTestingUI.luau   # 🧪 UI ทดสอบ Item (กด T)
 │       ├── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
 │       ├── SummaryUI.luau       # 🏆 แสดง Summary จบเกม
 │       ├── MatchLobbyUI.luau    # 🏁 UI Matchmaking lobby
@@ -428,29 +430,80 @@ local Config = {
 
 ### ไฟล์ที่เกี่ยวข้อง:
 - `src/shared/ItemTypes.luau` - นิยาม Items ทั้งหมด
-- `src/server/ItemManager.luau` - Logic ฝั่ง Server
-- `src/client/UI/ItemUI.luau` - UI แสดง Item + Tooltip
+- `src/server/ItemManager.luau` - Logic ฝั่ง Server + VFX
+- `src/client/UI/ItemUI.luau` - UI แสดง Item (2 slots) + Tooltip
+- `src/client/UI/ItemTestingUI.luau` - UI ทดสอบ Item (กด T)
+- `src/client/ItemEffects.luau` - Screen effects (shake, flash, zoom)
 
 ### Items ที่มี:
 
-| Item | Rarity | Description |
-|------|--------|-------------|
-| Missile | Common | Fire a missile forward. Stuns on hit for 2 sec. |
-| Banana | Common | Drop a banana behind you. Makes players slip! |
-| Shield | Uncommon | Create a shield that blocks 1 attack. |
-| Speed Boost | Uncommon | +50% speed for 3 seconds! |
-| Swap | Rare | Instantly swap positions with 1st place! |
-| Lightning | Very Rare | Slows ALL other players for 3 sec! |
+| Item | Rarity | Icon | Description |
+|------|--------|------|-------------|
+| Missile | Common | 🚀 | Fire a missile forward. Stuns on hit for 2 sec. |
+| Banana | Common | 🍌 | Drop a banana behind you. Makes players slip! |
+| Shield | Uncommon | 🛡️ | Create a shield that blocks 1 attack. |
+| Speed Boost | Uncommon | ⚡ | +50% speed for 3 seconds! |
+| Swap | Rare | 🔄 | Instantly swap positions with 1st place! |
+| Lightning | Epic | ⚡🌩️ | Slows ALL other players for 3 sec! |
 
-### Item Box (ใน Stage):
+### Dual Item Slots:
+- ผู้เล่นถือได้ **2 items** พร้อมกัน
+- กด **1** = ใช้ item ช่องซ้าย
+- กด **2** = ใช้ item ช่องขวา
+- UI แสดงแบบ **horizontal** (ซ้าย-ขวา)
+- กรอบ item มี **สี rarity** (Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง)
+
+### Item Box (Neon Cube Style):
 
 ```lua
--- สร้าง Item Box (ไม่ใช่ Coin - ให้ random item)
+-- สร้าง Item Box (Neon Cube - ให้ random item)
 local itemBox = createItemPickup(position)
-itemBox:SetAttribute("IsItemBox", true)
-itemBox:SetAttribute("IsCoin", false) -- ไม่ใช่เหรียญ
+-- Style: Purple-blue neon cube (150, 100, 255)
+-- มี bobbing animation + spinning + particles
 itemBox.Parent = itemPickups
 ```
+
+### Visual Effects (VFX):
+
+| Item | Visual Effect |
+|------|---------------|
+| Missile | Rocket mesh + flame/smoke trails + explosion particles |
+| Banana | Yellow mesh (ID: 6407990721) + sparkles + slip animation (ล้มไปข้างหลัง) |
+| Shield | Force field bubble + hex particles |
+| Speed Boost | Speed lines + aura particles + trail |
+| Swap | Portal ring + swirl particles + teleport flash |
+| Lightning | Global screen flash + lightning strikes per player |
+
+### Banana Slip Effect:
+```lua
+-- ผู้เล่นจะ:
+-- 1. ลอยขึ้นเล็กน้อย (Y = 15)
+-- 2. ไถลไปข้างหน้า (velocity * 20)
+-- 3. หมุนล้มไปข้างหลัง (BodyAngularVelocity)
+-- 4. เข้า FallingDown state
+-- 5. กระโดดไม่ได้ระหว่างล้ม (loop บังคับ JumpPower = 0)
+-- 6. ลุกขึ้นหลัง 0.5 วินาที (GettingUp state)
+-- เจ้าของกล้วยก็ลื่นได้เหมือนกัน!
+```
+
+### Sound Effects:
+
+| Item | Sound |
+|------|-------|
+| Banana Drop | rbxassetid://70557734865364 |
+| Banana Slip | rbxassetid://129432532096499 |
+| Shield Activate | rbxassetid://130972023 |
+| Shield Break | rbxassetid://545298872 |
+| Missile Fire | rbxassetid://287390459 |
+| Explosion | rbxassetid://287390954 |
+| Swap Teleport | rbxassetid://130972023 |
+| Lightning Zap | rbxassetid://12222084 |
+
+### Item Testing UI (Development):
+- กด **T** เพื่อเปิด/ปิดเมนูทดสอบ
+- เลือก item ที่ต้องการให้ตัวเอง
+- กด "Clear All Items" เพื่อล้าง
+- แบ่งกลุ่มตาม rarity
 
 ### Weighted Random Item:
 - คนอันดับท้ายมีโอกาสได้ item หายากมากกว่า (catch-up mechanic)
@@ -464,8 +517,8 @@ NewItem = {
     id = "NewItem",
     name = "New Item",
     description = "Item description here",
-    icon = "rbxassetid://...",
-    rarity = "Uncommon",
+    icon = "🆕", -- ใช้ emoji หรือ rbxassetid://...
+    rarity = "Uncommon", -- Common, Uncommon, Rare, Epic
     weight = 15,
     catchUpBonus = 2,
     duration = 5,
@@ -478,6 +531,8 @@ NewItem = {
 elseif itemDef.id == "NewItem" then
     return self:useNewItem(player, itemDef)
 ```
+
+3. สร้าง function `useNewItem()` พร้อม VFX และ Sound
 
 ---
 
@@ -557,6 +612,9 @@ Match = {
 | `TimeWarning` | Server → Client | 🏁 แจ้งเตือนเวลา |
 | `SelectClass` | Client → Server | 🎭 เลือก Class |
 | `ClassUpdate` | Server → Client | 🎭 อัพเดท Class |
+| `ItemEffectEvent` | Server → Client | 🎯 Client-side VFX (screen shake, flash) |
+| `GiveTestItem` | Client → Server | 🧪 ให้ item สำหรับทดสอบ |
+| `ClearTestItems` | Client → Server | 🧪 ล้าง items ทั้งหมด |
 
 ### เพิ่ม RemoteEvent ใหม่:
 
@@ -667,7 +725,8 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 | `ScoreUI` | มุมบนซ้าย | ⭐ คะแนน + 🏆 High Score + 🚩 Progress Bar |
 | `CurrencyUI` | มุมบนซ้าย (ใต้ StageFrame) | 💰 แสดงเงิน |
 | `ClassSelectionUI` | มุมบนซ้าย (ใต้ Currency) | 🎭 แสดง Class + คลิกเพื่อเปลี่ยน |
-| `ItemUI` | มุมล่างขวา | 🎯 Item slot + คลิกเพื่อดู Tooltip |
+| `ItemUI` | มุมล่างขวา | 🎯 2 Item slots (horizontal) + Tooltip |
+| `ItemTestingUI` | มุมบนขวา (toggle) | 🧪 เมนูทดสอบ Item (กด T) |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
 | `StageSelectionUI` | กลางจอ | ⭐ เลือกลำดับด่าน + Countdown |
 | `SummaryUI` | กลางจอ (popup) | 🏆 Summary เมื่อจบเกม |
@@ -790,6 +849,16 @@ Back to Lobby (State = "Lobby")
 - **Space** ขึ้น, **Shift/Ctrl** ลง
 - ปุ่ม **+/-** ปรับความเร็ว (25-200)
 
+### Item Testing:
+- กด **T** เพื่อเปิด/ปิดเมนูทดสอบ Item
+- เลือก item ที่ต้องการ (แบ่งกลุ่มตาม rarity)
+- กด "Clear All Items" เพื่อล้าง items ทั้งหมด
+
+### Item Controls:
+- กด **1** = ใช้ item ช่องซ้าย
+- กด **2** = ใช้ item ช่องขวา
+- คลิกที่ item = ดู description
+
 ### Debug Output:
 ```
 [Server] Starting Obby Game...
@@ -861,11 +930,14 @@ end)
 11. **On Leave**: Save ทันทีเมื่อผู้เล่นออก (ถ้ามี pending)
 
 ### 🎯 Item System (Mario Kart Style)
-12. **Item Box**: ใช้ `createItemPickup()` → ให้ random item (ไม่ใช่เงิน)
-13. **Item Box Attributes**: `IsItemBox = true`, `IsCoin = false`
+12. **Dual Slots**: ผู้เล่นถือได้ 2 items, กด 1/2 เพื่อใช้
+13. **Item Box**: "Neon Cube" style (สีม่วง-น้ำเงิน) + bobbing animation
 14. **Weighted Random**: คนอันดับท้ายได้ item หายากมากกว่า (catch-up)
 15. **Item Tooltip**: คลิกที่ item เพื่อดู description (auto-hide 6 วินาที)
-16. **Item Clear**: เมื่อใช้ item แล้ว Server ส่ง `currentItem = false` ให้ client
+16. **Rarity Colors**: Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง
+17. **Item Icons**: ใช้ emoji (🚀🍌🛡️⚡🔄⚡🌩️)
+18. **Item Testing**: กด T เพื่อเปิดเมนูทดสอบ (dev only)
+19. **Banana Slip**: ล้มไปข้างหลัง + กระโดดไม่ได้ + เจ้าของก็ลื่นได้
 
 ### 🎭 Character Class System
 17. **3 Classes**: Runner (+speed), Jumper (+jump), Tank (+resistance)

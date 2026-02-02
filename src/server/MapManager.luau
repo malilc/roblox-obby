@@ -227,6 +227,10 @@ function MapManager:startAnimations()
 		if itemPickups then
 			for _, box in ipairs(itemPickups:GetChildren()) do
 				if box:GetAttribute("IsItemBox") or box:GetAttribute("SpinSpeed") then
+					-- เก็บ original Y สำหรับ bobbing
+					if not box:GetAttribute("OriginalY") then
+						box:SetAttribute("OriginalY", box.Position.Y)
+					end
 					table.insert(itemBoxes, box)
 				end
 			end
@@ -256,11 +260,21 @@ function MapManager:startAnimations()
 			part.CFrame = part.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
 		end
 		
-		-- Spinning Item Boxes (หมุนรอบแกน Y - แนวตั้ง)
+		-- Item Boxes: Spin + Bob (Neon Cube style)
 		for _, box in ipairs(itemBoxes) do
 			if box.Parent then
-				local spinSpeed = box:GetAttribute("SpinSpeed") or 3
-				box.CFrame = box.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
+				local spinSpeed = box:GetAttribute("SpinSpeed") or 2
+				local originalY = box:GetAttribute("OriginalY") or box.Position.Y
+				
+				-- Bobbing effect (ขยับขึ้นลง)
+				local bobOffset = math.sin(time * 2) * 0.3
+				local currentPos = box.Position
+				
+				-- หมุนรอบแกน Y และ bob ขึ้นลง
+				box.CFrame = CFrame.new(currentPos.X, originalY + bobOffset, currentPos.Z) * CFrame.Angles(0, dt * spinSpeed, 0) * CFrame.Angles(0, box.CFrame:ToEulerAnglesYXZ())
+				
+				-- แค่หมุนด้วย spin speed
+				box.CFrame = CFrame.new(currentPos.X, originalY + bobOffset, currentPos.Z) * CFrame.Angles(0, time * spinSpeed, 0)
 			end
 		end
 	end)

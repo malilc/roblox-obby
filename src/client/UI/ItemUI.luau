@@ -1,4 +1,4 @@
--- ItemUI: แสดง Item ปัจจุบันและ Status Effects
+-- ItemUI: แสดง 2 Item Slots และ Status Effects
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -16,11 +16,20 @@ function ItemUI.new(parent: ScreenGui)
 	local self = setmetatable({}, ItemUI)
 	
 	self.parent = parent
-	self.currentItem = nil
+	self.itemSlots = {nil, nil} -- 2 item slots
 	self.hasShield = false
 	self.isBoosted = false
 	self.isSlowed = false
 	self.tooltipVisible = false
+	self.activeTooltipSlot = nil
+	
+	-- UI references for each slot
+	self.slotFrames = {}
+	self.slotIcons = {}
+	self.slotTexts = {}
+	self.slotEmptyTexts = {}
+	self.slotStrokes = {}
+	self.slotLabels = {}
 	
 	self:createUI()
 	self:setupInput()
@@ -29,105 +38,25 @@ function ItemUI.new(parent: ScreenGui)
 end
 
 function ItemUI:createUI()
-	-- Main item container (มุมล่างขวา) - เล็กลง
+	-- Main item container (มุมล่างขวา) - กว้างขึ้นสำหรับ 2 slots
 	local container = Instance.new("Frame")
 	container.Name = "ItemContainer"
-	container.Size = UDim2.new(0, 120, 0, 115)
-	container.Position = UDim2.new(1, -130, 1, -125)
+	container.Size = UDim2.new(0, 210, 0, 115)
+	container.Position = UDim2.new(1, -220, 1, -125)
 	container.BackgroundTransparency = 1
 	container.Parent = self.parent
 	self.container = container
 	
-	-- Item slot frame (กลาง container) - ทำเป็น clickable
-	local itemFrame = Instance.new("TextButton")
-	itemFrame.Name = "ItemFrame"
-	itemFrame.Size = UDim2.new(0, 80, 0, 80)
-	itemFrame.Position = UDim2.new(0.5, 0, 0, 0)
-	itemFrame.AnchorPoint = Vector2.new(0.5, 0)
-	itemFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-	itemFrame.BackgroundTransparency = 0.2
-	itemFrame.BorderSizePixel = 0
-	itemFrame.Text = ""
-	itemFrame.AutoButtonColor = false
-	itemFrame.Parent = container
-	self.itemFrame = itemFrame
-	
-	local frameCorner = Instance.new("UICorner")
-	frameCorner.CornerRadius = UDim.new(0, 12)
-	frameCorner.Parent = itemFrame
-	
-	-- Border/glow
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(100, 100, 100)
-	stroke.Thickness = 2
-	stroke.Parent = itemFrame
-	self.frameStroke = stroke
-	
-	-- Item icon
-	local iconLabel = Instance.new("ImageLabel")
-	iconLabel.Name = "ItemIcon"
-	iconLabel.Size = UDim2.new(0.7, 0, 0.7, 0)
-	iconLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
-	iconLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-	iconLabel.BackgroundTransparency = 1
-	iconLabel.Image = ""
-	iconLabel.Visible = false
-	iconLabel.Parent = itemFrame
-	self.iconImage = iconLabel
-	
-	-- Item name fallback (text)
-	local iconText = Instance.new("TextLabel")
-	iconText.Name = "ItemIconText"
-	iconText.Size = UDim2.new(1, -10, 0.6, 0)
-	iconText.Position = UDim2.new(0.5, 0, 0.3, 0)
-	iconText.AnchorPoint = Vector2.new(0.5, 0)
-	iconText.BackgroundTransparency = 1
-	iconText.Text = ""
-	iconText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	iconText.TextSize = 12
-	iconText.TextScaled = true
-	iconText.Font = Enum.Font.GothamBold
-	iconText.Visible = false
-	iconText.Parent = itemFrame
-	self.iconText = iconText
-	
-	-- Empty slot text
-	local emptyText = Instance.new("TextLabel")
-	emptyText.Name = "EmptyText"
-	emptyText.Size = UDim2.new(1, 0, 1, 0)
-	emptyText.BackgroundTransparency = 1
-	emptyText.Text = "?"
-	emptyText.TextColor3 = Color3.fromRGB(100, 100, 100)
-	emptyText.TextSize = 36
-	emptyText.Font = Enum.Font.GothamBlack
-	emptyText.Parent = itemFrame
-	self.emptyText = emptyText
-	
-	-- Info hint (เมื่อมี item)
-	local infoHint = Instance.new("TextLabel")
-	infoHint.Name = "InfoHint"
-	infoHint.Size = UDim2.new(0, 20, 0, 20)
-	infoHint.Position = UDim2.new(1, -5, 0, 5)
-	infoHint.AnchorPoint = Vector2.new(1, 0)
-	infoHint.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
-	infoHint.BackgroundTransparency = 0.3
-	infoHint.Text = "i"
-	infoHint.TextColor3 = Color3.fromRGB(255, 255, 255)
-	infoHint.TextSize = 12
-	infoHint.Font = Enum.Font.GothamBold
-	infoHint.Visible = false
-	infoHint.Parent = itemFrame
-	self.infoHint = infoHint
-	
-	local infoCorner = Instance.new("UICorner")
-	infoCorner.CornerRadius = UDim.new(1, 0)
-	infoCorner.Parent = infoHint
+	-- สร้าง 2 item slots (horizontal layout)
+	for slotIndex = 1, 2 do
+		self:createSlot(slotIndex, container)
+	end
 	
 	-- Tooltip popup (ซ่อนไว้ก่อน แสดงเมื่อคลิก)
 	local tooltip = Instance.new("Frame")
 	tooltip.Name = "ItemTooltip"
 	tooltip.Size = UDim2.new(0, 200, 0, 100)
-	tooltip.Position = UDim2.new(0, -210, 0, 0) -- ด้านซ้ายของ item
+	tooltip.Position = UDim2.new(0, -10, 0, -110) -- ด้านบนของ item
 	tooltip.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	tooltip.BackgroundTransparency = 0.1
 	tooltip.BorderSizePixel = 0
@@ -193,38 +122,11 @@ function ItemUI:createUI()
 	tooltipDesc.Parent = tooltip
 	self.tooltipDesc = tooltipDesc
 	
-	-- Click on item to toggle tooltip
-	itemFrame.MouseButton1Click:Connect(function()
-		if self.currentItem then
-			self:toggleTooltip()
-		end
-	end)
-	
-	-- Use button (ใต้ item frame)
-	local useButton = Instance.new("TextButton")
-	useButton.Name = "UseButton"
-	useButton.Size = UDim2.new(0, 80, 0, 28)
-	useButton.Position = UDim2.new(0.5, 0, 0, 85)
-	useButton.AnchorPoint = Vector2.new(0.5, 0)
-	useButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-	useButton.BackgroundTransparency = 0.2
-	useButton.BorderSizePixel = 0
-	useButton.Text = "USE [E]"
-	useButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	useButton.TextSize = 12
-	useButton.Font = Enum.Font.GothamBold
-	useButton.Parent = container
-	self.useButton = useButton
-	
-	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 6)
-	buttonCorner.Parent = useButton
-	
-	-- Status effects container (ด้านซ้ายของ item slot)
+	-- Status effects container (ด้านซ้ายสุด)
 	local statusContainer = Instance.new("Frame")
 	statusContainer.Name = "StatusEffects"
 	statusContainer.Size = UDim2.new(0, 30, 0, 90)
-	statusContainer.Position = UDim2.new(0, -5, 0, 0)
+	statusContainer.Position = UDim2.new(0, -40, 0, 0)
 	statusContainer.BackgroundTransparency = 1
 	statusContainer.Parent = container
 	self.statusContainer = statusContainer
@@ -252,13 +154,116 @@ function ItemUI:createUI()
 	slowIcon.Visible = false
 	self.slowIcon = slowIcon
 	
-	-- Button click for USE
-	useButton.MouseButton1Click:Connect(function()
-		self:useItem()
+	-- Initialize both slots as empty
+	for i = 1, 2 do
+		self:updateSlotDisplay(i, nil)
+	end
+end
+
+-- Create a single item slot
+function ItemUI:createSlot(slotIndex: number, parent: Frame)
+	local xOffset = (slotIndex - 1) * 100 + 5 -- Slot 1 at 5, Slot 2 at 105
+	
+	-- Item slot frame - clickable
+	local slotFrame = Instance.new("TextButton")
+	slotFrame.Name = "ItemSlot" .. slotIndex
+	slotFrame.Size = UDim2.new(0, 90, 0, 90)
+	slotFrame.Position = UDim2.new(0, xOffset, 0, 0)
+	slotFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	slotFrame.BackgroundTransparency = 0.2
+	slotFrame.BorderSizePixel = 0
+	slotFrame.Text = ""
+	slotFrame.AutoButtonColor = false
+	slotFrame.Parent = parent
+	self.slotFrames[slotIndex] = slotFrame
+	
+	local frameCorner = Instance.new("UICorner")
+	frameCorner.CornerRadius = UDim.new(0, 12)
+	frameCorner.Parent = slotFrame
+	
+	-- Border/glow
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(100, 100, 100)
+	stroke.Thickness = 2
+	stroke.Parent = slotFrame
+	self.slotStrokes[slotIndex] = stroke
+	
+	-- Slot number label (มุมบนซ้าย)
+	local slotLabel = Instance.new("TextLabel")
+	slotLabel.Name = "SlotLabel"
+	slotLabel.Size = UDim2.new(0, 24, 0, 24)
+	slotLabel.Position = UDim2.new(0, 4, 0, 4)
+	slotLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+	slotLabel.BackgroundTransparency = 0.3
+	slotLabel.Text = tostring(slotIndex)
+	slotLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	slotLabel.TextSize = 14
+	slotLabel.Font = Enum.Font.GothamBold
+	slotLabel.Parent = slotFrame
+	self.slotLabels[slotIndex] = slotLabel
+	
+	local labelCorner = Instance.new("UICorner")
+	labelCorner.CornerRadius = UDim.new(0, 6)
+	labelCorner.Parent = slotLabel
+	
+	-- Item icon
+	local iconImage = Instance.new("ImageLabel")
+	iconImage.Name = "ItemIcon"
+	iconImage.Size = UDim2.new(0.6, 0, 0.6, 0)
+	iconImage.Position = UDim2.new(0.5, 0, 0.45, 0)
+	iconImage.AnchorPoint = Vector2.new(0.5, 0.5)
+	iconImage.BackgroundTransparency = 1
+	iconImage.Image = ""
+	iconImage.Visible = false
+	iconImage.Parent = slotFrame
+	self.slotIcons[slotIndex] = iconImage
+	
+	-- Item name fallback (text)
+	local iconText = Instance.new("TextLabel")
+	iconText.Name = "ItemIconText"
+	iconText.Size = UDim2.new(1, -10, 0.4, 0)
+	iconText.Position = UDim2.new(0.5, 0, 0.55, 0)
+	iconText.AnchorPoint = Vector2.new(0.5, 0.5)
+	iconText.BackgroundTransparency = 1
+	iconText.Text = ""
+	iconText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	iconText.TextSize = 11
+	iconText.TextScaled = true
+	iconText.Font = Enum.Font.GothamBold
+	iconText.Visible = false
+	iconText.Parent = slotFrame
+	self.slotTexts[slotIndex] = iconText
+	
+	-- Empty slot text
+	local emptyText = Instance.new("TextLabel")
+	emptyText.Name = "EmptyText"
+	emptyText.Size = UDim2.new(1, 0, 1, 0)
+	emptyText.BackgroundTransparency = 1
+	emptyText.Text = "?"
+	emptyText.TextColor3 = Color3.fromRGB(100, 100, 100)
+	emptyText.TextSize = 32
+	emptyText.Font = Enum.Font.GothamBlack
+	emptyText.Parent = slotFrame
+	self.slotEmptyTexts[slotIndex] = emptyText
+	
+	-- Click on slot to show tooltip
+	slotFrame.MouseButton1Click:Connect(function()
+		if self.itemSlots[slotIndex] then
+			self:toggleTooltipForSlot(slotIndex)
+		end
 	end)
 	
-	-- Update initial state
-	self:updateItemDisplay(nil)
+	-- Keybind hint label (ด้านล่าง)
+	local keybindHint = Instance.new("TextLabel")
+	keybindHint.Name = "KeybindHint"
+	keybindHint.Size = UDim2.new(1, 0, 0, 18)
+	keybindHint.Position = UDim2.new(0, 0, 1, 2)
+	keybindHint.BackgroundTransparency = 1
+	keybindHint.Text = "[" .. slotIndex .. "]"
+	keybindHint.TextColor3 = Color3.fromRGB(150, 150, 150)
+	keybindHint.TextSize = 12
+	keybindHint.Font = Enum.Font.GothamMedium
+	keybindHint.Parent = slotFrame
 end
 
 function ItemUI:createStatusIcon(name: string, emoji: string, color: Color3): Frame
@@ -287,136 +292,191 @@ function ItemUI:setupInput()
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 		
-		if input.KeyCode == Enum.KeyCode.E then
-			self:useItem()
+		-- Keybind 1 = use slot 1
+		if input.KeyCode == Enum.KeyCode.One then
+			self:useItemFromSlot(1)
+		-- Keybind 2 = use slot 2
+		elseif input.KeyCode == Enum.KeyCode.Two then
+			self:useItemFromSlot(2)
 		end
 	end)
 end
 
-function ItemUI:useItem()
-	if not self.currentItem then return end
+function ItemUI:useItemFromSlot(slotIndex: number)
+	if not self.itemSlots[slotIndex] then return end
 	
-	-- Send to server
+	-- Send to server with slot index
 	local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UseItem")
-	remote:FireServer()
+	remote:FireServer(slotIndex)
 	
 	-- Visual feedback
-	self:playUseEffect()
+	self:playUseEffectForSlot(slotIndex)
 end
 
-function ItemUI:playUseEffect()
-	-- Scale effect
-	local originalSize = self.itemFrame.Size
+function ItemUI:playUseEffectForSlot(slotIndex: number)
+	local slotFrame = self.slotFrames[slotIndex]
+	local slotStroke = self.slotStrokes[slotIndex]
+	if not slotFrame or not slotStroke then return end
 	
-	local shrinkTween = TweenService:Create(self.itemFrame, TweenInfo.new(0.1), {
-		Size = UDim2.new(0, 70, 0, 70)
+	-- Scale effect
+	local originalSize = slotFrame.Size
+	
+	local shrinkTween = TweenService:Create(slotFrame, TweenInfo.new(0.1), {
+		Size = UDim2.new(0, 80, 0, 80)
 	})
 	shrinkTween:Play()
 	
 	shrinkTween.Completed:Connect(function()
-		local expandTween = TweenService:Create(self.itemFrame, TweenInfo.new(0.1), {
+		local expandTween = TweenService:Create(slotFrame, TweenInfo.new(0.1), {
 			Size = originalSize
 		})
 		expandTween:Play()
 	end)
 	
 	-- Flash effect
-	local flashTween = TweenService:Create(self.frameStroke, TweenInfo.new(0.1), {
-		Color = Color3.fromRGB(255, 255, 255)
+	local flashTween = TweenService:Create(slotStroke, TweenInfo.new(0.1), {
+		Color = Color3.fromRGB(255, 255, 255),
+		Thickness = 4
 	})
 	flashTween:Play()
 	
 	task.delay(0.2, function()
-		if self.currentItem then
-			local itemDef = ItemTypes.getItem(self.currentItem.id)
+		local itemInfo = self.itemSlots[slotIndex]
+		if itemInfo then
+			local itemDef = ItemTypes.getItem(itemInfo.id)
 			if itemDef then
-				self.frameStroke.Color = ItemTypes.getRarityColor(itemDef.rarity)
+				slotStroke.Color = ItemTypes.getRarityColor(itemDef.rarity)
 			end
 		else
-			self.frameStroke.Color = Color3.fromRGB(100, 100, 100)
+			slotStroke.Color = Color3.fromRGB(100, 100, 100)
 		end
+		slotStroke.Thickness = 2
 	end)
 end
 
-function ItemUI:updateItemDisplay(itemInfo: {id: string, name: string, description: string?, icon: string, rarity: string}?)
-	self.currentItem = itemInfo
+-- Update display for a specific slot
+function ItemUI:updateSlotDisplay(slotIndex: number, itemInfo: {id: string, name: string, description: string?, icon: string, rarity: string}?)
+	self.itemSlots[slotIndex] = itemInfo
 	
-	-- ซ่อน tooltip เมื่อ item เปลี่ยน
-	self.tooltip.Visible = false
-	self.tooltipVisible = false
+	local slotFrame = self.slotFrames[slotIndex]
+	local slotIcon = self.slotIcons[slotIndex]
+	local slotText = self.slotTexts[slotIndex]
+	local slotEmptyText = self.slotEmptyTexts[slotIndex]
+	local slotStroke = self.slotStrokes[slotIndex]
+	
+	if not slotFrame then return end
+	
+	-- Get or create emoji icon label
+	local emojiIcon = slotFrame:FindFirstChild("EmojiIcon")
+	if not emojiIcon then
+		emojiIcon = Instance.new("TextLabel")
+		emojiIcon.Name = "EmojiIcon"
+		emojiIcon.Size = UDim2.new(0.8, 0, 0.5, 0)
+		emojiIcon.Position = UDim2.new(0.5, 0, 0.35, 0)
+		emojiIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+		emojiIcon.BackgroundTransparency = 1
+		emojiIcon.Text = ""
+		emojiIcon.TextSize = 32
+		emojiIcon.Font = Enum.Font.GothamBold
+		emojiIcon.Visible = false
+		emojiIcon.Parent = slotFrame
+	end
+	
+	-- ซ่อน tooltip ถ้า slot นี้กำลังแสดงอยู่
+	if self.activeTooltipSlot == slotIndex then
+		self.tooltip.Visible = false
+		self.tooltipVisible = false
+		self.activeTooltipSlot = nil
+	end
 	
 	if itemInfo then
 		-- Show item
-		self.emptyText.Visible = false
-		self.iconText.Visible = true
-		self.iconText.Text = itemInfo.name or "?"
-		self.infoHint.Visible = true -- แสดง info hint
+		slotEmptyText.Visible = false
+		slotText.Visible = true
+		slotText.Text = itemInfo.name or "?"
 		
-		-- Try to load icon
-		if itemInfo.icon and itemInfo.icon ~= "" then
-			self.iconImage.Image = itemInfo.icon
-			self.iconImage.Visible = true
-			self.iconText.Size = UDim2.new(1, -10, 0.3, 0)
-			self.iconText.Position = UDim2.new(0.5, 0, 0.7, 0)
+		-- Check if icon is emoji (not starting with "rbxassetid://")
+		local isEmoji = itemInfo.icon and not string.find(itemInfo.icon, "rbxassetid://")
+		
+		if isEmoji then
+			-- Show emoji icon
+			emojiIcon.Text = itemInfo.icon
+			emojiIcon.Visible = true
+			slotIcon.Visible = false
+			slotText.Size = UDim2.new(1, -10, 0.25, 0)
+			slotText.Position = UDim2.new(0.5, 0, 0.75, 0)
+		elseif itemInfo.icon and itemInfo.icon ~= "" then
+			-- Try to load image icon
+			slotIcon.Image = itemInfo.icon
+			slotIcon.Visible = true
+			emojiIcon.Visible = false
+			slotText.Size = UDim2.new(1, -10, 0.25, 0)
+			slotText.Position = UDim2.new(0.5, 0, 0.8, 0)
 		else
-			self.iconImage.Visible = false
-			self.iconText.Size = UDim2.new(1, -10, 0.6, 0)
-			self.iconText.Position = UDim2.new(0.5, 0, 0.3, 0)
+			slotIcon.Visible = false
+			emojiIcon.Visible = false
+			slotText.Size = UDim2.new(1, -10, 0.4, 0)
+			slotText.Position = UDim2.new(0.5, 0, 0.55, 0)
 		end
 		
+		-- Set rarity color
+		local rarityColor = ItemTypes.getRarityColor(itemInfo.rarity)
+		slotStroke.Color = rarityColor
+		slotFrame.BackgroundColor3 = Color3.new(
+			rarityColor.R * 0.3,
+			rarityColor.G * 0.3,
+			rarityColor.B * 0.3
+		)
+	else
+		-- No item in this slot
+		slotEmptyText.Visible = true
+		slotText.Visible = false
+		slotIcon.Visible = false
+		emojiIcon.Visible = false
+		slotStroke.Color = Color3.fromRGB(100, 100, 100)
+		slotFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	end
+end
+
+-- Toggle tooltip visibility for a specific slot
+function ItemUI:toggleTooltipForSlot(slotIndex: number)
+	local itemInfo = self.itemSlots[slotIndex]
+	if not itemInfo then return end
+	
+	-- ถ้า tooltip กำลังแสดงอยู่สำหรับ slot อื่น ให้ปิดก่อน
+	if self.tooltipVisible and self.activeTooltipSlot ~= slotIndex then
+		self.tooltip.Visible = false
+		self.tooltipVisible = false
+	end
+	
+	self.tooltipVisible = not self.tooltipVisible
+	self.activeTooltipSlot = slotIndex
+	
+	if self.tooltipVisible then
 		-- Update tooltip content
 		self.tooltipName.Text = itemInfo.name or "Unknown"
 		self.tooltipRarity.Text = ItemTypes.getRarityName(itemInfo.rarity)
 		self.tooltipDesc.Text = itemInfo.description or ""
 		
-		-- Set rarity color
 		local rarityColor = ItemTypes.getRarityColor(itemInfo.rarity)
-		self.frameStroke.Color = rarityColor
 		self.tooltipStroke.Color = rarityColor
 		self.tooltipRarity.TextColor3 = rarityColor
-		self.itemFrame.BackgroundColor3 = Color3.new(
-			rarityColor.R * 0.3,
-			rarityColor.G * 0.3,
-			rarityColor.B * 0.3
-		)
 		
-		-- Enable button
-		self.useButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-		self.useButton.BackgroundTransparency = 0.2
-		self.useButton.Visible = true
-	else
-		-- No item
-		self.emptyText.Visible = true
-		self.iconText.Visible = false
-		self.iconImage.Visible = false
-		self.infoHint.Visible = false
-		self.frameStroke.Color = Color3.fromRGB(100, 100, 100)
-		self.itemFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-		
-		-- Hide button when no item
-		self.useButton.Visible = false
-	end
-end
-
--- Toggle tooltip visibility
-function ItemUI:toggleTooltip()
-	self.tooltipVisible = not self.tooltipVisible
-	
-	if self.tooltipVisible then
-		-- Show with animation
+		-- Show with animation (ด้านบน)
 		self.tooltip.Visible = true
-		self.tooltip.Position = UDim2.new(0, -180, 0, 0)
+		self.tooltip.Position = UDim2.new(0, -10, 0, -90)
 		self.tooltip.BackgroundTransparency = 1
 		
 		local showTween = TweenService:Create(self.tooltip, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
-			Position = UDim2.new(0, -210, 0, 0),
+			Position = UDim2.new(0, -10, 0, -110),
 			BackgroundTransparency = 0.1
 		})
 		showTween:Play()
 		
 		-- Auto-hide after 6 seconds
+		local currentSlot = slotIndex
 		task.delay(6, function()
-			if self.tooltipVisible then
+			if self.tooltipVisible and self.activeTooltipSlot == currentSlot then
 				self:hideTooltip()
 			end
 		end)
@@ -428,9 +488,10 @@ end
 -- Hide tooltip
 function ItemUI:hideTooltip()
 	self.tooltipVisible = false
+	self.activeTooltipSlot = nil
 	
 	local hideTween = TweenService:Create(self.tooltip, TweenInfo.new(0.15), {
-		Position = UDim2.new(0, -180, 0, 0),
+		Position = UDim2.new(0, -10, 0, -90),
 		BackgroundTransparency = 1
 	})
 	hideTween:Play()
@@ -443,15 +504,18 @@ function ItemUI:hideTooltip()
 end
 
 function ItemUI:updateItems(data: {[string]: any})
-	-- Update current item
-	-- Server ส่ง false เมื่อไม่มี item, table เมื่อมี item
-	if data.currentItem ~= nil then
-		if data.currentItem == false then
-			-- Item ถูกใช้แล้ว - หาย
-			self:updateItemDisplay(nil)
-		else
-			-- มี item ใหม่
-			self:updateItemDisplay(data.currentItem)
+	-- Update item slots (array of 2)
+	-- Server ส่ง itemSlots = {slot1, slot2} โดย false = empty, table = has item
+	if data.itemSlots then
+		for slotIndex = 1, 2 do
+			local slotData = data.itemSlots[slotIndex]
+			if slotData == false then
+				-- Slot is empty
+				self:updateSlotDisplay(slotIndex, nil)
+			elseif slotData then
+				-- Has item
+				self:updateSlotDisplay(slotIndex, slotData)
+			end
 		end
 	end
 	
@@ -472,8 +536,8 @@ function ItemUI:updateItems(data: {[string]: any})
 	end
 end
 
--- Roulette animation when getting new item
-function ItemUI:playRouletteAnimation(finalItem: {id: string, name: string, icon: string, rarity: string})
+-- Roulette animation when getting new item in a specific slot
+function ItemUI:playRouletteAnimationForSlot(slotIndex: number, finalItem: {id: string, name: string, icon: string, rarity: string})
 	-- Get all items for roulette
 	local allItemIds = ItemTypes.getAllItemIds()
 	
@@ -482,6 +546,9 @@ function ItemUI:playRouletteAnimation(finalItem: {id: string, name: string, icon
 	local spinCount = 15
 	local delayPerSpin = spinDuration / spinCount
 	
+	local slotFrame = self.slotFrames[slotIndex]
+	if not slotFrame then return end
+	
 	task.spawn(function()
 		for i = 1, spinCount do
 			-- Random item display
@@ -489,7 +556,7 @@ function ItemUI:playRouletteAnimation(finalItem: {id: string, name: string, icon
 			local randomItem = ItemTypes.getItem(randomId)
 			
 			if randomItem then
-				self:updateItemDisplay({
+				self:updateSlotDisplay(slotIndex, {
 					id = randomItem.id,
 					name = randomItem.name,
 					icon = randomItem.icon,
@@ -498,45 +565,49 @@ function ItemUI:playRouletteAnimation(finalItem: {id: string, name: string, icon
 			end
 			
 			-- Flash effect
-			self.itemFrame.BackgroundTransparency = 0
+			slotFrame.BackgroundTransparency = 0
 			task.wait(delayPerSpin * 0.5)
-			self.itemFrame.BackgroundTransparency = 0.2
+			slotFrame.BackgroundTransparency = 0.2
 			task.wait(delayPerSpin * 0.5)
 		end
 		
 		-- Final item
-		self:updateItemDisplay(finalItem)
+		self:updateSlotDisplay(slotIndex, finalItem)
 		
 		-- Celebration effect
-		self:playItemReceivedEffect(finalItem)
+		self:playItemReceivedEffectForSlot(slotIndex, finalItem)
 	end)
 end
 
-function ItemUI:playItemReceivedEffect(item: {rarity: string})
+function ItemUI:playItemReceivedEffectForSlot(slotIndex: number, item: {rarity: string})
+	local slotFrame = self.slotFrames[slotIndex]
+	local slotStroke = self.slotStrokes[slotIndex]
+	if not slotFrame or not slotStroke then return end
+	
 	local rarityColor = ItemTypes.getRarityColor(item.rarity)
 	
 	-- Glow effect
-	local glowTween = TweenService:Create(self.frameStroke, TweenInfo.new(0.3), {
+	local glowTween = TweenService:Create(slotStroke, TweenInfo.new(0.3), {
 		Thickness = 4,
 		Color = rarityColor
 	})
 	glowTween:Play()
 	
 	task.delay(0.5, function()
-		TweenService:Create(self.frameStroke, TweenInfo.new(0.2), {
+		TweenService:Create(slotStroke, TweenInfo.new(0.2), {
 			Thickness = 2
 		}):Play()
 	end)
 	
 	-- Scale pop
-	local popTween = TweenService:Create(self.itemFrame, TweenInfo.new(0.15, Enum.EasingStyle.Back), {
-		Size = UDim2.new(0, 90, 0, 90)
+	local popTween = TweenService:Create(slotFrame, TweenInfo.new(0.15, Enum.EasingStyle.Back), {
+		Size = UDim2.new(0, 100, 0, 100)
 	})
 	popTween:Play()
 	
 	task.delay(0.15, function()
-		TweenService:Create(self.itemFrame, TweenInfo.new(0.1), {
-			Size = UDim2.new(0, 80, 0, 80)
+		TweenService:Create(slotFrame, TweenInfo.new(0.1), {
+			Size = UDim2.new(0, 90, 0, 90)
 		}):Play()
 	end)
 end
