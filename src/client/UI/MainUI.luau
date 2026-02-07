@@ -12,6 +12,8 @@ local SummaryUI = require(script.Parent.SummaryUI)
 local MatchLobbyUI = require(script.Parent.MatchLobbyUI)
 local ClassSelectionUI = require(script.Parent.ClassSelectionUI)
 local RaceResultsUI = require(script.Parent.RaceResultsUI)
+local TitleHUDUI = require(script.Parent.TitleHUDUI)
+local TitleCollectionUI = require(script.Parent.TitleCollectionUI)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -41,11 +43,21 @@ function MainUI.new()
 	self.matchLobbyUI = MatchLobbyUI.new(screenGui)
 	self.classSelectionUI = ClassSelectionUI.new(screenGui)
 	self.raceResultsUI = RaceResultsUI.new(screenGui)
+	self.titleCollectionUI = TitleCollectionUI.new(screenGui)
+	self.titleHUDUI = TitleHUDUI.new(screenGui, function()
+		self:toggleTitleCollection()
+	end)
 	
 	-- Setup remote listeners
 	self:setupRemotes()
 	
 	return self
+end
+
+function MainUI:toggleTitleCollection()
+	if self.titleCollectionUI then
+		self.titleCollectionUI:toggle()
+	end
 end
 
 function MainUI:setupRemotes()

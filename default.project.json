@@ -67,6 +67,15 @@
         },
         "ClassUpdate": {
           "$className": "RemoteEvent"
+        },
+        "MasteryUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "SetActiveTitle": {
+          "$className": "RemoteEvent"
+        },
+        "TitleUpdate": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

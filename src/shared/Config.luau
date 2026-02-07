@@ -46,6 +46,81 @@ Stages = {
 		},
 	},
 
+	-- Character Class Settings
+	Classes = {
+		DefaultClass = "Normal",
+		-- ฟรีตั้งแต่เริ่มเกม
+		FreeClasses = {
+			Normal = true,
+		},
+		-- ราคาปลดล็อกคลาส
+		Costs = {
+			Runner = 300,
+			Jumper = 450,
+			Tank = 600,
+		},
+		-- กัน spam เรียก SelectClass
+		RequestCooldown = 0.25,
+	},
+
+	-- Class Mastery Settings
+	Mastery = {
+		MaxLevel = 20,
+		BaseXpPerLevel = 100,
+		XpGrowthMultiplier = 1.25,
+		PerStageXP = 20,
+		FinishBonusXP = 60,
+		TitleThemes = {
+			Common = {
+				textColor = Color3.fromRGB(210, 210, 210),
+				strokeColor = Color3.fromRGB(40, 40, 50),
+				frameColor = Color3.fromRGB(80, 80, 95),
+			},
+			Rare = {
+				textColor = Color3.fromRGB(120, 205, 255),
+				strokeColor = Color3.fromRGB(25, 55, 85),
+				frameColor = Color3.fromRGB(75, 135, 190),
+			},
+			Epic = {
+				textColor = Color3.fromRGB(220, 150, 255),
+				strokeColor = Color3.fromRGB(70, 30, 95),
+				frameColor = Color3.fromRGB(155, 90, 215),
+			},
+			Legendary = {
+				textColor = Color3.fromRGB(255, 220, 120),
+				strokeColor = Color3.fromRGB(95, 65, 25),
+				frameColor = Color3.fromRGB(220, 170, 70),
+			},
+		},
+		-- Cosmetic-only rewards (no gameplay power)
+		Rewards = {
+			Normal = {
+				{id = "normal_title_balanced_cadet", level = 5, rewardType = "Title", rarity = "Common", name = "Balanced Cadet", description = "Title for mastering the basics"},
+				{id = "normal_trail_calm_flow", level = 10, rewardType = "Trail", rarity = "Rare", name = "Calm Flow", description = "Soft white trail effect"},
+				{id = "normal_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Normal Specialist", description = "Profile badge for Normal mastery"},
+				{id = "normal_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Normal Master Frame", description = "Class card frame for max Normal mastery"},
+			},
+			Runner = {
+				{id = "runner_title_quickstep", level = 5, rewardType = "Title", rarity = "Common", name = "Quickstep", description = "Title for speed-focused players"},
+				{id = "runner_trail_speed_streak", level = 10, rewardType = "Trail", rarity = "Rare", name = "Speed Streak", description = "Fast blue streak trail"},
+				{id = "runner_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Runner Specialist", description = "Profile badge for Runner mastery"},
+				{id = "runner_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Runner Master Frame", description = "Class card frame for max Runner mastery"},
+			},
+			Jumper = {
+				{id = "jumper_title_skybound", level = 5, rewardType = "Title", rarity = "Common", name = "Skybound", description = "Title for aerial control specialists"},
+				{id = "jumper_trail_arc_glow", level = 10, rewardType = "Trail", rarity = "Rare", name = "Arc Glow", description = "Light green arc-like trail"},
+				{id = "jumper_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Jumper Specialist", description = "Profile badge for Jumper mastery"},
+				{id = "jumper_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Jumper Master Frame", description = "Class card frame for max Jumper mastery"},
+			},
+			Tank = {
+				{id = "tank_title_iron_stance", level = 5, rewardType = "Title", rarity = "Common", name = "Iron Stance", description = "Title for durable playstyle"},
+				{id = "tank_trail_heavy_pulse", level = 10, rewardType = "Trail", rarity = "Rare", name = "Heavy Pulse", description = "Dense gold pulse trail"},
+				{id = "tank_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Tank Specialist", description = "Profile badge for Tank mastery"},
+				{id = "tank_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Tank Master Frame", description = "Class card frame for max Tank mastery"},
+			},
+		},
+	},
+
 	-- Push Item Settings
 	PushItem = {
 		StartingAmount = 1, -- จำนวน Push item เริ่มต้น

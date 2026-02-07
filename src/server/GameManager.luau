@@ -24,7 +24,9 @@ function GameManager.new()
 	self.currencyManager = CurrencyManager.new()
 	self.scoreManager = ScoreManager.new(self.currencyManager) -- Pass CurrencyManager to ScoreManager
 	self.matchManager = MatchManager.new(self) -- Pass GameManager to MatchManager (create before ItemManager)
-	self.classManager = ClassManager.new() -- Character class system
+	self.classManager = ClassManager.new(self.currencyManager, function(player: Player)
+		return self:canPlayerChangeClass(player)
+	end) -- Character class system
 	self.itemManager = ItemManager.new(self.currencyManager, self, self.matchManager) -- Pass CurrencyManager, GameManager, and MatchManager to ItemManager
 	
 	-- Player states
@@ -60,6 +62,10 @@ function GameManager.new()
 	-- self:generateNewMap()
 	
 	return self
+end
+
+function GameManager:canPlayerChangeClass(player: Player): boolean
+	return self.playerStates[player] == "Lobby"
 end
 
 -- Setup remote events
@@ -148,6 +154,10 @@ function GameManager:onCharacterAdded(player: Player, character: Model)
 	if humanoidRootPart then
 		self:setupCharacterTouchEvents(player, humanoidRootPart)
 	end
+
+	if self.currencyManager and self.currencyManager.applyActiveTitleToCharacter then
+		self.currencyManager:applyActiveTitleToCharacter(player, character)
+	end
 end
 
 -- Setup touch events for character
@@ -198,6 +208,16 @@ function GameManager:checkPlayerPosition(player: Player)
 	end
 end
 
+function GameManager:addMasteryXP(player: Player, amount: number, reason: string)
+	if amount <= 0 then return end
+	if not self.currencyManager or not self.classManager then return end
+
+	local classId = self.classManager:getPlayerClass(player)
+	if not classId then return end
+
+	self.currencyManager:addMasteryXP(player, classId, amount, reason)
+end
+
 -- On stage complete
 function GameManager:onStageComplete(player: Player, stageIndex: number)
 	self.scoreManager:addStageScore(player, stageIndex)
@@ -207,6 +227,9 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 	if stageIndex > 1 then
 		-- Stage Clear bonus (คงที่)
 		self.currencyManager:addCurrency(player, Config.Currency.PerStage)
+
+		local stageMasteryXP = (Config.Mastery and Config.Mastery.PerStageXP) or 0
+		self:addMasteryXP(player, stageMasteryXP, "StageComplete")
 		
 		-- Stage Reward (ตามด่านที่ผ่าน)
 		local completedStageNum = self.mapManager.stageOrder[stageIndex - 1] -- ด่านที่เพิ่งผ่าน
@@ -291,6 +314,9 @@ function GameManager:onPlayerFinished(player: Player)
 	
 	-- Give currency bonus for finishing
 	self.currencyManager:addCurrency(player, Config.Currency.FinishBonus)
+
+	local finishMasteryXP = (Config.Mastery and Config.Mastery.FinishBonusXP) or 0
+	self:addMasteryXP(player, finishMasteryXP, "Finish")
 
 	-- Calculate summary data
 	local roundStats = self.playerRoundStats[player]

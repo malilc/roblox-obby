@@ -81,10 +81,13 @@ function ScoreManager:savePlayerData(player: Player)
 	if not playerData then return end
 	
 	local success, err = pcall(function()
-		self.dataStore:SetAsync("Player_" .. player.UserId, {
-			totalScore = playerData.totalScore,
-			highScore = playerData.highScore,
-		})
+		local existingData = self.dataStore:GetAsync("Player_" .. player.UserId)
+		if type(existingData) ~= "table" then
+			existingData = {}
+		end
+		existingData.totalScore = playerData.totalScore
+		existingData.highScore = playerData.highScore
+		self.dataStore:SetAsync("Player_" .. player.UserId, existingData)
 	end)
 	
 	if success then

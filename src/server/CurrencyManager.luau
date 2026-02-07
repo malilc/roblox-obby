@@ -1,91 +1,498 @@
--- CurrencyManager: จัดการเงินในเกม
+-- CurrencyManager: จัดการเงินในเกม + class unlock + class mastery
 
-local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 
 local CurrencyManager = {}
 CurrencyManager.__index = CurrencyManager
 
+export type ClassMasteryData = {
+	level: number,
+	xp: number,
+}
+
+export type ClassMasterySnapshot = {
+	level: number,
+	xp: number,
+	xpToNext: number,
+	isMax: boolean,
+}
+
+export type MasteryRewardDefinition = {
+	id: string,
+	level: number,
+	rewardType: string,
+	rarity: string,
+	name: string,
+	description: string?,
+}
+
+export type MasteryRewardSnapshot = {
+	id: string,
+	level: number,
+	rewardType: string,
+	rarity: string,
+	name: string,
+	description: string?,
+	unlocked: boolean,
+}
+
+export type TitleSnapshot = {
+	id: string,
+	name: string,
+	classId: string,
+	level: number,
+	rarity: string,
+	description: string?,
+}
+
+export type TitleCatalogEntry = {
+	id: string,
+	name: string,
+	classId: string,
+	level: number,
+	rarity: string,
+	description: string?,
+	unlocked: boolean,
+}
+
 export type PlayerCurrencyData = {
 	currency: number,
+	unlockedClasses: {[string]: boolean},
+	equippedClass: string,
+	classMastery: {[string]: ClassMasteryData},
+	masteryRewards: {[string]: {[string]: boolean}},
+	activeTitle: string?,
 }
+
+local function getDefaultClassId(): string
+	local configuredDefault = Config.Classes and Config.Classes.DefaultClass
+	if type(configuredDefault) == "string" and ClassTypes.getClass(configuredDefault) then
+		return configuredDefault
+	end
+	return ClassTypes.DefaultClass
+end
+
+local function getMasteryMaxLevel(): number
+	local configuredValue = Config.Mastery and tonumber(Config.Mastery.MaxLevel)
+	local maxLevel = math.floor(configuredValue or 20)
+	return math.max(1, maxLevel)
+end
+
+local function getMasteryBaseXp(): number
+	local configuredValue = Config.Mastery and tonumber(Config.Mastery.BaseXpPerLevel)
+	local baseXp = math.floor(configuredValue or 100)
+	return math.max(1, baseXp)
+end
+
+local function getMasteryGrowthMultiplier(): number
+	local configuredValue = Config.Mastery and tonumber(Config.Mastery.XpGrowthMultiplier)
+	local multiplier = configuredValue or 1.25
+	return if multiplier > 1 then multiplier else 1
+end
+
+local function getXpRequiredForLevel(level: number): number
+	local normalizedLevel = math.max(1, math.floor(level))
+	local baseXp = getMasteryBaseXp()
+	local growth = getMasteryGrowthMultiplier()
+	local requiredXp = baseXp * (growth ^ (normalizedLevel - 1))
+	return math.max(1, math.floor(requiredXp))
+end
+
+local function deriveDefaultRarity(level: number): string
+	if level >= 20 then
+		return "Legendary"
+	elseif level >= 15 then
+		return "Epic"
+	elseif level >= 10 then
+		return "Rare"
+	end
+	return "Common"
+end
+
+local function normalizeRarity(source: any, level: number): string
+	if type(source) == "string" and source ~= "" then
+		return source
+	end
+	return deriveDefaultRarity(level)
+end
+
+local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: Color3, strokeColor: Color3, frameColor: Color3}
+	local themes = Config.Mastery and Config.Mastery.TitleThemes
+	local configuredTheme = type(themes) == "table" and themes[rarity] or nil
+
+	local textColor = classColor or Color3.fromRGB(230, 230, 230)
+	local strokeColor = Color3.fromRGB(0, 0, 0)
+	local frameColor = classColor or Color3.fromRGB(95, 95, 110)
+
+	if type(configuredTheme) == "table" then
+		if typeof(configuredTheme.textColor) == "Color3" then
+			textColor = configuredTheme.textColor
+		end
+		if typeof(configuredTheme.strokeColor) == "Color3" then
+			strokeColor = configuredTheme.strokeColor
+		end
+		if typeof(configuredTheme.frameColor) == "Color3" then
+			frameColor = configuredTheme.frameColor
+		end
+	end
+
+	return {
+		textColor = textColor,
+		strokeColor = strokeColor,
+		frameColor = frameColor,
+	}
+end
+
+local function buildUnlockedClasses(source: any?): {[string]: boolean}
+	local unlocked = {} :: {[string]: boolean}
+
+	if Config.Classes and type(Config.Classes.FreeClasses) == "table" then
+		for classId, isFree in pairs(Config.Classes.FreeClasses) do
+			if isFree == true and ClassTypes.getClass(classId) then
+				unlocked[classId] = true
+			end
+		end
+	end
+
+	-- Merge saved classes
+	if type(source) == "table" then
+		for classId, isUnlocked in pairs(source) do
+			if isUnlocked == true and ClassTypes.getClass(classId) then
+				unlocked[classId] = true
+			end
+		end
+	end
+
+	-- Ensure default class is always unlocked
+	local defaultClass = getDefaultClassId()
+	unlocked[defaultClass] = true
+
+	return unlocked
+end
+
+local function sanitizeEquippedClass(savedClassId: any, unlockedClasses: {[string]: boolean}): string
+	if type(savedClassId) == "string" and unlockedClasses[savedClassId] and ClassTypes.getClass(savedClassId) then
+		return savedClassId
+	end
+
+	local defaultClass = getDefaultClassId()
+	if unlockedClasses[defaultClass] then
+		return defaultClass
+	end
+
+	-- Fallback: first unlocked valid class
+	for classId, isUnlocked in pairs(unlockedClasses) do
+		if isUnlocked and ClassTypes.getClass(classId) then
+			return classId
+		end
+	end
+
+	return ClassTypes.DefaultClass
+end
+
+local function buildMasteryData(source: any?): {[string]: ClassMasteryData}
+	local masteryData = {} :: {[string]: ClassMasteryData}
+	local maxLevel = getMasteryMaxLevel()
+
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		local savedEntry = nil
+		if type(source) == "table" then
+			savedEntry = source[classId]
+		end
+
+		local rawLevel = type(savedEntry) == "table" and tonumber(savedEntry.level) or 1
+		local level = math.clamp(math.floor(rawLevel or 1), 1, maxLevel)
+
+		local rawXp = type(savedEntry) == "table" and tonumber(savedEntry.xp) or 0
+		local xp = math.max(0, math.floor(rawXp or 0))
+
+		if level >= maxLevel then
+			xp = 0
+		else
+			local xpToNext = getXpRequiredForLevel(level)
+			xp = math.min(xp, xpToNext - 1)
+		end
+
+		masteryData[classId] = {
+			level = level,
+			xp = xp,
+		}
+	end
+
+	return masteryData
+end
+
+local function buildMasterySnapshot(masteryData: {[string]: ClassMasteryData}): {[string]: ClassMasterySnapshot}
+	local snapshot = {} :: {[string]: ClassMasterySnapshot}
+	local maxLevel = getMasteryMaxLevel()
+
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		local entry = masteryData[classId]
+		local level = entry and entry.level or 1
+		local xp = entry and entry.xp or 0
+		local isMax = level >= maxLevel
+		local xpToNext = if isMax then 0 else getXpRequiredForLevel(level)
+
+		snapshot[classId] = {
+			level = level,
+			xp = xp,
+			xpToNext = xpToNext,
+			isMax = isMax,
+		}
+	end
+
+	return snapshot
+end
+
+local function buildMasteryRewardCatalog(): {[string]: {MasteryRewardDefinition}}
+	local catalog = {} :: {[string]: {MasteryRewardDefinition}}
+	local maxLevel = getMasteryMaxLevel()
+	local configuredRewards = Config.Mastery and Config.Mastery.Rewards
+
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		local classRewards = {} :: {MasteryRewardDefinition}
+		local sourceList = type(configuredRewards) == "table" and configuredRewards[classId] or nil
+
+		if type(sourceList) == "table" then
+			for index, entry in ipairs(sourceList) do
+				if type(entry) == "table" then
+					local rewardId = type(entry.id) == "string" and entry.id or string.lower(classId) .. "_reward_" .. tostring(index)
+					local rawLevel = tonumber(entry.level) or 1
+					local level = math.clamp(math.floor(rawLevel), 1, maxLevel)
+					local rewardType = type(entry.rewardType) == "string" and entry.rewardType or "Cosmetic"
+					local rarity = normalizeRarity(entry.rarity, level)
+					local name = type(entry.name) == "string" and entry.name or (rewardType .. " Reward")
+					local description = if type(entry.description) == "string" then entry.description else nil
+
+					table.insert(classRewards, {
+						id = rewardId,
+						level = level,
+						rewardType = rewardType,
+						rarity = rarity,
+						name = name,
+						description = description,
+					})
+				end
+			end
+		end
+
+		table.sort(classRewards, function(a, b)
+			if a.level == b.level then
+				return a.id < b.id
+			end
+			return a.level < b.level
+		end)
+
+		catalog[classId] = classRewards
+	end
+
+	return catalog
+end
+
+local MASTERY_REWARD_CATALOG = buildMasteryRewardCatalog()
+
+local function getMasteryRewardById(rewardId: string): (MasteryRewardDefinition?, string?)
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		local rewardList = MASTERY_REWARD_CATALOG[classId] or {}
+		for _, reward in ipairs(rewardList) do
+			if reward.id == rewardId then
+				return reward, classId
+			end
+		end
+	end
+
+	return nil, nil
+end
+
+local function isRewardUnlocked(
+	masteryRewards: {[string]: {[string]: boolean}},
+	classId: string,
+	rewardId: string
+): boolean
+	local unlockedByClass = masteryRewards[classId]
+	if not unlockedByClass then
+		return false
+	end
+	return unlockedByClass[rewardId] == true
+end
+
+local function isTitleUnlocked(
+	masteryRewards: {[string]: {[string]: boolean}},
+	titleId: string
+): boolean
+	local rewardDef, classId = getMasteryRewardById(titleId)
+	if not rewardDef or not classId or rewardDef.rewardType ~= "Title" then
+		return false
+	end
+
+	return isRewardUnlocked(masteryRewards, classId, titleId)
+end
+
+local function sanitizeActiveTitle(
+	savedTitleId: any,
+	masteryRewards: {[string]: {[string]: boolean}}
+): string?
+	if type(savedTitleId) ~= "string" then
+		return nil
+	end
+
+	if savedTitleId == "" then
+		return nil
+	end
+
+	if isTitleUnlocked(masteryRewards, savedTitleId) then
+		return savedTitleId
+	end
+
+	return nil
+end
+
+local function buildMasteryRewardUnlocks(
+	source: any?,
+	masteryData: {[string]: ClassMasteryData}
+): {[string]: {[string]: boolean}}
+	local rewardUnlocks = {} :: {[string]: {[string]: boolean}}
+
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		local unlockedByClass = {} :: {[string]: boolean}
+		local savedUnlocked = type(source) == "table" and source[classId] or nil
+		local currentLevel = masteryData[classId] and masteryData[classId].level or 1
+		local rewardList = MASTERY_REWARD_CATALOG[classId] or {}
+
+		for _, reward in ipairs(rewardList) do
+			local isUnlockedFromSave = type(savedUnlocked) == "table" and savedUnlocked[reward.id] == true
+			local isUnlockedByLevel = currentLevel >= reward.level
+			if isUnlockedFromSave or isUnlockedByLevel then
+				unlockedByClass[reward.id] = true
+			end
+		end
+
+		rewardUnlocks[classId] = unlockedByClass
+	end
+
+	return rewardUnlocks
+end
 
 function CurrencyManager.new()
 	local self = setmetatable({}, CurrencyManager)
-	
+
 	self.playerData = {} :: {[Player]: PlayerCurrencyData}
 	self.pendingSaves = {} :: {[Player]: boolean} -- Track players needing save
-	self.lastSaveTime = {} :: {[Player]: number} -- Track last save time
-	
+
 	-- DataStore
 	pcall(function()
 		self.dataStore = DataStoreService:GetDataStore(Config.DataStore.Name)
 	end)
-	
+
 	-- Remotes
 	self.updateCurrencyRemote = ReplicatedStorage.Remotes.UpdateCurrency
-	
+	self.masteryUpdateRemote = ReplicatedStorage.Remotes:WaitForChild("MasteryUpdate")
+	self.titleUpdateRemote = ReplicatedStorage.Remotes:WaitForChild("TitleUpdate")
+	self.setActiveTitleRemote = ReplicatedStorage.Remotes:WaitForChild("SetActiveTitle")
+
+	self:setupRemotes()
+
 	-- Start auto-save loop (save pending data every 30 seconds)
 	self:startAutoSave()
-	
+
 	return self
+end
+
+function CurrencyManager:setupRemotes()
+	self.setActiveTitleRemote.OnServerEvent:Connect(function(player, titleId)
+		self:handleSetActiveTitleRequest(player, titleId)
+	end)
 end
 
 -- Initialize player currency
 function CurrencyManager:initPlayer(player: Player)
+	local defaultClass = getDefaultClassId()
+	local defaultMasteryData = buildMasteryData(nil)
 	self.playerData[player] = {
 		currency = Config.Currency.StartingAmount,
+		unlockedClasses = buildUnlockedClasses(nil),
+		equippedClass = defaultClass,
+		classMastery = defaultMasteryData,
+		masteryRewards = buildMasteryRewardUnlocks(nil, defaultMasteryData),
+		activeTitle = nil,
 	}
-	
+
 	-- Load from DataStore
 	self:loadPlayerData(player)
 end
 
 -- Load player currency from DataStore
 function CurrencyManager:loadPlayerData(player: Player)
-	if not self.dataStore then 
+	if not self.dataStore then
 		-- Send update even if no DataStore
 		self:sendCurrencyUpdate(player)
-		return 
+		self:sendMasteryUpdate(player)
+		self:sendTitleUpdate(player)
+		self:applyActiveTitleToCharacter(player)
+		return
 	end
-	
+
 	local success, data = pcall(function()
 		return self.dataStore:GetAsync("Player_" .. player.UserId)
 	end)
-	
-	if success and data then
-		local playerData = self.playerData[player]
-		if playerData then
-			playerData.currency = data.currency or Config.Currency.StartingAmount
-		end
-		print("[CurrencyManager] Loaded currency for", player.Name, "- Currency:", playerData.currency)
+
+	local playerData = self.playerData[player]
+	if success and type(data) == "table" and playerData then
+		local loadedCurrency = tonumber(data.currency)
+		playerData.currency = math.max(0, loadedCurrency or Config.Currency.StartingAmount)
+		playerData.unlockedClasses = buildUnlockedClasses(data.unlockedClasses)
+		playerData.equippedClass = sanitizeEquippedClass(data.equippedClass, playerData.unlockedClasses)
+		playerData.classMastery = buildMasteryData(data.classMastery)
+		playerData.masteryRewards = buildMasteryRewardUnlocks(data.masteryRewards, playerData.classMastery)
+		playerData.activeTitle = sanitizeActiveTitle(data.activeTitle, playerData.masteryRewards)
+
+		print(
+			"[CurrencyManager] Loaded profile for",
+			player.Name,
+			"- Currency:",
+			playerData.currency,
+			"- Equipped:",
+			playerData.equippedClass
+		)
 	else
 		print("[CurrencyManager] No saved currency for", player.Name, "- Using starting amount")
 	end
-	
+
 	-- Update client
 	self:sendCurrencyUpdate(player)
+	self:sendMasteryUpdate(player)
+	self:sendTitleUpdate(player)
+	self:applyActiveTitleToCharacter(player)
 end
 
 -- Save player currency to DataStore
 function CurrencyManager:savePlayerData(player: Player)
 	if not self.dataStore then return end
-	
+
 	local playerData = self.playerData[player]
 	if not playerData then return end
-	
+
 	local success, err = pcall(function()
 		-- Get existing data first
-		local existingData = self.dataStore:GetAsync("Player_" .. player.UserId) or {}
-		existingData.currency = playerData.currency
-		self.dataStore:SetAsync("Player_" .. player.UserId, existingData)
+		local existingData = self.dataStore:GetAsync("Player_" .. player.UserId)
+		if type(existingData) ~= "table" then
+			existingData = {}
+		end
+			existingData.currency = playerData.currency
+			existingData.unlockedClasses = self:getUnlockedClasses(player)
+			existingData.equippedClass = playerData.equippedClass
+			existingData.classMastery = self:getClassMasteryData(player)
+			existingData.masteryRewards = self:getUnlockedMasteryRewards(player)
+			existingData.activeTitle = playerData.activeTitle
+			self.dataStore:SetAsync("Player_" .. player.UserId, existingData)
 	end)
-	
+
 	if success then
-		print("[CurrencyManager] Saved currency for", player.Name)
+		print("[CurrencyManager] Saved currency profile for", player.Name)
 	else
 		warn("[CurrencyManager] Failed to save currency for", player.Name, ":", err)
 	end
@@ -95,15 +502,589 @@ end
 function CurrencyManager:addCurrency(player: Player, amount: number)
 	local playerData = self.playerData[player]
 	if not playerData then return end
-	
+	if amount == 0 then return end
+
 	playerData.currency = playerData.currency + amount
 	print("[CurrencyManager]", player.Name, "gained", amount, "currency - Total:", playerData.currency)
-	
+
 	-- Mark for pending save (will be saved in auto-save loop)
 	self.pendingSaves[player] = true
-	
+
 	-- Update client immediately
 	self:sendCurrencyUpdate(player)
+end
+
+-- Can player afford amount
+function CurrencyManager:canAfford(player: Player, amount: number): boolean
+	local playerData = self.playerData[player]
+	if not playerData then return false end
+	if amount < 0 then return false end
+	return playerData.currency >= amount
+end
+
+-- Spend currency
+function CurrencyManager:spendCurrency(player: Player, amount: number, reason: string?): boolean
+	local playerData = self.playerData[player]
+	if not playerData then return false end
+	if amount <= 0 then return false end
+	if not self:canAfford(player, amount) then
+		return false
+	end
+
+	playerData.currency = playerData.currency - amount
+	self.pendingSaves[player] = true
+
+	print("[CurrencyManager]", player.Name, "spent", amount, "currency - Total:", playerData.currency, if reason then "(" .. reason .. ")" else "")
+
+	self:sendCurrencyUpdate(player)
+	return true
+end
+
+-- Check if class is unlocked
+function CurrencyManager:isClassUnlocked(player: Player, classId: string): boolean
+	local playerData = self.playerData[player]
+	if not playerData then
+		-- Allow free classes as fallback while data is not initialized
+		return Config.Classes
+			and type(Config.Classes.FreeClasses) == "table"
+			and Config.Classes.FreeClasses[classId] == true
+			or false
+	end
+
+	return playerData.unlockedClasses[classId] == true
+end
+
+-- Unlock class permanently
+function CurrencyManager:unlockClass(player: Player, classId: string): boolean
+	local playerData = self.playerData[player]
+	if not playerData then return false end
+	if not ClassTypes.getClass(classId) then return false end
+	if playerData.unlockedClasses[classId] then
+		return false
+	end
+
+	playerData.unlockedClasses[classId] = true
+	if not playerData.classMastery[classId] then
+		playerData.classMastery[classId] = {
+			level = 1,
+			xp = 0,
+		}
+	end
+	if not playerData.masteryRewards[classId] then
+		playerData.masteryRewards[classId] = {}
+	end
+	local classLevel = playerData.classMastery[classId] and playerData.classMastery[classId].level or 1
+	self:unlockMasteryRewardsForLevelRange(player, classId, 1, classLevel)
+
+	self.pendingSaves[player] = true
+	self:sendCurrencyUpdate(player)
+	self:sendMasteryUpdate(player)
+	self:sendTitleUpdate(player)
+
+	print("[CurrencyManager]", player.Name, "unlocked class:", classId)
+	return true
+end
+
+-- Get unlocked classes copy
+function CurrencyManager:getUnlockedClasses(player: Player): {[string]: boolean}
+	local playerData = self.playerData[player]
+	local result = {} :: {[string]: boolean}
+
+	if not playerData then
+		return buildUnlockedClasses(nil)
+	end
+
+	for classId, isUnlocked in pairs(playerData.unlockedClasses) do
+		if isUnlocked then
+			result[classId] = true
+		end
+	end
+
+	return result
+end
+
+-- Get equipped class
+function CurrencyManager:getEquippedClass(player: Player): string
+	local playerData = self.playerData[player]
+	if not playerData then
+		return getDefaultClassId()
+	end
+
+	return sanitizeEquippedClass(playerData.equippedClass, playerData.unlockedClasses)
+end
+
+-- Save equipped class
+function CurrencyManager:setEquippedClass(player: Player, classId: string): boolean
+	local playerData = self.playerData[player]
+	if not playerData then return false end
+	if not ClassTypes.getClass(classId) then return false end
+	if not playerData.unlockedClasses[classId] then return false end
+
+	playerData.equippedClass = classId
+	self.pendingSaves[player] = true
+	return true
+end
+
+-- Get mastery data for saving
+function CurrencyManager:getClassMasteryData(player: Player): {[string]: ClassMasteryData}
+	local playerData = self.playerData[player]
+	if not playerData then
+		return buildMasteryData(nil)
+	end
+
+	local masteryCopy = {} :: {[string]: ClassMasteryData}
+	for classId, entry in pairs(playerData.classMastery) do
+		masteryCopy[classId] = {
+			level = entry.level,
+			xp = entry.xp,
+		}
+	end
+
+	return masteryCopy
+end
+
+function CurrencyManager:getUnlockedMasteryRewards(player: Player): {[string]: {[string]: boolean}}
+	local playerData = self.playerData[player]
+	if not playerData then
+		return buildMasteryRewardUnlocks(nil, buildMasteryData(nil))
+	end
+
+	local copy = {} :: {[string]: {[string]: boolean}}
+	for classId, rewards in pairs(playerData.masteryRewards) do
+		copy[classId] = {}
+		for rewardId, isUnlocked in pairs(rewards) do
+			if isUnlocked then
+				copy[classId][rewardId] = true
+			end
+		end
+	end
+
+	return copy
+end
+
+function CurrencyManager:getClassMasterySnapshot(player: Player): {[string]: ClassMasterySnapshot}
+	local playerData = self.playerData[player]
+	if not playerData then
+		return buildMasterySnapshot(buildMasteryData(nil))
+	end
+
+	return buildMasterySnapshot(playerData.classMastery)
+end
+
+function CurrencyManager:getMasteryRewardsSnapshot(player: Player): {[string]: {MasteryRewardSnapshot}}
+	local playerData = self.playerData[player]
+	local fallbackMastery = buildMasteryData(nil)
+	local fallbackUnlocks = buildMasteryRewardUnlocks(nil, fallbackMastery)
+	local unlockedSource = if playerData then playerData.masteryRewards else fallbackUnlocks
+	local snapshot = {} :: {[string]: {MasteryRewardSnapshot}}
+
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		local rewardEntries = {} :: {MasteryRewardSnapshot}
+		local rewardList = MASTERY_REWARD_CATALOG[classId] or {}
+		local unlockedByClass = unlockedSource[classId] or {}
+
+		for _, reward in ipairs(rewardList) do
+			table.insert(rewardEntries, {
+				id = reward.id,
+				level = reward.level,
+				rewardType = reward.rewardType,
+				rarity = reward.rarity,
+				name = reward.name,
+				description = reward.description,
+				unlocked = unlockedByClass[reward.id] == true,
+			})
+		end
+
+		snapshot[classId] = rewardEntries
+	end
+
+	return snapshot
+end
+
+function CurrencyManager:getTitleCatalogSnapshot(player: Player): {TitleCatalogEntry}
+	local playerData = self.playerData[player]
+	local catalog = {} :: {TitleCatalogEntry}
+	local unlockedRewards = if playerData then playerData.masteryRewards else buildMasteryRewardUnlocks(nil, buildMasteryData(nil))
+
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		local rewardList = MASTERY_REWARD_CATALOG[classId] or {}
+		for _, reward in ipairs(rewardList) do
+			if reward.rewardType == "Title" then
+				table.insert(catalog, {
+					id = reward.id,
+					name = reward.name,
+					classId = classId,
+					level = reward.level,
+					rarity = reward.rarity,
+					description = reward.description,
+					unlocked = isRewardUnlocked(unlockedRewards, classId, reward.id),
+				})
+			end
+		end
+	end
+
+	return catalog
+end
+
+function CurrencyManager:getUnlockedTitles(player: Player): {TitleSnapshot}
+	local titles = {} :: {TitleSnapshot}
+	for _, entry in ipairs(self:getTitleCatalogSnapshot(player)) do
+		if entry.unlocked then
+			table.insert(titles, {
+				id = entry.id,
+				name = entry.name,
+				classId = entry.classId,
+				level = entry.level,
+				rarity = entry.rarity,
+				description = entry.description,
+			})
+		end
+	end
+
+	return titles
+end
+
+function CurrencyManager:getActiveTitle(player: Player): TitleSnapshot?
+	local playerData = self.playerData[player]
+	if not playerData or not playerData.activeTitle then
+		return nil
+	end
+
+	local rewardDef, classId = getMasteryRewardById(playerData.activeTitle)
+	if not rewardDef or not classId then
+		return nil
+	end
+	if rewardDef.rewardType ~= "Title" then
+		return nil
+	end
+	if not isRewardUnlocked(playerData.masteryRewards, classId, rewardDef.id) then
+		return nil
+	end
+
+	return {
+		id = rewardDef.id,
+		name = rewardDef.name,
+		classId = classId,
+		level = rewardDef.level,
+		rarity = rewardDef.rarity,
+		description = rewardDef.description,
+	}
+end
+
+function CurrencyManager:setActiveTitle(player: Player, titleId: string?): (boolean, string?)
+	local playerData = self.playerData[player]
+	if not playerData then
+		return false, "PROFILE_NOT_READY"
+	end
+
+	if titleId == nil then
+		playerData.activeTitle = nil
+		self.pendingSaves[player] = true
+		self:applyActiveTitleToCharacter(player)
+		return true, nil
+	end
+
+	if titleId == "" then
+		playerData.activeTitle = nil
+		self.pendingSaves[player] = true
+		self:applyActiveTitleToCharacter(player)
+		return true, nil
+	end
+
+	local rewardDef, classId = getMasteryRewardById(titleId)
+	if not rewardDef or not classId then
+		return false, "INVALID_TITLE"
+	end
+	if rewardDef.rewardType ~= "Title" then
+		return false, "INVALID_TITLE"
+	end
+	if not isRewardUnlocked(playerData.masteryRewards, classId, rewardDef.id) then
+		return false, "TITLE_LOCKED"
+	end
+
+	playerData.activeTitle = rewardDef.id
+	self.pendingSaves[player] = true
+	self:applyActiveTitleToCharacter(player)
+
+	return true, nil
+end
+
+function CurrencyManager:applyActiveTitleToCharacter(player: Player, character: Model?)
+	local targetCharacter = character or player.Character
+	if not targetCharacter then
+		return
+	end
+
+	local head = targetCharacter:FindFirstChild("Head")
+	if not head or not head:IsA("BasePart") then
+		return
+	end
+
+	local existing = head:FindFirstChild("PlayerTitleBillboard")
+	if existing then
+		existing:Destroy()
+	end
+
+	local activeTitle = self:getActiveTitle(player)
+	if not activeTitle then
+		targetCharacter:SetAttribute("ActiveTitleId", "")
+		targetCharacter:SetAttribute("ActiveTitleName", "")
+		targetCharacter:SetAttribute("ActiveTitleRarity", "")
+		return
+	end
+
+	targetCharacter:SetAttribute("ActiveTitleId", activeTitle.id)
+	targetCharacter:SetAttribute("ActiveTitleName", activeTitle.name)
+	targetCharacter:SetAttribute("ActiveTitleRarity", activeTitle.rarity)
+
+	local classDef = ClassTypes.getClass(activeTitle.classId)
+	local classColor = if classDef then classDef.color else nil
+	local theme = getTitleTheme(activeTitle.rarity, classColor)
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "PlayerTitleBillboard"
+	billboard.Size = UDim2.new(0, 240, 0, 24)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.9, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 120
+	billboard.Parent = head
+
+	local container = Instance.new("Frame")
+	container.Size = UDim2.new(1, 0, 1, 0)
+	container.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+	container.BackgroundTransparency = 0.25
+	container.BorderSizePixel = 0
+	container.Parent = billboard
+
+	local containerCorner = Instance.new("UICorner")
+	containerCorner.CornerRadius = UDim.new(0, 6)
+	containerCorner.Parent = container
+
+	local containerStroke = Instance.new("UIStroke")
+	containerStroke.Color = theme.frameColor
+	containerStroke.Thickness = 1.5
+	containerStroke.Transparency = 0.1
+	containerStroke.Parent = container
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.Text = string.format("[%s] %s", activeTitle.rarity, activeTitle.name)
+	textLabel.TextColor3 = theme.textColor
+	textLabel.TextStrokeTransparency = 0.35
+	textLabel.TextStrokeColor3 = theme.strokeColor
+	textLabel.TextScaled = true
+	textLabel.Font = Enum.Font.GothamBold
+	textLabel.Parent = container
+end
+
+function CurrencyManager:sendTitleUpdate(player: Player, action: {[string]: any}?)
+	local playerData = self.playerData[player]
+	if not playerData then
+		return
+	end
+
+	local payload = {
+		titleCatalog = self:getTitleCatalogSnapshot(player),
+		unlockedTitles = self:getUnlockedTitles(player),
+		activeTitle = self:getActiveTitle(player),
+	}
+
+	if action then
+		payload.action = action
+	end
+
+	self.titleUpdateRemote:FireClient(player, payload)
+end
+
+function CurrencyManager:handleSetActiveTitleRequest(player: Player, titleId: any)
+	local normalizedTitleId = nil :: string?
+	if type(titleId) == "string" then
+		normalizedTitleId = titleId
+	elseif titleId == nil then
+		normalizedTitleId = nil
+	else
+		self:sendTitleUpdate(player, {
+			type = "error",
+			titleId = titleId,
+			reason = "INVALID_TITLE",
+		})
+		return
+	end
+
+	if normalizedTitleId == "NONE" then
+		normalizedTitleId = nil
+	end
+
+	local success, reason = self:setActiveTitle(player, normalizedTitleId)
+	if not success then
+		self:sendTitleUpdate(player, {
+			type = "error",
+			titleId = normalizedTitleId,
+			reason = reason or "FAILED",
+		})
+		return
+	end
+
+	self:sendTitleUpdate(player, {
+		type = if normalizedTitleId then "equip" else "clear",
+		titleId = normalizedTitleId,
+	})
+end
+
+function CurrencyManager:unlockMasteryRewardsForLevelRange(
+	player: Player,
+	classId: string,
+	fromLevel: number,
+	toLevel: number
+): {MasteryRewardSnapshot}
+	local playerData = self.playerData[player]
+	if not playerData then
+		return {}
+	end
+
+	if toLevel < fromLevel then
+		return {}
+	end
+
+	local unlockedByClass = playerData.masteryRewards[classId]
+	if not unlockedByClass then
+		unlockedByClass = {}
+		playerData.masteryRewards[classId] = unlockedByClass
+	end
+
+	local unlockedRewards = {} :: {MasteryRewardSnapshot}
+	local rewardList = MASTERY_REWARD_CATALOG[classId] or {}
+
+	for _, reward in ipairs(rewardList) do
+		local shouldUnlock = reward.level >= fromLevel and reward.level <= toLevel
+		if shouldUnlock and unlockedByClass[reward.id] ~= true then
+			unlockedByClass[reward.id] = true
+			table.insert(unlockedRewards, {
+				id = reward.id,
+				level = reward.level,
+				rewardType = reward.rewardType,
+				rarity = reward.rarity,
+				name = reward.name,
+				description = reward.description,
+				unlocked = true,
+			})
+		end
+	end
+
+	return unlockedRewards
+end
+
+function CurrencyManager:sendMasteryUpdate(player: Player, action: {[string]: any}?)
+	local playerData = self.playerData[player]
+	if not playerData then return end
+
+	local payload = {
+		classMastery = self:getClassMasterySnapshot(player),
+		masteryRewards = self:getMasteryRewardsSnapshot(player),
+		classId = self:getEquippedClass(player),
+	}
+
+	if action then
+		payload.action = action
+	end
+
+	self.masteryUpdateRemote:FireClient(player, payload)
+end
+
+function CurrencyManager:addMasteryXP(player: Player, classId: string, amount: number, reason: string?)
+	local playerData = self.playerData[player]
+	if not playerData then return end
+	if amount <= 0 then return end
+	if not ClassTypes.getClass(classId) then return end
+
+	local mastery = playerData.classMastery[classId]
+	if not mastery then
+		mastery = {level = 1, xp = 0}
+		playerData.classMastery[classId] = mastery
+	end
+
+	local maxLevel = getMasteryMaxLevel()
+	if mastery.level >= maxLevel then
+		return
+	end
+
+	local previousLevel = mastery.level
+	local xpToAdd = math.floor(amount)
+	local remainingXp = xpToAdd
+	local leveledUp = false
+
+	while remainingXp > 0 and mastery.level < maxLevel do
+		local xpToNext = getXpRequiredForLevel(mastery.level)
+		local neededXp = xpToNext - mastery.xp
+
+		if remainingXp >= neededXp then
+			remainingXp = remainingXp - neededXp
+			mastery.level += 1
+			mastery.xp = 0
+			leveledUp = true
+		else
+			mastery.xp += remainingXp
+			remainingXp = 0
+		end
+	end
+
+	if mastery.level >= maxLevel then
+		mastery.level = maxLevel
+		mastery.xp = 0
+	end
+
+	local unlockedRewards = {} :: {MasteryRewardSnapshot}
+	if mastery.level > previousLevel then
+		unlockedRewards = self:unlockMasteryRewardsForLevelRange(player, classId, previousLevel + 1, mastery.level)
+	end
+
+	self.pendingSaves[player] = true
+
+	print(
+		"[CurrencyManager]",
+		player.Name,
+		"gained",
+		xpToAdd,
+		"mastery XP for",
+		classId,
+		"- Level:",
+		mastery.level,
+		"XP:",
+		mastery.xp,
+		"- RewardsUnlocked:",
+		#unlockedRewards,
+		if reason then "(" .. reason .. ")" else ""
+	)
+
+	local actionPayload = {
+		type = "xp",
+		classId = classId,
+		xpGained = xpToAdd,
+		leveledUp = leveledUp,
+		newLevel = mastery.level,
+		reason = reason,
+	} :: {[string]: any}
+
+	if #unlockedRewards > 0 then
+		actionPayload.unlockedRewards = unlockedRewards
+	end
+
+	self:sendMasteryUpdate(player, actionPayload)
+
+	local unlockedTitles = {} :: {MasteryRewardSnapshot}
+	for _, reward in ipairs(unlockedRewards) do
+		if reward.rewardType == "Title" then
+			table.insert(unlockedTitles, reward)
+		end
+	end
+
+	if #unlockedTitles > 0 then
+		self:sendTitleUpdate(player, {
+			type = "unlock",
+			unlockedTitles = unlockedTitles,
+		})
+	end
 end
 
 -- Start auto-save loop
@@ -136,7 +1117,7 @@ end
 function CurrencyManager:sendCurrencyUpdate(player: Player)
 	local playerData = self.playerData[player]
 	if not playerData then return end
-	
+
 	self.updateCurrencyRemote:FireClient(player, {
 		currency = playerData.currency,
 	})
@@ -148,11 +1129,10 @@ function CurrencyManager:removePlayer(player: Player)
 	if self.pendingSaves[player] then
 		self:savePlayerData(player)
 	end
-	
+
 	-- Clear data
 	self.playerData[player] = nil
 	self.pendingSaves[player] = nil
-	self.lastSaveTime[player] = nil
 end
 
 return CurrencyManager

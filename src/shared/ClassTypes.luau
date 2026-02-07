@@ -23,6 +23,24 @@ local ClassTypes = {}
 
 -- Class definitions
 ClassTypes.Classes = {
+	Normal = {
+		id = "Normal",
+		name = "Normal",
+		description = "สมดุลทุกด้าน เหมาะสำหรับเริ่มต้น",
+		icon = "⚪",
+		color = Color3.fromRGB(220, 220, 220),
+		-- Stats
+		walkSpeedMod = 1.00, -- normal speed
+		jumpPowerMod = 1.00, -- normal jump
+		knockbackResistance = 0,
+		-- Passive
+		passiveAbility = {
+			name = "Balanced",
+			description = "ไม่มีข้อได้เปรียบหรือข้อเสียพิเศษ",
+			cooldown = nil,
+		},
+	},
+
 	Runner = {
 		id = "Runner",
 		name = "Runner",
@@ -78,8 +96,10 @@ ClassTypes.Classes = {
 	},
 }
 
+ClassTypes.ClassOrder = {"Normal", "Runner", "Jumper", "Tank"}
+
 -- Default class
-ClassTypes.DefaultClass = "Runner"
+ClassTypes.DefaultClass = "Normal"
 
 -- Get class by ID
 function ClassTypes.getClass(classId: string): ClassDefinition?
@@ -89,9 +109,20 @@ end
 -- Get all class IDs
 function ClassTypes.getAllClassIds(): {string}
 	local ids = {}
-	for id, _ in pairs(ClassTypes.Classes) do
-		table.insert(ids, id)
+
+	for _, id in ipairs(ClassTypes.ClassOrder) do
+		if ClassTypes.Classes[id] then
+			table.insert(ids, id)
+		end
 	end
+
+	-- Fallback for any class added outside ClassOrder
+	for id, _ in pairs(ClassTypes.Classes) do
+		if not table.find(ids, id) then
+			table.insert(ids, id)
+		end
+	end
+
 	return ids
 end
 
