@@ -11,7 +11,7 @@ src/
 │   ├── GameManager.luau         # ควบคุมเกมทั้งหมด
 │   ├── MapManager.luau          # จัดการ map/stages + animations
 │   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (auto-save ทุก 30วิ)
-│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + DataStore (auto-save ทุก 30วิ)
+│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + DataStore
 │   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Mario Kart
 │   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race
 │   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
@@ -31,6 +31,8 @@ src/
 │       ├── SummaryUI.luau       # 🏆 แสดง Summary จบเกม
 │       ├── MatchLobbyUI.luau    # 🏁 UI Matchmaking lobby
 │       ├── ClassSelectionUI.luau # 🎭 UI เลือก Class
+│       ├── TitleHUDUI.luau      # 🏷️ HUD แสดง Active Title
+│       ├── TitleCollectionUI.luau # 🏷️ หน้ารายการ Title (ล็อก/ปลดล็อก + filter/search)
 │       └── RaceResultsUI.luau   # 🏁 UI ผลการแข่ง
 │
 └── shared/                      # Shared code (server + client)
@@ -594,20 +596,93 @@ elseif itemDef.id == "NewItem" then
 ### ไฟล์ที่เกี่ยวข้อง:
 - `src/shared/ClassTypes.luau` - นิยาม Classes
 - `src/server/ClassManager.luau` - Logic ฝั่ง Server
+- `src/server/CurrencyManager.luau` - Mastery + Rewards + Title equip/persistence
 - `src/client/UI/ClassSelectionUI.luau` - UI เลือก Class
+- `src/client/UI/TitleHUDUI.luau` - HUD แสดง Active Title
+- `src/client/UI/TitleCollectionUI.luau` - หน้า Collection ของ Title
 
 ### Classes ที่มี:
 
 | Class | WalkSpeed | JumpPower | Passive |
 |-------|-----------|-----------|---------|
+| Normal | 16 (±0%) | 50 (±0%) | Balanced - ไม่มีข้อได้เปรียบ/เสียเปรียบ |
 | Runner | 18.4 (+15%) | 45 (-10%) | Sprint Burst - เพิ่มความเร็วชั่วคราว |
 | Jumper | 14.4 (-10%) | 60 (+20%) | Charged Jump - กระโดดสูงขึ้นเมื่อชาร์จ |
 | Tank | 13.6 (-15%) | 50 (±0%) | Stun Immunity - ไม่โดน stun |
 
+### Class Unlock Settings (Config.luau):
+
+```lua
+Classes = {
+    DefaultClass = "Normal",
+    FreeClasses = {
+        Normal = true,
+    },
+    Costs = {
+        Runner = 300,
+        Jumper = 450,
+        Tank = 600,
+    },
+    RequestCooldown = 0.25,
+},
+```
+
+### Class Mastery Settings (Config.luau):
+
+```lua
+Mastery = {
+    MaxLevel = 20,
+    BaseXpPerLevel = 100,
+    XpGrowthMultiplier = 1.25,
+    PerStageXP = 20,
+    FinishBonusXP = 60,
+    TitleThemes = {
+        Common = { textColor = Color3.fromRGB(210, 210, 210), strokeColor = Color3.fromRGB(40, 40, 50), frameColor = Color3.fromRGB(80, 80, 95) },
+        Rare = { textColor = Color3.fromRGB(120, 205, 255), strokeColor = Color3.fromRGB(25, 55, 85), frameColor = Color3.fromRGB(75, 135, 190) },
+        Epic = { textColor = Color3.fromRGB(220, 150, 255), strokeColor = Color3.fromRGB(70, 30, 95), frameColor = Color3.fromRGB(155, 90, 215) },
+        Legendary = { textColor = Color3.fromRGB(255, 220, 120), strokeColor = Color3.fromRGB(95, 65, 25), frameColor = Color3.fromRGB(220, 170, 70) },
+    },
+    Rewards = {
+        Normal = {
+            {id = "normal_title_balanced_cadet", level = 5, rewardType = "Title", rarity = "Common", name = "Balanced Cadet"},
+            {id = "normal_trail_calm_flow", level = 10, rewardType = "Trail", rarity = "Rare", name = "Calm Flow"},
+            {id = "normal_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Normal Specialist"},
+            {id = "normal_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Normal Master Frame"},
+        },
+        -- Runner/Jumper/Tank ใช้รูปแบบเดียวกัน
+    },
+},
+```
+
+### Mastery v2 (ตอนนี้ทำแล้ว):
+- เก็บ Mastery แยกตาม class ใน DataStore (`classMastery`)
+- เก็บสถานะ reward ที่ปลดแล้วใน DataStore (`masteryRewards`)
+- ผู้เล่นเก่าที่ไม่มีข้อมูล mastery จะถูก migrate เป็น Lv.1 ทุก class อัตโนมัติ
+- ผู้เล่นเก่าที่เลเวลสูงอยู่แล้วจะได้รับ reward ตาม milestone ย้อนหลังอัตโนมัติ
+- ได้ XP จาก:
+  - ผ่านด่าน: `Config.Mastery.PerStageXP` (เฉพาะตอนผ่านด่านจริง)
+  - เข้าเส้นชัย: `Config.Mastery.FinishBonusXP`
+- ส่งข้อมูลผ่าน `MasteryUpdate` ไปที่ client
+- UI หน้า Class Selection แสดง Mastery Lv และความคืบหน้า XP ของแต่ละ class
+- UI หน้า Class Selection มี panel preview milestone rewards ของ class ที่เลือก
+- UI หน้า Class Selection มีตัวเลือก `Active Title` (เลือก title ที่ปลดแล้วเพื่อ equip/unequip)
+- มี `TitleHUD` แสดง `Active Title` ที่มุมบนซ้าย
+- มี `TitleCollection` แยกหน้า: ดู title ทั้งหมด (ล็อก/ปลดล็อก), กด equip/unequip ได้
+- หน้า `TitleCollection` มี `All/Unlocked/Locked` filter + search ชื่อ title/class/rarity
+- Reward ยังเป็น cosmetic-only (Title/Trail/Badge/CardFrame) ไม่มีผลเพิ่มพลัง
+
 ### การเลือก Class:
 - คลิกที่ Class indicator (มุมบนซ้าย) เพื่อเปิด UI
-- เลือก Class แล้วกด CONFIRM
-- Stats จะเปลี่ยนทันที
+- ถ้า class ปลดล็อกแล้ว: กด `EQUIP` เพื่อสวมทันที
+- ถ้า class ยังล็อกและเงินพอ: กด `BUY & EQUIP` เพื่อซื้อและสวมทันที
+- ถ้าเงินไม่พอ: ปุ่มจะเป็น `NOT ENOUGH`
+- เปลี่ยน class ได้เฉพาะตอนอยู่ Lobby (ระหว่างวิ่งด่านจะถูกปฏิเสธ)
+- สถานะปลดล็อกและ class ที่ใส่ล่าสุดถูกบันทึกถาวรใน DataStore
+
+### End-game Roadmap (Class):
+1. **Class Mastery (Lv1-20)**: ได้ XP จากการเล่นด้วย class นั้น ปลดล็อก title/trail/frame
+2. **Class Prestige**: ครบ mastery แล้วรีเซ็ต progression ของ class แลก `Class Token`
+3. **Class Contracts**: ภารกิจรายวัน/รายสัปดาห์ที่บังคับใช้ class เฉพาะ เพื่อเพิ่ม retention
 
 ---
 
@@ -664,12 +739,92 @@ Match = {
 | `RaceUpdate` | Server → Client | 🏁 อัพเดทอันดับ |
 | `TimeWarning` | Server → Client | 🏁 แจ้งเตือนเวลา |
 | `SelectClass` | Client → Server | 🎭 เลือก Class |
-| `ClassUpdate` | Server → Client | 🎭 อัพเดท Class |
+| `ClassUpdate` | Server → Client | 🎭 อัพเดท Class + unlock state + action result |
+| `MasteryUpdate` | Server → Client | 📈 อัพเดท Class Mastery (level/xp) |
+| `SetActiveTitle` | Client → Server | 🏷️ เลือก/ถอด Title ที่ใช้งาน (จาก Class UI หรือ Title Collection) |
+| `TitleUpdate` | Server → Client | 🏷️ อัพเดท `titleCatalog` (locked/unlocked) + `activeTitle` + action |
 | `ItemEffectEvent` | Server → Client | 🎯 Client-side VFX (screen shake, flash) |
 | `GiveTestItem` | Client → Server | 🧪 ให้ item สำหรับทดสอบ |
 | `ClearTestItems` | Client → Server | 🧪 ล้าง items ทั้งหมด |
 | `SpawnTestDummy` | Client → Server | 🤖 สร้าง Test Dummy |
 | `RemoveTestDummies` | Client → Server | 🤖 ลบ Test Dummies ทั้งหมด |
+
+**ClassUpdate Payload (สำคัญ):**
+```lua
+{
+    classId = "Runner", -- currently equipped class
+    classInfo = {...},  -- display info from ClassTypes
+    unlockedClasses = { Normal = true, Runner = true },
+    classCosts = { Runner = 300, Jumper = 450, Tank = 600 },
+    currency = 512,
+    classMastery = { -- optional fallback snapshot
+        Normal = { level = 3, xp = 40, xpToNext = 156, isMax = false },
+    },
+    masteryRewards = { -- optional fallback snapshot
+        Normal = {
+            { id = "normal_title_balanced_cadet", level = 5, rewardType = "Title", rarity = "Common", name = "Balanced Cadet", unlocked = false },
+        },
+    },
+    action = { -- optional
+        type = "equip" | "purchase" | "error",
+        classId = "Runner",
+        cost = 300?, -- only purchase/error where relevant
+        reason = "INSUFFICIENT_FUNDS" | "INVALID_CLASS" | "RATE_LIMIT" | "ALREADY_UNLOCKED" | "NOT_IN_LOBBY"?,
+    }
+}
+```
+
+**MasteryUpdate Payload (สำคัญ):**
+```lua
+{
+    classMastery = {
+        Normal = { level = 3, xp = 40, xpToNext = 156, isMax = false },
+        Runner = { level = 1, xp = 0, xpToNext = 100, isMax = false },
+    },
+    masteryRewards = {
+        Normal = {
+            { id = "normal_title_balanced_cadet", level = 5, rewardType = "Title", rarity = "Common", name = "Balanced Cadet", unlocked = false },
+        },
+    },
+    classId = "Normal", -- currently equipped class
+    action = { -- optional
+        type = "xp",
+        classId = "Normal",
+        xpGained = 20,
+        leveledUp = true,
+        newLevel = 3,
+        reason = "StageComplete" | "Finish",
+        unlockedRewards = { -- optional (when level-up crosses reward milestone)
+            { id = "normal_title_balanced_cadet", level = 5, rewardType = "Title", rarity = "Common", name = "Balanced Cadet", unlocked = true },
+        },
+    }
+}
+```
+
+**TitleUpdate Payload (สำคัญ):**
+```lua
+{
+    titleCatalog = {
+        { id = "normal_title_balanced_cadet", name = "Balanced Cadet", classId = "Normal", level = 5, rarity = "Common", unlocked = true },
+        { id = "runner_title_quickstep", name = "Quickstep", classId = "Runner", level = 5, rarity = "Common", unlocked = false },
+    },
+    unlockedTitles = {
+        { id = "normal_title_balanced_cadet", name = "Balanced Cadet", classId = "Normal", level = 5, rarity = "Common" },
+    },
+    activeTitle = { -- หรือ nil ถ้ายังไม่ใส่
+        id = "normal_title_balanced_cadet",
+        name = "Balanced Cadet",
+        classId = "Normal",
+        level = 5,
+        rarity = "Common",
+    },
+    action = { -- optional
+        type = "equip" | "clear" | "unlock" | "error",
+        titleId = "normal_title_balanced_cadet"?,
+        reason = "TITLE_LOCKED" | "INVALID_TITLE"?,
+    }
+}
+```
 
 ### เพิ่ม RemoteEvent ใหม่:
 
@@ -983,44 +1138,60 @@ end)
 9. **Auto-save**: ทั้ง ScoreManager และ CurrencyManager save ทุก 30 วินาที (ลด request)
 10. **Pending Saves**: ใช้ `pendingSaves` flag เพื่อ track ว่าต้อง save หรือไม่
 11. **On Leave**: Save ทันทีเมื่อผู้เล่นออก (ถ้ามี pending)
+12. **Shared Player Key**: ใช้ key เดียว `Player_<UserId>` และ save แบบ merge
+13. **Class Fields**: ใน profile มี `unlockedClasses` + `equippedClass` ถาวรต่อบัญชี
+14. **Title Field**: ใน profile มี `activeTitle` (string? หรือ nil) สำหรับ title ที่ใส่อยู่
 
 ### 🎯 Item System (Mario Kart Style)
-12. **Dual Slots**: ผู้เล่นถือได้ 2 items, กด 1/2 เพื่อใช้
-13. **Item Box**: "Neon Cube" style (สีม่วง-น้ำเงิน) + bobbing animation
-14. **Weighted Random**: คนอันดับท้ายได้ item หายากมากกว่า (catch-up)
-15. **Item Tooltip**: คลิกที่ item เพื่อดู description (auto-hide 6 วินาที)
-16. **Rarity Colors**: Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง
-17. **Item Icons**: ใช้ emoji (🚀🍌🛡️⚡🔄⚡🌩️)
-18. **Item Testing**: กด T เปิดเมนูทดสอบ + Spawn Dummy สำหรับทดสอบ
-19. **Banana Slip**: ล้มไปข้างหลัง + กระโดดไม่ได้ + เจ้าของก็ลื่นได้
-20. **Swap**: สลับกับคนที่อยู่ **ข้างหน้า** เท่านั้น (ไม่ใช่ข้างหลัง)
-21. **Shield Aura**: มี particles ลอยขึ้น + หมุนรอบตัว + กระพริบเรืองแสง
-22. **Test Dummies**: สร้าง Dummy สำหรับทดสอบ Missile/Swap/Lightning
+14. **Dual Slots**: ผู้เล่นถือได้ 2 items, กด 1/2 เพื่อใช้
+15. **Item Box**: "Neon Cube" style (สีม่วง-น้ำเงิน) + bobbing animation
+16. **Weighted Random**: คนอันดับท้ายได้ item หายากมากกว่า (catch-up)
+17. **Item Tooltip**: คลิกที่ item เพื่อดู description (auto-hide 6 วินาที)
+18. **Rarity Colors**: Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง
+19. **Item Icons**: ใช้ emoji (🚀🍌🛡️⚡🔄⚡🌩️)
+20. **Item Testing**: กด T เปิดเมนูทดสอบ + Spawn Dummy สำหรับทดสอบ
+21. **Banana Slip**: ล้มไปข้างหลัง + กระโดดไม่ได้ + เจ้าของก็ลื่นได้
+22. **Swap**: สลับกับคนที่อยู่ **ข้างหน้า** เท่านั้น (ไม่ใช่ข้างหลัง)
+23. **Shield Aura**: มี particles ลอยขึ้น + หมุนรอบตัว + กระพริบเรืองแสง
+24. **Test Dummies**: สร้าง Dummy สำหรับทดสอบ Missile/Swap/Lightning
 
 ### 🎭 Character Class System
-17. **3 Classes**: Runner (+speed), Jumper (+jump), Tank (+resistance)
-18. **Class Indicator**: มุมบนซ้าย - คลิกเพื่อเปิด selection UI
-19. **Stats Apply**: เมื่อเลือก Class หรือ respawn จะ apply stats ใหม่
-20. **Tank Immunity**: Tank ไม่โดน stun จาก Missile/Lightning
+25. **Default Class**: ผู้เล่นใหม่เริ่มที่ `Normal` เสมอ
+26. **Unlock Model**: `Normal` ฟรี, `Runner/Jumper/Tank` ต้องซื้อด้วย currency
+27. **Auto Equip**: ซื้อสำเร็จจะสวม class นั้นทันที
+28. **Remember Last Class**: เข้าเกมใหม่จะ equip class ล่าสุดอัตโนมัติ
+29. **Rate Limit**: `SelectClass` มี cooldown 0.25 วิ กัน spam
+30. **Stats Apply**: เมื่อเลือก Class หรือ respawn จะ apply stats ใหม่
+31. **Active Title HUD**: มุมบนซ้ายแสดง title ที่ใส่อยู่พร้อมสีตาม rarity/class
+32. **Title Collection UI**: มีหน้า title list แยก (เปิดจากปุ่ม `≡` บน HUD)
+33. **Title Filter/Search**: รองรับ `All/Unlocked/Locked` และค้นหาชื่อ title/class/rarity
 
 ### 🏁 Match/Race System
-21. **Match Config**: `Config.Match` - MinPlayers, MaxPlayers, WaitTime, TimeLimit
-22. **Testing Mode**: `IsTestingMode = true` → WaitTime = 3 วินาที
-23. **Time Limit**: 15 นาทีต่อ match พร้อมแจ้งเตือน
-24. **Rankings**: คำนวณจาก stage + distance ใน stage
+34. **Match Config**: `Config.Match` - MinPlayers, MaxPlayers, WaitTime, TimeLimit
+35. **Testing Mode**: `IsTestingMode = true` → WaitTime = 3 วินาที
+36. **Time Limit**: 15 นาทีต่อ match พร้อมแจ้งเตือน
+37. **Rankings**: คำนวณจาก stage + distance ใน stage
 
 ### 💰 Currency System
-25. **Stage Rewards**: `Config.Currency.StageRewards` (S1=3, S2=4, S3=4, S4=5, S5=6)
-26. **Currency Breakdown**: Stage Clear (5) + Stage Rewards + Finish Bonus (25)
-27. **CurrencyUI**: มุมบนซ้าย (ใต้ StageFrame)
+38. **Stage Rewards**: `Config.Currency.StageRewards` (S1=3, S2=4, S3=4, S4=5, S5=6)
+39. **Currency Breakdown**: Stage Clear (5) + Stage Rewards + Finish Bonus (25)
+40. **CurrencyUI**: มุมบนซ้าย (ใต้ StageFrame)
 
 ### 🖥️ UI Layout (มุมบนซ้าย จากบนลงล่าง)
-28. **Y=10**: Score Frame (⭐ คะแนน)
-29. **Y=16**: High Score (🏆)
-30. **Y=58**: Stage Frame (🚩 Progress)
-31. **Y=92**: Currency Frame (💰 เงิน)
-32. **Y=140**: Class Indicator (🎭 Class)
+41. **Y=10**: Score Frame (⭐ คะแนน)
+42. **Y=16**: High Score (🏆)
+43. **Y=58**: Stage Frame (🚩 Progress)
+44. **Y=92**: Currency Frame (💰 เงิน)
+45. **Y=140**: Class Indicator (🎭 Class)
+46. **Y=220**: Active Title HUD (🏷️ มีปุ่ม `≡` เปิดหน้า Collection)
 
 ### 📊 Leaderstats
-33. **Built-in UI**: แสดง HighScore, RoundScore, Currency
-34. **Update**: เรียก `updateLeaderstats()` เมื่อค่าเปลี่ยน
+47. **Built-in UI**: แสดง HighScore, RoundScore, Currency
+48. **Update**: เรียก `updateLeaderstats()` เมื่อค่าเปลี่ยน
+
+### 📈 Class Mastery
+49. **Mastery Data**: เก็บใน profile key เดียวกับ score/currency ที่ field `classMastery`
+50. **Mastery Rewards Data**: เก็บสถานะ reward ที่ปลดแล้วใน field `masteryRewards`
+51. **XP Sources**: ผ่านด่านได้ `PerStageXP` และเข้าเส้นชัยได้ `FinishBonusXP`
+52. **UI Display**: แสดงทั้ง level/xp บน class card และ preview rewards ของ class ที่เลือก
+53. **Remote**: ใช้ `MasteryUpdate` ส่ง level/xp/xpToNext/isMax + masteryRewards + unlockedRewards action
