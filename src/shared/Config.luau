@@ -140,6 +140,13 @@ Stages = {
 
 	-- Kill Zone
 	KillZoneY = -120, -- ความสูงที่จะตายเมื่อตกลงไป
+
+	-- Debug / Development Settings
+	Debug = {
+		Enabled = true,    -- Master toggle: set false for production
+		FlyMode = true,    -- Press F to fly (client)
+		ItemTesting = true, -- Press T for item test menu (client + server remotes)
+	},
 }
 
 return Config

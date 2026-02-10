@@ -260,7 +260,7 @@ function MatchManager:startMatch(roomId: string)
 	if self.gameManager then
 		task.delay(0.5, function()
 			room.state = "Racing"
-			room.startTime = tick()
+			room.startTime = os.clock()
 			room.timeRemaining = Config.Match.TimeLimit
 			
 			-- Start race timer
@@ -280,7 +280,7 @@ function MatchManager:startRaceTimer(roomId: string)
 		while room and room.state == "Racing" do
 			if not self.rooms[roomId] then break end
 			
-			local elapsed = tick() - (room.startTime or tick())
+			local elapsed = os.clock() - (room.startTime or os.clock())
 			room.timeRemaining = math.max(0, Config.Match.TimeLimit - elapsed)
 			
 			-- Check for time warnings
@@ -428,7 +428,7 @@ function MatchManager:playerFinished(player: Player)
 	local progress = room.playerProgress[player]
 	if progress and not progress.finished then
 		progress.finished = true
-		progress.finishTime = tick() - (room.startTime or tick())
+		progress.finishTime = os.clock() - (room.startTime or os.clock())
 		table.insert(room.finishOrder, player)
 		
 		local position = #room.finishOrder

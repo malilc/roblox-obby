@@ -34,6 +34,7 @@ function ClassManager.new(currencyManager: any?, canChangeClassPredicate: ((Play
 	self.canChangeClassPredicate = canChangeClassPredicate
 	self.playerClasses = {} :: {[Player]: PlayerClassData}
 	self.lastClassRequestTime = {} :: {[Player]: number}
+	self.playerConnections = {} :: {[Player]: {RBXScriptConnection}}
 	
 	-- Remotes
 	self.selectClassRemote = ReplicatedStorage.Remotes.SelectClass
@@ -66,7 +67,7 @@ function ClassManager:markClassRequest(player: Player): boolean
 		return true
 	end
 
-	local now = tick()
+	local now = os.clock()
 	local lastRequest = self.lastClassRequestTime[player] or 0
 	if now - lastRequest < cooldown then
 		return false
@@ -117,18 +118,20 @@ function ClassManager:initPlayer(player: Player)
 		isChargingJump = false,
 		chargeStartTime = nil,
 	}
-	
-	-- Apply class when character spawns
-	player.CharacterAdded:Connect(function(character)
+	self.playerConnections[player] = {}
+
+	-- Apply class when character spawns (store connection for cleanup)
+	local charConn = player.CharacterAdded:Connect(function(character)
 		task.wait(0.1) -- Wait for character to load
 		self:applyClassStats(player, character)
 	end)
-	
+	table.insert(self.playerConnections[player], charConn)
+
 	-- Apply to existing character
 	if player.Character then
 		self:applyClassStats(player, player.Character)
 	end
-	
+
 	-- Send initial class info
 	self:sendClassUpdate(player)
 end
@@ -326,7 +329,7 @@ function ClassManager:trySprintBurst(player: Player): boolean
 	local data = self.playerClasses[player]
 	if not data or data.classId ~= "Runner" then return false end
 	
-	local now = tick()
+	local now = os.clock()
 	local classDef = ClassTypes.getClass("Runner")
 	local cooldown = classDef.passiveAbility.cooldown or 15
 	
@@ -371,7 +374,7 @@ function ClassManager:startChargeJump(player: Player)
 	if data.isChargingJump then return end
 	
 	data.isChargingJump = true
-	data.chargeStartTime = tick()
+	data.chargeStartTime = os.clock()
 	
 	print("[ClassManager]", player.Name, "started charging jump")
 end
@@ -383,7 +386,7 @@ function ClassManager:executeChargeJump(player: Player): number?
 	
 	if not data.isChargingJump then return nil end
 	
-	local chargeTime = tick() - (data.chargeStartTime or tick())
+	local chargeTime = os.clock() - (data.chargeStartTime or os.clock())
 	data.isChargingJump = false
 	data.chargeStartTime = nil
 	
@@ -443,6 +446,12 @@ end
 
 -- Remove player
 function ClassManager:removePlayer(player: Player)
+	-- Disconnect all event connections for this player
+	for _, conn in ipairs(self.playerConnections[player] or {}) do
+		conn:Disconnect()
+	end
+	self.playerConnections[player] = nil
+
 	self.playerClasses[player] = nil
 	self.lastClassRequestTime[player] = nil
 end

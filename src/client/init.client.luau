@@ -11,20 +11,25 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local MainUI = require(script.UI.MainUI)
 local mainUI = MainUI.new()
 
--- Initialize Fly Controller (for testing)
-local FlyController = require(script.FlyController)
-local flyController = FlyController.new()
-flyController:setupCharacterEvents()
-
 -- Initialize Item Effects (screen shake, flash, etc.)
 local ItemEffects = require(script.ItemEffects)
 local itemEffects = ItemEffects.new()
 
--- Initialize Item Testing UI (for development)
-local ItemTestingUI = require(script.UI.ItemTestingUI)
-local itemTestingUI = ItemTestingUI.new()
+-- Debug/Testing tools (behind Config.Debug flags)
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
-print("[Client] UI, Effects, and Testing Menu initialized!")
+if Config.Debug and Config.Debug.FlyMode then
+	local FlyController = require(script.FlyController)
+	local flyController = FlyController.new()
+	flyController:setupCharacterEvents()
+end
+
+if Config.Debug and Config.Debug.ItemTesting then
+	local ItemTestingUI = require(script.UI.ItemTestingUI)
+	local itemTestingUI = ItemTestingUI.new()
+end
+
+print("[Client] UI and Effects initialized!")
 
 -- Local player reference
 local LocalPlayer = Players.LocalPlayer

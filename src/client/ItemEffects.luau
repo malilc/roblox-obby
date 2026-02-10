@@ -87,11 +87,11 @@ function ItemEffects:screenShake(intensity: number, duration: number)
 	self.isShaking = true
 	
 	local originalCFrame = Camera.CFrame
-	local startTime = tick()
+	local startTime = os.clock()
 	
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
-		local elapsed = tick() - startTime
+		local elapsed = os.clock() - startTime
 		if elapsed >= duration then
 			Camera.CFrame = originalCFrame
 			self.isShaking = false
@@ -199,9 +199,9 @@ function ItemEffects:stunEffect(duration: number)
 	
 	-- Pulsing effect
 	local connection
-	local startTime = tick()
+	local startTime = os.clock()
 	connection = RunService.RenderStepped:Connect(function()
-		local elapsed = tick() - startTime
+		local elapsed = os.clock() - startTime
 		if elapsed >= duration then
 			self.flashFrame.BackgroundTransparency = 1
 			connection:Disconnect()

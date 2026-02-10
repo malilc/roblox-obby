@@ -36,8 +36,9 @@ src/
 │       └── RaceResultsUI.luau   # 🏁 UI ผลการแข่ง
 │
 └── shared/                      # Shared code (server + client)
-    ├── Config.luau              # ⭐ ค่า Config ทั้งหมด
+    ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags)
     ├── Types.luau               # Type definitions
+    ├── Logger.luau              # 🔧 Centralized logging (configurable levels)
     ├── ItemTypes.luau           # 🎯 นิยาม Items ทั้งหมด
     └── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด
 ```
@@ -423,6 +424,13 @@ local Config = {
     },
 
     KillZoneY = -120,            -- ความสูงที่ตาย
+
+    -- Debug / Development Settings
+    Debug = {
+        Enabled = true,          -- Master toggle: set false for production
+        FlyMode = true,          -- Press F to fly (client)
+        ItemTesting = true,      -- Press T for item test menu (client + server remotes)
+    },
 }
 ```
 
@@ -479,9 +487,9 @@ itemBox.Parent = itemPickups
 ### Banana Slip Effect:
 ```lua
 -- ผู้เล่นจะ:
--- 1. ลอยขึ้นเล็กน้อย (Y = 15)
--- 2. ไถลไปข้างหน้า (velocity * 20)
--- 3. หมุนล้มไปข้างหลัง (BodyAngularVelocity)
+-- 1. ลอยขึ้นเล็กน้อย (Y = 15) ← LinearVelocity
+-- 2. ไถลไปข้างหน้า (velocity * 20) ← LinearVelocity
+-- 3. หมุนล้มไปข้างหลัง ← AngularVelocity (constraint-based)
 -- 4. เข้า FallingDown state
 -- 5. กระโดดไม่ได้ระหว่างล้ม (loop บังคับ JumpPower = 0)
 -- 6. ลุกขึ้นหลัง 0.5 วินาที (GettingUp state)
@@ -511,9 +519,9 @@ itemBox.Parent = itemPickups
 ### Missile Hit Effect (Fall):
 ```lua
 -- เมื่อโดน Missile จะ:
--- 1. ลอยขึ้น (Y = 18)
--- 2. กระเด็นไปข้างหลัง (velocity * -25)
--- 3. หมุนล้มหงาย (BodyAngularVelocity -10)
+-- 1. ลอยขึ้น (Y = 18) ← LinearVelocity
+-- 2. กระเด็นไปข้างหลัง (velocity * -25) ← LinearVelocity
+-- 3. หมุนล้มหงาย ← AngularVelocity (constraint-based, -10)
 -- 4. เข้า FallingDown state
 -- 5. Visual: 💥⭐💥 หมุนเหนือหัว + particles ควัน/ไฟ
 -- 6. ลุกขึ้นหลัง 0.6 วินาที
@@ -1058,13 +1066,15 @@ Back to Lobby (State = "Lobby")
 
 ## 🧪 Testing
 
-### Fly Mode (ทดสอบ):
+**หมายเหตุ**: Fly Mode และ Item Testing อยู่หลัง `Config.Debug` flags - ต้องเปิดก่อนใช้งาน
+
+### Fly Mode (ทดสอบ) - ต้อง `Config.Debug.FlyMode = true`:
 - กด **F** เพื่อบิน
 - **W/A/S/D** เคลื่อนที่
 - **Space** ขึ้น, **Shift/Ctrl** ลง
 - ปุ่ม **+/-** ปรับความเร็ว (25-200)
 
-### Item Testing:
+### Item Testing - ต้อง `Config.Debug.ItemTesting = true`:
 - กด **T** เพื่อเปิด/ปิดเมนูทดสอบ Item
 - เลือก item ที่ต้องการ (แบ่งกลุ่มตาม rarity)
 - กด "Clear All Items" เพื่อล้าง items ทั้งหมด
@@ -1115,7 +1125,7 @@ end)
 
 | Constant | Value | Location |
 |----------|-------|----------|
-| `STAGE_LENGTH` | 100 | StageTemplates.luau |
+| `STAGE_LENGTH` | `Config.Stages.StageLength` (100) | StageTemplates.luau |
 | `Config.Stages.Count` | 5 | Config.luau |
 | `Config.Stages.StartOffset` | (-150, 0, 250) | Config.luau |
 | `Config.Lobby.SpawnPosition` | (0, 103, 0) | Config.luau |
@@ -1143,7 +1153,7 @@ end)
 9. **Auto-save**: ทั้ง ScoreManager และ CurrencyManager save ทุก 30 วินาที (ลด request)
 10. **Pending Saves**: ใช้ `pendingSaves` flag เพื่อ track ว่าต้อง save หรือไม่
 11. **On Leave**: Save ทันทีเมื่อผู้เล่นออก (ถ้ามี pending)
-12. **Shared Player Key**: ใช้ key เดียว `Player_<UserId>` และ save แบบ merge
+12. **Shared Player Key**: ใช้ key เดียว `Player_<UserId>` และ save ด้วย `UpdateAsync` (atomic, ป้องกัน race condition)
 13. **Class Fields**: ใน profile มี `unlockedClasses` + `equippedClass` ถาวรต่อบัญชี
 14. **Title Field**: ใน profile มี `activeTitle` (string? หรือ nil) สำหรับ title ที่ใส่อยู่
 
@@ -1202,3 +1212,14 @@ end)
 51. **XP Sources**: ผ่านด่านได้ `PerStageXP` และเข้าเส้นชัยได้ `FinishBonusXP`
 52. **UI Display**: แสดงทั้ง level/xp บน class card และ preview rewards ของ class ที่เลือก
 53. **Remote**: ใช้ `MasteryUpdate` ส่ง level/xp/xpToNext/isMax + masteryRewards + unlockedRewards action
+
+### 🔧 Code Quality (Audit Feb 2026)
+54. **Debug Flags**: `Config.Debug.Enabled`, `FlyMode`, `ItemTesting` - ต้อง set `false` ก่อน production
+55. **Logger**: `src/shared/Logger.luau` - ใช้ `Logger.debug/info/warn/error(tag, ...)` แทน `print("[Tag]", ...)`
+56. **os.clock()**: ใช้ `os.clock()` แทน `tick()` ทั้ง project (tick deprecated)
+57. **LinearVelocity/AngularVelocity**: ใช้ constraint-based แทน BodyVelocity/BodyAngularVelocity (deprecated)
+58. **UpdateAsync**: DataStore ใช้ `UpdateAsync` (atomic) ไม่ใช่ `GetAsync`+`SetAsync` (race condition)
+59. **Connection Cleanup**: CharacterAdded/Died connections ถูก track ใน `playerConnections` table และ disconnect เมื่อ player leave
+60. **Input Validation**: `ConfirmStageSelection` remote ผ่าน `validateStageOrder()` ก่อนใช้งาน
+61. **Shared Map Limitation**: Map เป็น global shared ใน workspace - ถ้า 2+ players เล่นพร้อมกันจะมีปัญหา (ต้องทำ instanced map ในอนาคต)
+62. **Race Direction**: Stages progress ตามแกน +X (ไม่ใช่ +Z) - "ahead" check ใช้ `Position.X`

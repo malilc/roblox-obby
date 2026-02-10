@@ -477,18 +477,18 @@ function CurrencyManager:savePlayerData(player: Player)
 	if not playerData then return end
 
 	local success, err = pcall(function()
-		-- Get existing data first
-		local existingData = self.dataStore:GetAsync("Player_" .. player.UserId)
-		if type(existingData) ~= "table" then
-			existingData = {}
-		end
+		self.dataStore:UpdateAsync("Player_" .. player.UserId, function(existingData)
+			if type(existingData) ~= "table" then
+				existingData = {}
+			end
 			existingData.currency = playerData.currency
 			existingData.unlockedClasses = self:getUnlockedClasses(player)
 			existingData.equippedClass = playerData.equippedClass
 			existingData.classMastery = self:getClassMasteryData(player)
 			existingData.masteryRewards = self:getUnlockedMasteryRewards(player)
 			existingData.activeTitle = playerData.activeTitle
-			self.dataStore:SetAsync("Player_" .. player.UserId, existingData)
+			return existingData
+		end)
 	end)
 
 	if success then

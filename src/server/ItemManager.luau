@@ -42,8 +42,10 @@ function ItemManager.new(currencyManager: any?, gameManager: any?, matchManager:
 		self:useItem(player, slotIndex or 1)
 	end)
 	
-	-- Setup testing remotes (for development)
-	self:setupTestingRemotes()
+	-- Setup testing remotes (for development, behind debug flag)
+	if Config.Debug and Config.Debug.ItemTesting then
+		self:setupTestingRemotes()
+	end
 	
 	-- Start effect cleanup loop
 	self:startEffectLoop()
@@ -227,13 +229,18 @@ function ItemManager:spawnTestDummy(player: Player)
 			if dummy.PrimaryPart then
 				-- Random movement
 				local randomDir = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1)).Unit
-				local moveForce = Instance.new("BodyVelocity")
-				moveForce.Velocity = randomDir * humanoid.WalkSpeed
-				moveForce.MaxForce = Vector3.new(10000, 0, 10000)
+				local moveAttach = Instance.new("Attachment")
+				moveAttach.Parent = dummy.PrimaryPart
+				local moveForce = Instance.new("LinearVelocity")
+				moveForce.VectorVelocity = randomDir * humanoid.WalkSpeed
+				moveForce.MaxForce = 10000
+				moveForce.RelativeTo = Enum.ActuatorRelativeTo.World
+				moveForce.Attachment0 = moveAttach
 				moveForce.Parent = dummy.PrimaryPart
-				
+
 				task.delay(1, function()
 					if moveForce.Parent then moveForce:Destroy() end
+					if moveAttach.Parent then moveAttach:Destroy() end
 				end)
 			end
 		end
@@ -477,7 +484,7 @@ function ItemManager:useItem(player: Player, slotIndex: number)
 	if not itemDef then return end
 	
 	-- Check cooldown
-	local now = tick()
+	local now = os.clock()
 	if now - data.lastUseTime < itemDef.cooldown then
 		print("[ItemManager]", player.Name, "item on cooldown")
 		return
@@ -806,7 +813,7 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	banana.Color = Color3.fromRGB(255, 230, 50) -- Bright yellow
 	banana.Transparency = 0 -- Visible so mesh renders
 	banana:SetAttribute("Owner", player.UserId)
-	banana:SetAttribute("ExpireTime", tick() + (itemDef.duration or 30))
+	banana:SetAttribute("ExpireTime", os.clock() + (itemDef.duration or 30))
 	banana.Parent = workspace
 	
 	-- Use actual banana mesh
@@ -1004,9 +1011,9 @@ function ItemManager:applySlip(player: Player, itemDef)
 	
 	-- Spin animation
 	task.spawn(function()
-		local startTime = tick()
-		while tick() - startTime < slipDuration and starsGui.Parent do
-			starsLabel.Rotation = (tick() - startTime) * 360
+		local startTime = os.clock()
+		while os.clock() - startTime < slipDuration and starsGui.Parent do
+			starsLabel.Rotation = (os.clock() - startTime) * 360
 			task.wait()
 		end
 		if starsGui.Parent then starsGui:Destroy() end
@@ -1033,23 +1040,29 @@ function ItemManager:applySlip(player: Player, itemDef)
 	
 	-- Slip effect: slide forward with lift + fall animation
 	local slideDirection = hrp.CFrame.LookVector
-	local slideForce = Instance.new("BodyVelocity")
-	slideForce.Velocity = Vector3.new(
+	local forceAttach = Instance.new("Attachment")
+	forceAttach.Parent = hrp
+	local slideForce = Instance.new("LinearVelocity")
+	slideForce.VectorVelocity = Vector3.new(
 		slideDirection.X * 20,
 		15, -- Lift up before falling
 		slideDirection.Z * 20
 	)
-	slideForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	slideForce.MaxForce = math.huge
+	slideForce.RelativeTo = Enum.ActuatorRelativeTo.World
+	slideForce.Attachment0 = forceAttach
 	slideForce.Parent = hrp
-	
+
 	-- Add tumble rotation (fall backwards)
-	local tumble = Instance.new("BodyAngularVelocity")
+	local tumble = Instance.new("AngularVelocity")
 	tumble.AngularVelocity = Vector3.new(
 		-8, -- Rotate backwards (fall on back)
 		0,
 		0
 	)
-	tumble.MaxTorque = Vector3.new(math.huge, 0, math.huge)
+	tumble.MaxTorque = math.huge
+	tumble.RelativeTo = Enum.ActuatorRelativeTo.World
+	tumble.Attachment0 = forceAttach
 	tumble.Parent = hrp
 	
 	-- Make character ragdoll/fall state
@@ -1059,15 +1072,16 @@ function ItemManager:applySlip(player: Player, itemDef)
 	task.delay(0.3, function()
 		if slideForce.Parent then slideForce:Destroy() end
 		if tumble.Parent then tumble:Destroy() end
+		if forceAttach.Parent then forceAttach:Destroy() end
 	end)
-	
+
 	-- Get up after a bit
 	task.delay(0.5, function()
 		if humanoid and humanoid.Parent then
 			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		end
 	end)
-	
+
 	-- Restore after slip duration
 	task.delay(slipDuration, function()
 		-- Stop the enforcement loop
@@ -1091,7 +1105,7 @@ function ItemManager:useShield(player: Player, itemDef): boolean
 	if not data then return false end
 	
 	data.hasShield = true
-	data.shieldExpiry = tick() + (itemDef.duration or 15)
+	data.shieldExpiry = os.clock() + (itemDef.duration or 15)
 	
 	-- Create shield visual
 	self:createShieldVisual(player)
@@ -1261,9 +1275,9 @@ function ItemManager:createShieldVisual(player: Player)
 	
 	-- Pulsing glow animation
 	task.spawn(function()
-		local startTime = tick()
+		local startTime = os.clock()
 		while shieldContainer and shieldContainer.Parent and glow and glow.Parent do
-			local elapsed = tick() - startTime
+			local elapsed = os.clock() - startTime
 			local pulse = 0.7 + math.sin(elapsed * 3) * 0.3 -- Pulse between 0.4 and 1.0
 			glow.Brightness = pulse
 			shield.Transparency = 0.6 + math.sin(elapsed * 2) * 0.15 -- Pulse transparency
@@ -1384,7 +1398,7 @@ function ItemManager:useSpeedBoost(player: Player, itemDef): boolean
 	humanoid.JumpPower = originalJumpPower * (itemDef.jumpMultiplier or 1.2)
 	
 	data.isBoosted = true
-	data.boostExpiry = tick() + (itemDef.duration or 3)
+	data.boostExpiry = os.clock() + (itemDef.duration or 3)
 	
 	-- Speed boost sound
 	local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -1606,8 +1620,8 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 							isAhead = self:isTargetAhead(myProgress, otherProgress)
 						end
 					else
-						-- Fallback: use Z position (race goes +Z direction)
-						isAhead = otherHRP.Position.Z > myPos.Z
+						-- Fallback: use X position (stages progress along +X)
+						isAhead = otherHRP.Position.X > myPos.X
 					end
 					
 					if isAhead then
@@ -1630,8 +1644,8 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
 			local hrp = dummy:FindFirstChild("HumanoidRootPart")
 			if hrp then
-				-- Dummies use Z position to determine "ahead" (race goes +Z)
-				local isAhead = hrp.Position.Z > myPos.Z
+				-- Dummies use X position to determine "ahead" (stages progress along +X)
+				local isAhead = hrp.Position.X > myPos.X
 				
 				if isAhead then
 					local distance = (hrp.Position - myPos).Magnitude
@@ -1774,7 +1788,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 	humanoid.JumpPower = (data.originalSlowJumpPower or 50) * (itemDef.slowMultiplier or 0.5)
 	
 	data.isSlowed = true
-	data.slowExpiry = tick() + (itemDef.duration or 3)
+	data.slowExpiry = os.clock() + (itemDef.duration or 3)
 	
 	-- Electric shock visual
 	local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -1809,8 +1823,8 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		-- Flickering effect
 		task.spawn(function()
 			local duration = itemDef.duration or 3
-			local startTime = tick()
-			while tick() - startTime < duration and electricGlow.Parent do
+			local startTime = os.clock()
+			while os.clock() - startTime < duration and electricGlow.Parent do
 				electricGlow.Brightness = 0.5 + math.random() * 1.5
 				task.wait(0.05 + math.random() * 0.1)
 			end
@@ -1927,9 +1941,9 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	
 	-- Spin animation
 	task.spawn(function()
-		local startTime = tick()
-		while tick() - startTime < slipDuration and starsGui.Parent do
-			starsLabel.Rotation = (tick() - startTime) * 360
+		local startTime = os.clock()
+		while os.clock() - startTime < slipDuration and starsGui.Parent do
+			starsLabel.Rotation = (os.clock() - startTime) * 360
 			task.wait()
 		end
 		if starsGui.Parent then starsGui:Destroy() end
@@ -1956,14 +1970,20 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	
 	-- Slide + fall effect
 	local slideDirection = hrp.CFrame.LookVector
-	local slideForce = Instance.new("BodyVelocity")
-	slideForce.Velocity = Vector3.new(slideDirection.X * 20, 15, slideDirection.Z * 20)
-	slideForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	local forceAttach = Instance.new("Attachment")
+	forceAttach.Parent = hrp
+	local slideForce = Instance.new("LinearVelocity")
+	slideForce.VectorVelocity = Vector3.new(slideDirection.X * 20, 15, slideDirection.Z * 20)
+	slideForce.MaxForce = math.huge
+	slideForce.RelativeTo = Enum.ActuatorRelativeTo.World
+	slideForce.Attachment0 = forceAttach
 	slideForce.Parent = hrp
-	
-	local tumble = Instance.new("BodyAngularVelocity")
+
+	local tumble = Instance.new("AngularVelocity")
 	tumble.AngularVelocity = Vector3.new(-8, 0, 0)
-	tumble.MaxTorque = Vector3.new(math.huge, 0, math.huge)
+	tumble.MaxTorque = math.huge
+	tumble.RelativeTo = Enum.ActuatorRelativeTo.World
+	tumble.Attachment0 = forceAttach
 	tumble.Parent = hrp
 	
 	humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
@@ -1971,14 +1991,15 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	task.delay(0.3, function()
 		if slideForce.Parent then slideForce:Destroy() end
 		if tumble.Parent then tumble:Destroy() end
+		if forceAttach.Parent then forceAttach:Destroy() end
 	end)
-	
+
 	task.delay(0.5, function()
 		if humanoid and humanoid.Parent then
 			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		end
 	end)
-	
+
 	-- Restore
 	task.delay(slipDuration, function()
 		if humanoid and humanoid.Parent then
@@ -2064,9 +2085,9 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	
 	-- Spin animation
 	task.spawn(function()
-		local startTime = tick()
-		while tick() - startTime < duration and starsGui.Parent do
-			starsLabel.Rotation = (tick() - startTime) * 360
+		local startTime = os.clock()
+		while os.clock() - startTime < duration and starsGui.Parent do
+			starsLabel.Rotation = (os.clock() - startTime) * 360
 			task.wait()
 		end
 		if starsGui.Parent then starsGui:Destroy() end
@@ -2097,19 +2118,25 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	
 	-- Knockback + fall effect (thrown by explosion)
 	local knockbackDir = hrp.CFrame.LookVector * -1 -- Thrown backwards
-	local knockbackForce = Instance.new("BodyVelocity")
-	knockbackForce.Velocity = Vector3.new(
+	local forceAttach = Instance.new("Attachment")
+	forceAttach.Parent = hrp
+	local knockbackForce = Instance.new("LinearVelocity")
+	knockbackForce.VectorVelocity = Vector3.new(
 		knockbackDir.X * 25,
 		18, -- Lift up
 		knockbackDir.Z * 25
 	)
-	knockbackForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	knockbackForce.MaxForce = math.huge
+	knockbackForce.RelativeTo = Enum.ActuatorRelativeTo.World
+	knockbackForce.Attachment0 = forceAttach
 	knockbackForce.Parent = hrp
-	
+
 	-- Tumble rotation
-	local tumble = Instance.new("BodyAngularVelocity")
+	local tumble = Instance.new("AngularVelocity")
 	tumble.AngularVelocity = Vector3.new(-10, 0, 0) -- Fall backwards
-	tumble.MaxTorque = Vector3.new(math.huge, 0, math.huge)
+	tumble.MaxTorque = math.huge
+	tumble.RelativeTo = Enum.ActuatorRelativeTo.World
+	tumble.Attachment0 = forceAttach
 	tumble.Parent = hrp
 	
 	-- Fall state
@@ -2119,6 +2146,7 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	task.delay(0.35, function()
 		if knockbackForce.Parent then knockbackForce:Destroy() end
 		if tumble.Parent then tumble:Destroy() end
+		if forceAttach.Parent then forceAttach:Destroy() end
 	end)
 	
 	-- Get up
@@ -2503,14 +2531,14 @@ function ItemManager:createSwapEffect(position: Vector3)
 	
 	-- Animate portal (expand and spin)
 	task.spawn(function()
-		local startTime = tick()
+		local startTime = os.clock()
 		local duration = 0.6
 		
-		while tick() - startTime < duration and portalContainer.Parent do
-			local progress = (tick() - startTime) / duration
+		while os.clock() - startTime < duration and portalContainer.Parent do
+			local progress = (os.clock() - startTime) / duration
 			
 			-- Spin the ring
-			portalRing.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90)) * CFrame.Angles(0, tick() * 5, 0)
+			portalRing.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90)) * CFrame.Angles(0, os.clock() * 5, 0)
 			
 			-- Expand and fade
 			local scale = 1 + progress * 0.5
@@ -2736,7 +2764,7 @@ function ItemManager:startEffectLoop()
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
-			local now = tick()
+			local now = os.clock()
 			
 			for player, data in pairs(self.playerItems) do
 				-- Check shield expiry

@@ -1,9 +1,12 @@
 -- Stage Templates Generator
 -- สร้าง 5 ด่านพื้นฐานสำหรับ Obby
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+
 local StageTemplates = {}
 
-local STAGE_LENGTH = 100
+local STAGE_LENGTH = Config.Stages.StageLength
 local PLATFORM_HEIGHT = 0
 
 -- Helper function สร้าง Part

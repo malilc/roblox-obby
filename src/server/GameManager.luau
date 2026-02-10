@@ -51,6 +51,10 @@ function GameManager.new()
 	
 	-- Selection zone tracking
 	self.playersInSelectionZone = {} :: {[Player]: boolean}
+
+	-- Player event connections (for cleanup on leave)
+	self.playerConnections = {} :: {[Player]: {RBXScriptConnection}}
+	self.playerDiedConnections = {} :: {[Player]: RBXScriptConnection?}
 	
 	-- Setup
 	self:setupRemotes()
@@ -100,39 +104,52 @@ end
 -- Player added
 function GameManager:onPlayerAdded(player: Player)
 	self.playerStates[player] = "Lobby"
-	
+	self.playerConnections[player] = {}
+
 	-- Initialize managers
 	self.scoreManager:initPlayer(player)
 	self.scoreManager:setupLeaderstats(player)
 	self.currencyManager:initPlayer(player)
 	self.itemManager:initPlayer(player)
 	self.classManager:initPlayer(player)
-	
-	-- Wait for character
-	player.CharacterAdded:Connect(function(character)
+
+	-- Wait for character (store connection for cleanup)
+	local charConn = player.CharacterAdded:Connect(function(character)
 		self:onCharacterAdded(player, character)
 	end)
-	
+	table.insert(self.playerConnections[player], charConn)
+
 	-- Handle existing character
 	if player.Character then
 		self:onCharacterAdded(player, player.Character)
 	end
-	
+
 	print("[GameManager] Player joined:", player.Name)
 end
 
 -- Player removing
 function GameManager:onPlayerRemoving(player: Player)
+	-- Disconnect all event connections for this player
+	for _, conn in ipairs(self.playerConnections[player] or {}) do
+		conn:Disconnect()
+	end
+	self.playerConnections[player] = nil
+
+	if self.playerDiedConnections[player] then
+		self.playerDiedConnections[player]:Disconnect()
+		self.playerDiedConnections[player] = nil
+	end
+
 	self.playerStates[player] = nil
 	self.playerCheckpoints[player] = nil
 	self.playersInSelectionZone[player] = nil
-	self.teleportingToLobby[player] = nil -- Clear teleport flag
-	self.playerRoundStats[player] = nil -- Clear round stats
+	self.teleportingToLobby[player] = nil
+	self.playerRoundStats[player] = nil
 
 	self.scoreManager:removePlayer(player)
 	self.currencyManager:removePlayer(player)
 	self.itemManager:removePlayer(player)
-	self.matchManager:removePlayer(player) -- Remove from match
+	self.matchManager:removePlayer(player)
 	self.classManager:removePlayer(player)
 
 	print("[GameManager] Player left:", player.Name)
@@ -141,9 +158,14 @@ end
 -- Character added
 function GameManager:onCharacterAdded(player: Player, character: Model)
 	local humanoid = character:WaitForChild("Humanoid")
-	
-	-- Handle death
-	humanoid.Died:Connect(function()
+
+	-- Disconnect previous Died connection to prevent leak
+	if self.playerDiedConnections[player] then
+		self.playerDiedConnections[player]:Disconnect()
+	end
+
+	-- Handle death (store connection for cleanup)
+	self.playerDiedConnections[player] = humanoid.Died:Connect(function()
 		self:onPlayerDied(player)
 	end)
 	
@@ -320,7 +342,7 @@ function GameManager:onPlayerFinished(player: Player)
 
 	-- Calculate summary data
 	local roundStats = self.playerRoundStats[player]
-	local elapsedTime = tick() - (roundStats and roundStats.startTime or tick())
+	local elapsedTime = os.clock() - (roundStats and roundStats.startTime or os.clock())
 	local coinsCollected = roundStats and roundStats.coinsCollected or 0
 	local stageRewardsTotal = roundStats and roundStats.stageRewardsTotal or 0
 
@@ -474,8 +496,9 @@ function GameManager:setupSelectionZone()
 		label.Size = UDim2.new(1, 0, 1, 0)
 		label.BackgroundTransparency = 1
 		label.Text = "SELECT STAGE"
-		label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		label.TextColor3 = Color3.fromRGB(100, 200, 255)
 		label.TextStrokeTransparency = 0
+		label.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 		label.TextSize = 24
 		label.Font = Enum.Font.GothamBold
 		label.Parent = billboard
@@ -541,19 +564,47 @@ function GameManager:onPlayerLeaveSelectionZone(player: Player)
 	print("[GameManager]", player.Name, "left selection zone")
 end
 
+-- Validate stage order from client input
+function GameManager:validateStageOrder(stageOrder: any): {number}?
+	if type(stageOrder) ~= "table" then return nil end
+	if #stageOrder == 0 or #stageOrder > Config.Stages.Count then return nil end
+
+	local seen = {}
+	for _, stageNum in ipairs(stageOrder) do
+		if type(stageNum) ~= "number" then return nil end
+		stageNum = math.floor(stageNum)
+		if stageNum < 1 or stageNum > Config.Stages.Count then return nil end
+		if seen[stageNum] then return nil end -- duplicate
+		seen[stageNum] = true
+	end
+
+	return stageOrder
+end
+
 -- Stage selection confirmed
-function GameManager:onStageSelectionConfirmed(player: Player, data: {stageOrder: {number}?, isRandom: boolean?})
+function GameManager:onStageSelectionConfirmed(player: Player, data: any)
 	local state = self.playerStates[player]
 	if state ~= "Lobby" then return end
-	
+
+	-- Validate client input
+	if type(data) ~= "table" then
+		warn("[GameManager] Invalid data from", player.Name)
+		return
+	end
+
 	local stageOrder: {number}
-	
-	if data.isRandom then
+
+	if data.isRandom == true then
 		-- Random order
 		stageOrder = self.mapManager:shuffleStages()
-	elseif data.stageOrder and #data.stageOrder > 0 then
-		-- Custom order
-		stageOrder = data.stageOrder
+	elseif data.stageOrder then
+		-- Custom order - validate
+		local validated = self:validateStageOrder(data.stageOrder)
+		if not validated then
+			warn("[GameManager] Invalid stageOrder from", player.Name)
+			return
+		end
+		stageOrder = validated
 	else
 		-- Default: use current map order
 		stageOrder = self.mapManager.stageOrder
@@ -567,6 +618,9 @@ function GameManager:onStageSelectionConfirmed(player: Player, data: {stageOrder
 end
 
 -- Start game with specific stage order
+-- NOTE: The map is globally shared in workspace. If multiple players start games
+-- simultaneously, generateMapWithOrder() destroys and rebuilds the map for everyone.
+-- This will need a per-player or instanced map system for true multiplayer support.
 function GameManager:startGameWithOrder(player: Player, stageOrder: {number})
 	-- Generate map with new order
 	self.mapManager:generateMapWithOrder(stageOrder)
@@ -618,7 +672,7 @@ function GameManager:startGameForPlayer(player: Player)
 	
 	-- Initialize round stats for summary
 	self.playerRoundStats[player] = {
-		startTime = tick(),
+		startTime = os.clock(),
 		coinsCollected = 0,
 		stageRewardsTotal = 0,
 	}

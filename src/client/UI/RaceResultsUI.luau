@@ -315,8 +315,6 @@ function RaceResultsUI:playWinnerCelebration()
 			end
 		end
 	end)
-	
-	-- TODO: Add confetti particles or other celebration effects
 end
 
 function RaceResultsUI:show()

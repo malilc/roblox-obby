@@ -185,7 +185,7 @@ function MapManager:setupDisappearingPlatform(part: Part)
 			for _, data in ipairs(self.disappearingParts) do
 				if data.part == part and not data.touched then
 					data.touched = true
-					data.lastTouchTime = tick()
+					data.lastTouchTime = os.clock()
 					
 					local disappearDelay = part:GetAttribute("DisappearDelay") or 1.5
 					local reappearDelay = part:GetAttribute("ReappearDelay") or 3
@@ -239,7 +239,7 @@ function MapManager:startAnimations()
 	
 	-- Animation loop
 	self.animationConnection = RunService.Heartbeat:Connect(function(dt)
-		local time = tick()
+		local time = os.clock()
 		
 		-- Moving platforms (ใช้ PrismaticConstraint)
 		for _, part in ipairs(self.movingParts) do
@@ -266,14 +266,10 @@ function MapManager:startAnimations()
 				local spinSpeed = box:GetAttribute("SpinSpeed") or 2
 				local originalY = box:GetAttribute("OriginalY") or box.Position.Y
 				
-				-- Bobbing effect (ขยับขึ้นลง)
+				-- Bobbing effect (ขยับขึ้นลง) + Spin
 				local bobOffset = math.sin(time * 2) * 0.3
 				local currentPos = box.Position
-				
-				-- หมุนรอบแกน Y และ bob ขึ้นลง
-				box.CFrame = CFrame.new(currentPos.X, originalY + bobOffset, currentPos.Z) * CFrame.Angles(0, dt * spinSpeed, 0) * CFrame.Angles(0, box.CFrame:ToEulerAnglesYXZ())
-				
-				-- แค่หมุนด้วย spin speed
+
 				box.CFrame = CFrame.new(currentPos.X, originalY + bobOffset, currentPos.Z) * CFrame.Angles(0, time * spinSpeed, 0)
 			end
 		end
@@ -288,7 +284,7 @@ function MapManager:clearMap()
 		self.animationConnection = nil
 	end
 	
-	-- Clear stages
+	-- Clear stages (Destroy() automatically disconnects all Touched/event connections on each Part)
 	for _, stage in ipairs(self.currentStages) do
 		stage:Destroy()
 	end

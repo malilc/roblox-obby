@@ -95,7 +95,7 @@
       }
     },
     "Workspace": {
-      " SpawnLocation": {
+      "SpawnLocation": {
         "$className": "SpawnLocation",
         "$properties": {
           "Anchored": true,
