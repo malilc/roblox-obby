@@ -22,10 +22,10 @@ MainUI.__index = MainUI
 
 function MainUI.new()
 	local self = setmetatable({}, MainUI)
-	
+
 	-- Wait for PlayerGui
 	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-	
+
 	-- Create main ScreenGui
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "ObbyGameUI"
@@ -33,7 +33,7 @@ function MainUI.new()
 	screenGui.IgnoreGuiInset = false
 	screenGui.Parent = playerGui
 	self.screenGui = screenGui
-	
+
 	-- Create UI components
 	self.scoreUI = ScoreUI.new(screenGui)
 	self.itemUI = ItemUI.new(screenGui)
@@ -41,46 +41,71 @@ function MainUI.new()
 	self.currencyUI = CurrencyUI.new(screenGui)
 	self.summaryUI = SummaryUI.new(screenGui)
 	self.matchLobbyUI = MatchLobbyUI.new(screenGui)
-	self.classSelectionUI = ClassSelectionUI.new(screenGui)
 	self.raceResultsUI = RaceResultsUI.new(screenGui)
 	self.titleCollectionUI = TitleCollectionUI.new(screenGui)
+
+	-- ClassSelectionUI with cross-navigation callback
+	self.classSelectionUI = ClassSelectionUI.new(screenGui, {
+		onOpenTitleCollection = function()
+			self.classSelectionUI:hide()
+			task.delay(0.15, function()
+				self.titleCollectionUI:show()
+			end)
+		end,
+		onShow = function()
+			-- Close title collection if open when class modal opens
+			if self.titleCollectionUI and self.titleCollectionUI.isVisible then
+				self.titleCollectionUI:hide()
+			end
+		end,
+	})
+
+	-- TitleHUD with callback to open collection
 	self.titleHUDUI = TitleHUDUI.new(screenGui, function()
 		self:toggleTitleCollection()
 	end)
-	
+
 	-- Setup remote listeners
 	self:setupRemotes()
-	
+
 	return self
 end
 
 function MainUI:toggleTitleCollection()
 	if self.titleCollectionUI then
-		self.titleCollectionUI:toggle()
+		if self.titleCollectionUI.isVisible then
+			self.titleCollectionUI:hide()
+		else
+			-- Close class modal first if open
+			if self.classSelectionUI and self.classSelectionUI.isVisible then
+				self.classSelectionUI:hide()
+			end
+			self.titleCollectionUI:show()
+		end
 	end
 end
 
 function MainUI:setupRemotes()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
-	
+
 	-- Update score
 	local updateScore = remotes:WaitForChild("UpdateScore")
 	updateScore.OnClientEvent:Connect(function(data)
 		self:onScoreUpdate(data)
 	end)
-	
+
 	-- Stage complete
 	local stageComplete = remotes:WaitForChild("StageComplete")
 	stageComplete.OnClientEvent:Connect(function(data)
 		self:onStageComplete(data)
 	end)
-	
+
 	-- Player died
 	local playerDied = remotes:WaitForChild("PlayerDied")
 	playerDied.OnClientEvent:Connect(function()
 		self:onPlayerDied()
 	end)
-	
+
 	-- Countdown update (Game Start)
 	local countdownUpdate = remotes:WaitForChild("CountdownUpdate")
 	countdownUpdate.OnClientEvent:Connect(function(data)
@@ -89,7 +114,7 @@ function MainUI:setupRemotes()
 			self.scoreUI:showStageProgress(data.totalStages)
 		end
 	end)
-	
+
 	-- Update currency
 	local updateCurrency = remotes:WaitForChild("UpdateCurrency")
 	updateCurrency.OnClientEvent:Connect(function(data)
@@ -100,7 +125,7 @@ end
 function MainUI:onScoreUpdate(data: {[string]: any})
 	-- Update score UI
 	self.scoreUI:updateScore(data)
-	
+
 	-- Update item UI
 	self.itemUI:updateItems(data)
 end
@@ -108,22 +133,22 @@ end
 function MainUI:onStageComplete(data: {[string]: any})
 	local stageIndex = data.stageIndex
 	local isFinished = data.finished
-	
+
 	local isStart = data.isStart
-	
+
 	-- Show notification only if not just starting
 	if not isStart then
 		-- Show completion of previous stage
 		self.scoreUI:showStageComplete(stageIndex - 1, isFinished)
 	end
-	
+
 	-- Update score UI
 	self.scoreUI:updateScore({
 		currentStage = stageIndex,
 		totalStages = data.totalStages,
 		isFinished = isFinished -- Pass finish status
 	})
-	
+
 	-- If finished, show summary and hide stage UI after delay
 	if isFinished then
 		-- Show summary UI if summary data is provided
@@ -133,7 +158,7 @@ function MainUI:onStageComplete(data: {[string]: any})
 				self.summaryUI:show(data.summary)
 			end)
 		end
-		
+
 		task.delay(4, function()
 			self.scoreUI:hideStageProgress()
 		end)
@@ -152,7 +177,7 @@ end
 
 function MainUI:showDeathNotification()
 	local TweenService = game:GetService("TweenService")
-	
+
 	-- เล็กลง + อยู่ด้านบน + โปร่งใส
 	local notification = Instance.new("TextLabel")
 	notification.Name = "DeathNotification"
@@ -162,27 +187,27 @@ function MainUI:showDeathNotification()
 	notification.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	notification.BackgroundTransparency = 0.5
 	notification.BorderSizePixel = 0
-	notification.Text = "💀 Respawn"
+	notification.Text = "Respawn"
 	notification.TextColor3 = Color3.fromRGB(255, 100, 100)
 	notification.TextSize = 14
 	notification.Font = Enum.Font.GothamBold
 	notification.TextTransparency = 0
 	notification.Parent = self.screenGui
-	
+
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 6)
 	corner.Parent = notification
-	
+
 	-- Fade in
 	notification.BackgroundTransparency = 1
 	notification.TextTransparency = 1
-	
+
 	local fadeIn = TweenService:Create(notification, TweenInfo.new(0.2), {
 		BackgroundTransparency = 0.5,
 		TextTransparency = 0
 	})
 	fadeIn:Play()
-	
+
 	-- Fade out after delay
 	task.delay(1, function()
 		if notification.Parent then

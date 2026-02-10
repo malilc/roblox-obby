@@ -1,6 +1,7 @@
 -- TitleHUDUI: แสดง Active Title บน HUD และเปิดหน้า Title Collection
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -9,6 +10,17 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local TitleHUDUI = {}
 TitleHUDUI.__index = TitleHUDUI
+
+-- Light theme colors
+local COLORS = {
+	BG = Color3.fromRGB(255, 255, 255),
+	BG_TRANSPARENCY = 0.15,
+	BG_BUTTON = Color3.fromRGB(240, 242, 248),
+	BG_BUTTON_HOVER = Color3.fromRGB(220, 228, 245),
+	STROKE_DEFAULT = Color3.fromRGB(210, 215, 225),
+	TEXT_HINT = Color3.fromRGB(150, 155, 170),
+	TEXT_NO_TITLE = Color3.fromRGB(120, 125, 140),
+}
 
 local function cloneTitleEntry(source: any): {id: string, name: string, classId: string, level: number, rarity: string, description: string?}?
 	if type(source) ~= "table" then
@@ -42,9 +54,9 @@ local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: C
 	local theme = type(configured) == "table" and configured[rarity] or nil
 
 	local result = {
-		textColor = classColor or Color3.fromRGB(230, 230, 230),
-		strokeColor = Color3.fromRGB(0, 0, 0),
-		frameColor = classColor or Color3.fromRGB(95, 95, 110),
+		textColor = classColor or Color3.fromRGB(60, 65, 80),
+		strokeColor = Color3.fromRGB(40, 40, 50),
+		frameColor = classColor or COLORS.STROKE_DEFAULT,
 	}
 
 	if type(theme) == "table" then
@@ -78,60 +90,113 @@ function TitleHUDUI.new(parent: ScreenGui, onOpenCollection: (() -> ())?)
 end
 
 function TitleHUDUI:createUI()
+	-- Main container - light rounded bar
 	local container = Instance.new("Frame")
 	container.Name = "TitleHUDContainer"
-	container.Size = UDim2.new(0, 250, 0, 34)
-	container.Position = UDim2.new(0, 10, 0, 220)
-	container.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	container.BackgroundTransparency = 0.2
+	container.Size = UDim2.new(0, 220, 0, 36)
+	container.Position = UDim2.new(0, 10, 0, 186)
+	container.BackgroundColor3 = COLORS.BG
+	container.BackgroundTransparency = COLORS.BG_TRANSPARENCY
 	container.BorderSizePixel = 0
 	container.Parent = self.parent
 	self.container = container
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = UDim.new(0, 10)
 	corner.Parent = container
 
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(95, 95, 110)
+	stroke.Color = COLORS.STROKE_DEFAULT
 	stroke.Thickness = 1.5
 	stroke.Parent = container
 	self.containerStroke = stroke
 
+	-- Title text label
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "TitleLabel"
-	titleLabel.Size = UDim2.new(1, -34, 1, 0)
-	titleLabel.Position = UDim2.new(0, 8, 0, 0)
+	titleLabel.Size = UDim2.new(1, -42, 1, 0)
+	titleLabel.Position = UDim2.new(0, 10, 0, 0)
 	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "No Title"
-	titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-	titleLabel.TextSize = 13
+	titleLabel.Text = "Tap to set title"
+	titleLabel.TextColor3 = COLORS.TEXT_HINT
+	titleLabel.TextSize = 14
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	titleLabel.Parent = container
 	self.titleLabel = titleLabel
 
+	-- Make the whole container clickable when no title (hint text)
+	local containerButton = Instance.new("TextButton")
+	containerButton.Name = "ContainerButton"
+	containerButton.Size = UDim2.new(1, -36, 1, 0)
+	containerButton.Position = UDim2.new(0, 0, 0, 0)
+	containerButton.BackgroundTransparency = 1
+	containerButton.Text = ""
+	containerButton.BorderSizePixel = 0
+	containerButton.Parent = container
+	self.containerButton = containerButton
+
+	containerButton.MouseButton1Click:Connect(function()
+		if not self.activeTitle and self.onOpenCollection then
+			self.onOpenCollection()
+		end
+	end)
+
+	-- Collection button (📋 icon)
 	local openButton = Instance.new("TextButton")
 	openButton.Name = "OpenCollectionButton"
-	openButton.Size = UDim2.new(0, 26, 0, 26)
-	openButton.Position = UDim2.new(1, -30, 0.5, -13)
-	openButton.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
+	openButton.Size = UDim2.new(0, 28, 0, 28)
+	openButton.Position = UDim2.new(1, -32, 0.5, -14)
+	openButton.BackgroundColor3 = COLORS.BG_BUTTON
 	openButton.BorderSizePixel = 0
-	openButton.Text = "≡"
-	openButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	openButton.TextSize = 15
+	openButton.Text = "\u{1F4CB}"
+	openButton.TextColor3 = Color3.fromRGB(80, 90, 110)
+	openButton.TextSize = 14
 	openButton.Font = Enum.Font.GothamBold
 	openButton.Parent = container
+	self.openButton = openButton
 
 	local openButtonCorner = Instance.new("UICorner")
-	openButtonCorner.CornerRadius = UDim.new(0, 6)
+	openButtonCorner.CornerRadius = UDim.new(0, 7)
 	openButtonCorner.Parent = openButton
+
+	-- Hover effect for collection button
+	openButton.MouseEnter:Connect(function()
+		TweenService:Create(openButton, TweenInfo.new(0.12), {
+			BackgroundColor3 = COLORS.BG_BUTTON_HOVER,
+		}):Play()
+	end)
+
+	openButton.MouseLeave:Connect(function()
+		TweenService:Create(openButton, TweenInfo.new(0.12), {
+			BackgroundColor3 = COLORS.BG_BUTTON,
+		}):Play()
+	end)
 
 	openButton.MouseButton1Click:Connect(function()
 		if self.onOpenCollection then
 			self.onOpenCollection()
 		end
+	end)
+
+	-- Hover effect for whole container
+	container.MouseEnter:Connect(function()
+		TweenService:Create(stroke, TweenInfo.new(0.12), {
+			Color = if self.activeTitle then self.containerStroke.Color else Color3.fromRGB(180, 190, 210),
+		}):Play()
+	end)
+
+	container.MouseLeave:Connect(function()
+		local targetColor = COLORS.STROKE_DEFAULT
+		if self.activeTitle then
+			local classDef = ClassTypes.getClass(self.activeTitle.classId)
+			local theme = getTitleTheme(self.activeTitle.rarity, classDef and classDef.color or nil)
+			targetColor = theme.frameColor
+		end
+		TweenService:Create(stroke, TweenInfo.new(0.12), {
+			Color = targetColor,
+		}):Play()
 	end)
 end
 
@@ -139,11 +204,10 @@ function TitleHUDUI:updateActiveTitle(activeTitle: any)
 	self.activeTitle = cloneTitleEntry(activeTitle)
 
 	if not self.activeTitle then
-		self.titleLabel.Text = "No Title"
-		self.titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-		self.titleLabel.TextStrokeTransparency = 0.4
-		self.titleLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-		self.containerStroke.Color = Color3.fromRGB(95, 95, 110)
+		self.titleLabel.Text = "Tap to set title  \u{203A}"
+		self.titleLabel.TextColor3 = COLORS.TEXT_HINT
+		self.titleLabel.TextStrokeTransparency = 1
+		self.containerStroke.Color = COLORS.STROKE_DEFAULT
 		return
 	end
 
@@ -152,7 +216,7 @@ function TitleHUDUI:updateActiveTitle(activeTitle: any)
 
 	self.titleLabel.Text = string.format("[%s] %s", self.activeTitle.rarity, self.activeTitle.name)
 	self.titleLabel.TextColor3 = theme.textColor
-	self.titleLabel.TextStrokeTransparency = 0.35
+	self.titleLabel.TextStrokeTransparency = 0.65
 	self.titleLabel.TextStrokeColor3 = theme.strokeColor
 	self.containerStroke.Color = theme.frameColor
 end

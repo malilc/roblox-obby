@@ -26,6 +26,40 @@ local RARITY_ORDER = {
 	Legendary = 4,
 }
 
+-- Rarity accent colors for left border strips
+local RARITY_COLORS = {
+	Common = Color3.fromRGB(180, 185, 195),
+	Rare = Color3.fromRGB(80, 150, 230),
+	Epic = Color3.fromRGB(160, 90, 220),
+	Legendary = Color3.fromRGB(240, 180, 50),
+}
+
+-- Light theme palette
+local COLORS = {
+	BG_PRIMARY = Color3.fromRGB(245, 245, 250),
+	BG_CARD = Color3.fromRGB(255, 255, 255),
+	BG_CARD_LOCKED = Color3.fromRGB(240, 240, 245),
+	BG_LIST = Color3.fromRGB(238, 240, 246),
+	BG_SEARCH = Color3.fromRGB(255, 255, 255),
+	BG_FILTER = Color3.fromRGB(230, 232, 240),
+	BG_FILTER_ACTIVE = Color3.fromRGB(80, 140, 230),
+	BG_SORT = Color3.fromRGB(80, 120, 190),
+	BG_CLOSE = Color3.fromRGB(220, 100, 100),
+	BG_BANNER = Color3.fromRGB(250, 250, 255),
+	BG_UNEQUIP = Color3.fromRGB(210, 100, 90),
+	BG_EQUIP = Color3.fromRGB(80, 180, 100),
+	BG_LOCKED_BTN = Color3.fromRGB(195, 195, 205),
+	TEXT_PRIMARY = Color3.fromRGB(50, 55, 70),
+	TEXT_SECONDARY = Color3.fromRGB(120, 125, 140),
+	TEXT_MUTED = Color3.fromRGB(160, 165, 175),
+	TEXT_WHITE = Color3.fromRGB(255, 255, 255),
+	TEXT_LOCKED = Color3.fromRGB(160, 160, 175),
+	STROKE_DEFAULT = Color3.fromRGB(210, 215, 225),
+	STROKE_BANNER = Color3.fromRGB(200, 205, 218),
+	STROKE_CARD = Color3.fromRGB(220, 225, 235),
+	STROKE_CARD_LOCKED = Color3.fromRGB(215, 215, 225),
+}
+
 local function cloneTitleEntry(source: any): {id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}?
 	if type(source) ~= "table" then
 		return nil
@@ -87,22 +121,18 @@ local function cloneTitleList(source: any): {{id: string, name: string, classId:
 	return list
 end
 
-local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: Color3, strokeColor: Color3, frameColor: Color3}
+local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: Color3, frameColor: Color3}
 	local configured = Config.Mastery and Config.Mastery.TitleThemes
 	local theme = type(configured) == "table" and configured[rarity] or nil
 
 	local result = {
-		textColor = classColor or Color3.fromRGB(230, 230, 230),
-		strokeColor = Color3.fromRGB(0, 0, 0),
-		frameColor = classColor or Color3.fromRGB(95, 95, 110),
+		textColor = classColor or Color3.fromRGB(80, 85, 100),
+		frameColor = classColor or COLORS.STROKE_DEFAULT,
 	}
 
 	if type(theme) == "table" then
 		if typeof(theme.textColor) == "Color3" then
 			result.textColor = theme.textColor
-		end
-		if typeof(theme.strokeColor) == "Color3" then
-			result.strokeColor = theme.strokeColor
 		end
 		if typeof(theme.frameColor) == "Color3" then
 			result.frameColor = theme.frameColor
@@ -130,7 +160,7 @@ function TitleCollectionUI.new(parent: ScreenGui)
 
 	self:createUI()
 	self:setupRemotes()
-	self:updateActiveTitleLabel()
+	self:updateActiveTitleBanner()
 	self:updateFilterButtons()
 	self:updateSortButton()
 	self:updateSearchClearButtonState()
@@ -140,13 +170,14 @@ function TitleCollectionUI.new(parent: ScreenGui)
 end
 
 function TitleCollectionUI:createUI()
+	-- Main container - light modal
 	local container = Instance.new("Frame")
 	container.Name = "TitleCollectionContainer"
-	container.Size = UDim2.new(0, 660, 0, 460)
-	container.Position = UDim2.new(0.5, 0, 0.5, 30)
+	container.Size = UDim2.new(0, 660, 0, 500)
+	container.Position = UDim2.new(0.5, 0, 0.5, 0)
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
-	container.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
-	container.BackgroundTransparency = 0.08
+	container.BackgroundColor3 = COLORS.BG_PRIMARY
+	container.BackgroundTransparency = 0.02
 	container.BorderSizePixel = 0
 	container.Visible = false
 	container.Parent = self.parent
@@ -157,82 +188,116 @@ function TitleCollectionUI:createUI()
 	corner.Parent = container
 
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(130, 130, 165)
+	stroke.Color = COLORS.STROKE_DEFAULT
 	stroke.Thickness = 1.5
 	stroke.Parent = container
 
+	-- ===== HEADER =====
 	local header = Instance.new("TextLabel")
 	header.Name = "Header"
-	header.Size = UDim2.new(1, -110, 0, 42)
-	header.Position = UDim2.new(0, 16, 0, 12)
+	header.Size = UDim2.new(1, -110, 0, 36)
+	header.Position = UDim2.new(0, 18, 0, 14)
 	header.BackgroundTransparency = 1
 	header.Text = "TITLE COLLECTION"
-	header.TextColor3 = Color3.fromRGB(255, 255, 255)
-	header.TextSize = 24
+	header.TextColor3 = COLORS.TEXT_PRIMARY
+	header.TextSize = 26
 	header.Font = Enum.Font.GothamBlack
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.Parent = container
 
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 86, 0, 32)
-	closeButton.Position = UDim2.new(1, -98, 0, 14)
-	closeButton.BackgroundColor3 = Color3.fromRGB(80, 60, 60)
+	closeButton.Size = UDim2.new(0, 32, 0, 32)
+	closeButton.Position = UDim2.new(1, -46, 0, 14)
+	closeButton.BackgroundColor3 = COLORS.BG_CLOSE
 	closeButton.BorderSizePixel = 0
-	closeButton.Text = "CLOSE"
-	closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeButton.TextSize = 13
+	closeButton.Text = "X"
+	closeButton.TextColor3 = COLORS.TEXT_WHITE
+	closeButton.TextSize = 15
 	closeButton.Font = Enum.Font.GothamBold
 	closeButton.Parent = container
 	self.closeButton = closeButton
 
 	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0, 7)
+	closeCorner.CornerRadius = UDim.new(0, 8)
 	closeCorner.Parent = closeButton
 
-	local activeLabel = Instance.new("TextLabel")
-	activeLabel.Name = "ActiveTitleLabel"
-	activeLabel.Size = UDim2.new(1, -220, 0, 28)
-	activeLabel.Position = UDim2.new(0, 16, 0, 54)
-	activeLabel.BackgroundTransparency = 1
-	activeLabel.Text = "Active: No Title"
-	activeLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
-	activeLabel.TextSize = 15
-	activeLabel.Font = Enum.Font.GothamBold
-	activeLabel.TextXAlignment = Enum.TextXAlignment.Left
-	activeLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	activeLabel.Parent = container
-	self.activeLabel = activeLabel
+	-- ===== ACTIVE TITLE BANNER =====
+	local bannerFrame = Instance.new("Frame")
+	bannerFrame.Name = "ActiveTitleBanner"
+	bannerFrame.Size = UDim2.new(1, -32, 0, 40)
+	bannerFrame.Position = UDim2.new(0, 16, 0, 54)
+	bannerFrame.BackgroundColor3 = COLORS.BG_BANNER
+	bannerFrame.BackgroundTransparency = 0
+	bannerFrame.BorderSizePixel = 0
+	bannerFrame.Parent = container
+	self.bannerFrame = bannerFrame
 
-	local clearButton = Instance.new("TextButton")
-	clearButton.Name = "ClearTitleButton"
-	clearButton.Size = UDim2.new(0, 180, 0, 28)
-	clearButton.Position = UDim2.new(1, -196, 0, 54)
-	clearButton.BackgroundColor3 = Color3.fromRGB(105, 75, 65)
-	clearButton.BorderSizePixel = 0
-	clearButton.Text = "UNEQUIP ACTIVE TITLE"
-	clearButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	clearButton.TextSize = 12
-	clearButton.Font = Enum.Font.GothamBold
-	clearButton.Parent = container
-	self.clearButton = clearButton
+	local bannerCorner = Instance.new("UICorner")
+	bannerCorner.CornerRadius = UDim.new(0, 8)
+	bannerCorner.Parent = bannerFrame
 
-	local clearCorner = Instance.new("UICorner")
-	clearCorner.CornerRadius = UDim.new(0, 7)
-	clearCorner.Parent = clearButton
+	local bannerStroke = Instance.new("UIStroke")
+	bannerStroke.Color = COLORS.STROKE_BANNER
+	bannerStroke.Thickness = 1
+	bannerStroke.Parent = bannerFrame
 
+	local bannerPrefix = Instance.new("TextLabel")
+	bannerPrefix.Name = "BannerPrefix"
+	bannerPrefix.Size = UDim2.new(0, 100, 1, 0)
+	bannerPrefix.Position = UDim2.new(0, 12, 0, 0)
+	bannerPrefix.BackgroundTransparency = 1
+	bannerPrefix.Text = "ACTIVE TITLE"
+	bannerPrefix.TextColor3 = COLORS.TEXT_SECONDARY
+	bannerPrefix.TextSize = 11
+	bannerPrefix.Font = Enum.Font.GothamBold
+	bannerPrefix.TextXAlignment = Enum.TextXAlignment.Left
+	bannerPrefix.Parent = bannerFrame
+
+	local bannerTitleLabel = Instance.new("TextLabel")
+	bannerTitleLabel.Name = "BannerTitleLabel"
+	bannerTitleLabel.Size = UDim2.new(1, -250, 1, 0)
+	bannerTitleLabel.Position = UDim2.new(0, 118, 0, 0)
+	bannerTitleLabel.BackgroundTransparency = 1
+	bannerTitleLabel.Text = "No Title"
+	bannerTitleLabel.TextColor3 = COLORS.TEXT_MUTED
+	bannerTitleLabel.TextSize = 14
+	bannerTitleLabel.Font = Enum.Font.GothamBold
+	bannerTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	bannerTitleLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	bannerTitleLabel.Parent = bannerFrame
+	self.bannerTitleLabel = bannerTitleLabel
+
+	local unequipButton = Instance.new("TextButton")
+	unequipButton.Name = "UnequipButton"
+	unequipButton.Size = UDim2.new(0, 90, 0, 28)
+	unequipButton.Position = UDim2.new(1, -100, 0.5, -14)
+	unequipButton.BackgroundColor3 = COLORS.BG_UNEQUIP
+	unequipButton.BorderSizePixel = 0
+	unequipButton.Text = "UNEQUIP"
+	unequipButton.TextColor3 = COLORS.TEXT_WHITE
+	unequipButton.TextSize = 12
+	unequipButton.Font = Enum.Font.GothamBold
+	unequipButton.Parent = bannerFrame
+	self.unequipButton = unequipButton
+
+	local unequipCorner = Instance.new("UICorner")
+	unequipCorner.CornerRadius = UDim.new(0, 7)
+	unequipCorner.Parent = unequipButton
+
+	-- ===== SEARCH + FILTER BAR =====
 	local searchBox = Instance.new("TextBox")
 	searchBox.Name = "SearchBox"
-	searchBox.Size = UDim2.new(1, -116, 0, 28)
-	searchBox.Position = UDim2.new(0, 12, 0, 86)
-	searchBox.BackgroundColor3 = Color3.fromRGB(34, 34, 48)
-	searchBox.BackgroundTransparency = 0.15
+	searchBox.Size = UDim2.new(1, -120, 0, 32)
+	searchBox.Position = UDim2.new(0, 16, 0, 102)
+	searchBox.BackgroundColor3 = COLORS.BG_SEARCH
+	searchBox.BackgroundTransparency = 0
 	searchBox.BorderSizePixel = 0
 	searchBox.PlaceholderText = "Search title, class, rarity..."
 	searchBox.Text = ""
-	searchBox.TextColor3 = Color3.fromRGB(245, 245, 245)
-	searchBox.PlaceholderColor3 = Color3.fromRGB(160, 160, 175)
-	searchBox.TextSize = 13
+	searchBox.TextColor3 = COLORS.TEXT_PRIMARY
+	searchBox.PlaceholderColor3 = COLORS.TEXT_MUTED
+	searchBox.TextSize = 14
 	searchBox.Font = Enum.Font.Gotham
 	searchBox.ClearTextOnFocus = false
 	searchBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -243,14 +308,23 @@ function TitleCollectionUI:createUI()
 	searchCorner.CornerRadius = UDim.new(0, 8)
 	searchCorner.Parent = searchBox
 
+	local searchStroke = Instance.new("UIStroke")
+	searchStroke.Color = COLORS.STROKE_DEFAULT
+	searchStroke.Thickness = 1
+	searchStroke.Parent = searchBox
+
+	local searchPadding = Instance.new("UIPadding")
+	searchPadding.PaddingLeft = UDim.new(0, 10)
+	searchPadding.Parent = searchBox
+
 	local clearSearchButton = Instance.new("TextButton")
 	clearSearchButton.Name = "ClearSearchButton"
-	clearSearchButton.Size = UDim2.new(0, 84, 0, 28)
-	clearSearchButton.Position = UDim2.new(1, -96, 0, 86)
-	clearSearchButton.BackgroundColor3 = Color3.fromRGB(82, 82, 94)
+	clearSearchButton.Size = UDim2.new(0, 84, 0, 32)
+	clearSearchButton.Position = UDim2.new(1, -100, 0, 102)
+	clearSearchButton.BackgroundColor3 = COLORS.BG_FILTER
 	clearSearchButton.BorderSizePixel = 0
 	clearSearchButton.Text = "CLEAR"
-	clearSearchButton.TextColor3 = Color3.fromRGB(245, 245, 245)
+	clearSearchButton.TextColor3 = COLORS.TEXT_SECONDARY
 	clearSearchButton.TextSize = 12
 	clearSearchButton.Font = Enum.Font.GothamBold
 	clearSearchButton.Parent = container
@@ -260,10 +334,11 @@ function TitleCollectionUI:createUI()
 	clearSearchCorner.CornerRadius = UDim.new(0, 8)
 	clearSearchCorner.Parent = clearSearchButton
 
+	-- ===== FILTER + SORT BAR =====
 	local filterBar = Instance.new("Frame")
 	filterBar.Name = "FilterBar"
-	filterBar.Size = UDim2.new(1, -24, 0, 24)
-	filterBar.Position = UDim2.new(0, 12, 0, 120)
+	filterBar.Size = UDim2.new(1, -32, 0, 28)
+	filterBar.Position = UDim2.new(0, 16, 0, 142)
 	filterBar.BackgroundTransparency = 1
 	filterBar.Parent = container
 
@@ -272,65 +347,67 @@ function TitleCollectionUI:createUI()
 		button.Name = "Filter" .. label
 		button.Size = size
 		button.Position = position
-		button.BackgroundColor3 = Color3.fromRGB(60, 60, 78)
+		button.BackgroundColor3 = COLORS.BG_FILTER
 		button.BorderSizePixel = 0
 		button.Text = label
-		button.TextColor3 = Color3.fromRGB(255, 255, 255)
-		button.TextSize = 12
+		button.TextColor3 = COLORS.TEXT_SECONDARY
+		button.TextSize = 13
 		button.Font = Enum.Font.GothamBold
 		button.Parent = filterBar
 
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6)
-		corner.Parent = button
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 7)
+		btnCorner.Parent = button
 
 		return button
 	end
 
-	self.filterButtons[FILTER_ALL] = createFilterButton(FILTER_ALL, UDim2.new(0, 0, 0, 0), UDim2.new(0, 72, 1, 0))
-	self.filterButtons[FILTER_UNLOCKED] = createFilterButton(FILTER_UNLOCKED, UDim2.new(0, 80, 0, 0), UDim2.new(0, 96, 1, 0))
-	self.filterButtons[FILTER_LOCKED] = createFilterButton(FILTER_LOCKED, UDim2.new(0, 184, 0, 0), UDim2.new(0, 80, 1, 0))
+	self.filterButtons[FILTER_ALL] = createFilterButton(FILTER_ALL, UDim2.new(0, 0, 0, 0), UDim2.new(0, 60, 1, 0))
+	self.filterButtons[FILTER_UNLOCKED] = createFilterButton(FILTER_UNLOCKED, UDim2.new(0, 66, 0, 0), UDim2.new(0, 96, 1, 0))
+	self.filterButtons[FILTER_LOCKED] = createFilterButton(FILTER_LOCKED, UDim2.new(0, 168, 0, 0), UDim2.new(0, 80, 1, 0))
 
 	local sortButton = Instance.new("TextButton")
 	sortButton.Name = "SortButton"
-	sortButton.Size = UDim2.new(0, 120, 1, 0)
-	sortButton.Position = UDim2.new(0, 274, 0, 0)
-	sortButton.BackgroundColor3 = Color3.fromRGB(58, 84, 130)
+	sortButton.Size = UDim2.new(0, 130, 1, 0)
+	sortButton.Position = UDim2.new(0, 260, 0, 0)
+	sortButton.BackgroundColor3 = COLORS.BG_SORT
 	sortButton.BorderSizePixel = 0
-	sortButton.Text = "SORT: CLASS"
-	sortButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	sortButton.TextSize = 12
+	sortButton.Text = "Sort: Class \u{25BC}"
+	sortButton.TextColor3 = COLORS.TEXT_WHITE
+	sortButton.TextSize = 13
 	sortButton.Font = Enum.Font.GothamBold
 	sortButton.Parent = filterBar
 	self.sortButton = sortButton
 
 	local sortCorner = Instance.new("UICorner")
-	sortCorner.CornerRadius = UDim.new(0, 6)
+	sortCorner.CornerRadius = UDim.new(0, 7)
 	sortCorner.Parent = sortButton
 
 	local resultLabel = Instance.new("TextLabel")
 	resultLabel.Name = "ResultLabel"
-	resultLabel.Size = UDim2.new(1, -402, 1, 0)
-	resultLabel.Position = UDim2.new(0, 402, 0, 0)
+	resultLabel.Size = UDim2.new(1, -400, 1, 0)
+	resultLabel.Position = UDim2.new(0, 400, 0, 0)
 	resultLabel.BackgroundTransparency = 1
-	resultLabel.Text = "0 / 0"
-	resultLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
-	resultLabel.TextSize = 12
+	resultLabel.Text = "0 / 0 titles"
+	resultLabel.TextColor3 = COLORS.TEXT_SECONDARY
+	resultLabel.TextSize = 13
 	resultLabel.Font = Enum.Font.Gotham
 	resultLabel.TextXAlignment = Enum.TextXAlignment.Right
 	resultLabel.Parent = filterBar
 	self.resultLabel = resultLabel
 
+	-- ===== TITLE LIST =====
 	local listFrame = Instance.new("ScrollingFrame")
 	listFrame.Name = "TitleList"
-	listFrame.Size = UDim2.new(1, -24, 1, -156)
-	listFrame.Position = UDim2.new(0, 12, 0, 146)
-	listFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
-	listFrame.BackgroundTransparency = 0.2
+	listFrame.Size = UDim2.new(1, -32, 1, -182)
+	listFrame.Position = UDim2.new(0, 16, 0, 176)
+	listFrame.BackgroundColor3 = COLORS.BG_LIST
+	listFrame.BackgroundTransparency = 0.3
 	listFrame.BorderSizePixel = 0
 	listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-	listFrame.ScrollBarThickness = 8
+	listFrame.ScrollBarThickness = 6
 	listFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
+	listFrame.ScrollBarImageColor3 = Color3.fromRGB(180, 185, 200)
 	listFrame.Parent = container
 	self.listFrame = listFrame
 
@@ -341,23 +418,23 @@ function TitleCollectionUI:createUI()
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Vertical
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 8)
+	layout.Padding = UDim.new(0, 6)
 	layout.Parent = listFrame
 	self.listLayout = layout
 
 	local listPadding = Instance.new("UIPadding")
-	listPadding.PaddingTop = UDim.new(0, 8)
-	listPadding.PaddingBottom = UDim.new(0, 8)
-	listPadding.PaddingLeft = UDim.new(0, 8)
-	listPadding.PaddingRight = UDim.new(0, 8)
+	listPadding.PaddingTop = UDim.new(0, 6)
+	listPadding.PaddingBottom = UDim.new(0, 6)
+	listPadding.PaddingLeft = UDim.new(0, 6)
+	listPadding.PaddingRight = UDim.new(0, 6)
 	listPadding.Parent = listFrame
 
 	local emptyLabel = Instance.new("TextLabel")
 	emptyLabel.Name = "EmptyLabel"
 	emptyLabel.Size = UDim2.new(1, -18, 0, 0)
 	emptyLabel.BackgroundTransparency = 1
-	emptyLabel.Text = "No titles available yet"
-	emptyLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	emptyLabel.Text = "No titles found! Keep playing to earn more."
+	emptyLabel.TextColor3 = COLORS.TEXT_SECONDARY
 	emptyLabel.TextSize = 15
 	emptyLabel.Font = Enum.Font.Gotham
 	emptyLabel.Visible = false
@@ -365,9 +442,10 @@ function TitleCollectionUI:createUI()
 	self.emptyLabel = emptyLabel
 
 	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		self.listFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 16)
+		self.listFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
 	end)
 
+	-- ===== CONNECTIONS =====
 	closeButton.MouseButton1Click:Connect(function()
 		self:hide()
 	end)
@@ -397,7 +475,7 @@ function TitleCollectionUI:createUI()
 		self:cycleSortMode()
 	end)
 
-	clearButton.MouseButton1Click:Connect(function()
+	unequipButton.MouseButton1Click:Connect(function()
 		if self.activeTitle then
 			self.remotes.SetActiveTitle:FireServer("")
 		end
@@ -407,8 +485,8 @@ end
 function TitleCollectionUI:updateFilterButtons()
 	for filterId, button in pairs(self.filterButtons) do
 		local isSelected = filterId == self.activeFilter
-		button.BackgroundColor3 = if isSelected then Color3.fromRGB(95, 145, 230) else Color3.fromRGB(60, 60, 78)
-		button.TextColor3 = if isSelected then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(220, 220, 225)
+		button.BackgroundColor3 = if isSelected then COLORS.BG_FILTER_ACTIVE else COLORS.BG_FILTER
+		button.TextColor3 = if isSelected then COLORS.TEXT_WHITE else COLORS.TEXT_SECONDARY
 	end
 end
 
@@ -417,7 +495,7 @@ function TitleCollectionUI:updateSortButton()
 		return
 	end
 
-	self.sortButton.Text = "SORT: " .. string.upper(self.activeSort)
+	self.sortButton.Text = "Sort: " .. self.activeSort .. " \u{25BC}"
 end
 
 function TitleCollectionUI:updateSearchClearButtonState()
@@ -428,8 +506,8 @@ function TitleCollectionUI:updateSearchClearButtonState()
 	local hasSearchText = self.searchText ~= ""
 	self.clearSearchButton.Active = hasSearchText
 	self.clearSearchButton.AutoButtonColor = hasSearchText
-	self.clearSearchButton.BackgroundColor3 = if hasSearchText then Color3.fromRGB(105, 105, 122) else Color3.fromRGB(70, 70, 82)
-	self.clearSearchButton.TextColor3 = if hasSearchText then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(180, 180, 190)
+	self.clearSearchButton.BackgroundColor3 = if hasSearchText then COLORS.BG_FILTER_ACTIVE else COLORS.BG_FILTER
+	self.clearSearchButton.TextColor3 = if hasSearchText then COLORS.TEXT_WHITE else COLORS.TEXT_MUTED
 end
 
 function TitleCollectionUI:setFilter(filterId: string)
@@ -555,20 +633,18 @@ function TitleCollectionUI:getFilteredCatalog(): {{id: string, name: string, cla
 	return filtered
 end
 
-function TitleCollectionUI:updateActiveTitleLabel()
-	if not self.activeLabel then
+function TitleCollectionUI:updateActiveTitleBanner()
+	if not self.bannerTitleLabel then
 		return
 	end
 
 	if not self.activeTitle then
-		self.activeLabel.Text = "Active: No Title"
-		self.activeLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
-		self.activeLabel.TextStrokeTransparency = 0.4
-		self.activeLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-		if self.clearButton then
-			self.clearButton.Active = false
-			self.clearButton.AutoButtonColor = false
-			self.clearButton.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+		self.bannerTitleLabel.Text = "No Title"
+		self.bannerTitleLabel.TextColor3 = COLORS.TEXT_MUTED
+		if self.unequipButton then
+			self.unequipButton.Active = false
+			self.unequipButton.AutoButtonColor = false
+			self.unequipButton.BackgroundColor3 = COLORS.BG_LOCKED_BTN
 		end
 		return
 	end
@@ -576,15 +652,13 @@ function TitleCollectionUI:updateActiveTitleLabel()
 	local classDef = ClassTypes.getClass(self.activeTitle.classId)
 	local theme = getTitleTheme(self.activeTitle.rarity, classDef and classDef.color or nil)
 
-	self.activeLabel.Text = string.format("Active: [%s] %s", self.activeTitle.rarity, self.activeTitle.name)
-	self.activeLabel.TextColor3 = theme.textColor
-	self.activeLabel.TextStrokeTransparency = 0.35
-	self.activeLabel.TextStrokeColor3 = theme.strokeColor
+	self.bannerTitleLabel.Text = string.format("[%s] %s", self.activeTitle.rarity, self.activeTitle.name)
+	self.bannerTitleLabel.TextColor3 = theme.textColor
 
-	if self.clearButton then
-		self.clearButton.Active = true
-		self.clearButton.AutoButtonColor = true
-		self.clearButton.BackgroundColor3 = Color3.fromRGB(115, 85, 70)
+	if self.unequipButton then
+		self.unequipButton.Active = true
+		self.unequipButton.AutoButtonColor = true
+		self.unequipButton.BackgroundColor3 = COLORS.BG_UNEQUIP
 	end
 end
 
@@ -607,28 +681,33 @@ function TitleCollectionUI:showToast(text: string, color: Color3?)
 
 	local toast = Instance.new("TextLabel")
 	toast.Name = "CollectionToast"
-	toast.Size = UDim2.new(0, 250, 0, 28)
-	toast.Position = UDim2.new(1, -262, 0, 146)
-	toast.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
-	toast.BackgroundTransparency = 0.18
+	toast.Size = UDim2.new(0, 250, 0, 30)
+	toast.Position = UDim2.new(1, -266, 0, 178)
+	toast.BackgroundColor3 = COLORS.BG_CARD
+	toast.BackgroundTransparency = 0
 	toast.BorderSizePixel = 0
 	toast.Text = text
-	toast.TextColor3 = color or Color3.fromRGB(235, 235, 245)
+	toast.TextColor3 = color or COLORS.TEXT_PRIMARY
 	toast.TextSize = 12
 	toast.Font = Enum.Font.GothamBold
 	toast.TextTransparency = 1
 	toast.Parent = self.container
 	self.activeToast = toast
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = toast
+	local toastCorner = Instance.new("UICorner")
+	toastCorner.CornerRadius = UDim.new(0, 8)
+	toastCorner.Parent = toast
+
+	local toastStroke = Instance.new("UIStroke")
+	toastStroke.Color = COLORS.STROKE_DEFAULT
+	toastStroke.Thickness = 1
+	toastStroke.Parent = toast
 
 	TweenService:Create(toast, TweenInfo.new(0.12), {
 		TextTransparency = 0,
 	}):Play()
 
-	task.delay(1.0, function()
+	task.delay(1.5, function()
 		if toast.Parent then
 			local fade = TweenService:Create(toast, TweenInfo.new(0.2), {
 				TextTransparency = 1,
@@ -653,7 +732,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 
 	local filteredCatalog = self:getFilteredCatalog()
 	if self.resultLabel then
-		self.resultLabel.Text = string.format("%d / %d", #filteredCatalog, #self.titleCatalog)
+		self.resultLabel.Text = string.format("%d / %d titles", #filteredCatalog, #self.titleCatalog)
 	end
 
 	local filteredCount = #filteredCatalog
@@ -666,9 +745,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 					elseif feedbackSource == "filter" then "filter"
 					elseif feedbackSource == "sort" then "sort"
 					else "selection"
-				self:showToast("No titles found for current " .. sourceLabel, Color3.fromRGB(255, 205, 145))
-			else
-				self:showToast(string.format("Showing %d of %d titles", filteredCount, totalCount), Color3.fromRGB(175, 225, 255))
+				self:showToast("No titles found for current " .. sourceLabel, Color3.fromRGB(210, 120, 80))
 			end
 		end
 	end
@@ -680,7 +757,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		self.emptyLabel.Visible = true
 		self.emptyLabel.LayoutOrder = 1
 		self.emptyLabel.Size = UDim2.new(1, -18, 0, 30)
-		self.emptyLabel.Text = "No titles available yet"
+		self.emptyLabel.Text = "No titles found! Keep playing to earn more."
 		return
 	end
 
@@ -688,7 +765,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		self.emptyLabel.Visible = true
 		self.emptyLabel.LayoutOrder = 1
 		self.emptyLabel.Size = UDim2.new(1, -18, 0, 30)
-		self.emptyLabel.Text = "No titles match current filter/search"
+		self.emptyLabel.Text = "No titles match your filter. Try 'All'"
 		return
 	end
 
@@ -699,15 +776,20 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 	for index, entry in ipairs(filteredCatalog) do
 		local classDef = ClassTypes.getClass(entry.classId)
 		local className = classDef and classDef.name or entry.classId
+		local classIcon = classDef and classDef.icon or ""
 		local theme = getTitleTheme(entry.rarity, classDef and classDef.color or nil)
+		local rarityColor = RARITY_COLORS[entry.rarity] or RARITY_COLORS.Common
+		local isActive = activeId == entry.id
 
+		-- Compact card (62px height)
 		local card = Instance.new("Frame")
 		card.Name = "TitleEntry"
-		card.Size = UDim2.new(1, -8, 0, 88)
-		card.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
-		card.BackgroundTransparency = if entry.unlocked then 0.1 else 0.35
+		card.Size = UDim2.new(1, -4, 0, 62)
+		card.BackgroundColor3 = if entry.unlocked then COLORS.BG_CARD else COLORS.BG_CARD_LOCKED
+		card.BackgroundTransparency = 0
 		card.BorderSizePixel = 0
 		card.LayoutOrder = index
+		card.ClipsDescendants = true
 		card.Parent = self.listFrame
 
 		local cardCorner = Instance.new("UICorner")
@@ -715,56 +797,58 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		cardCorner.Parent = card
 
 		local cardStroke = Instance.new("UIStroke")
-		cardStroke.Color = if entry.unlocked then theme.frameColor else Color3.fromRGB(90, 90, 90)
-		cardStroke.Thickness = 1.5
-		cardStroke.Transparency = if entry.unlocked then 0.15 else 0.35
+		cardStroke.Color = if isActive then theme.frameColor
+			elseif entry.unlocked then COLORS.STROKE_CARD
+			else COLORS.STROKE_CARD_LOCKED
+		cardStroke.Thickness = if isActive then 2 else 1
 		cardStroke.Parent = card
 
+		-- Rarity color strip (left border, 4px)
+		local rarityStrip = Instance.new("Frame")
+		rarityStrip.Name = "RarityStrip"
+		rarityStrip.Size = UDim2.new(0, 4, 1, 0)
+		rarityStrip.Position = UDim2.new(0, 0, 0, 0)
+		rarityStrip.BackgroundColor3 = if entry.unlocked then rarityColor else Color3.fromRGB(195, 195, 205)
+		rarityStrip.BackgroundTransparency = if entry.unlocked then 0 else 0.4
+		rarityStrip.BorderSizePixel = 0
+		rarityStrip.Parent = card
+
+		-- Title name (row 1)
 		local titleLabel = Instance.new("TextLabel")
 		titleLabel.Size = UDim2.new(1, -150, 0, 24)
-		titleLabel.Position = UDim2.new(0, 10, 0, 8)
+		titleLabel.Position = UDim2.new(0, 14, 0, 8)
 		titleLabel.BackgroundTransparency = 1
 		titleLabel.Text = string.format("[%s] %s", entry.rarity, entry.name)
-		titleLabel.TextColor3 = if entry.unlocked then theme.textColor else Color3.fromRGB(170, 170, 170)
-		titleLabel.TextStrokeTransparency = 0.35
-		titleLabel.TextStrokeColor3 = if entry.unlocked then theme.strokeColor else Color3.fromRGB(40, 40, 40)
-		titleLabel.TextSize = 16
+		titleLabel.TextColor3 = if entry.unlocked then theme.textColor else COLORS.TEXT_LOCKED
+		titleLabel.TextSize = 15
 		titleLabel.Font = Enum.Font.GothamBold
 		titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+		titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
 		titleLabel.Parent = card
+
+		-- Detail line (row 2): "Runner • Lv.10"
+		local detailText = if entry.unlocked
+			then string.format("%s %s \u{2022} Lv.%d", classIcon, className, entry.level)
+			else string.format("%s %s \u{2022} Reach Lv.%d to unlock", classIcon, className, entry.level)
 
 		local detailLabel = Instance.new("TextLabel")
 		detailLabel.Size = UDim2.new(1, -150, 0, 20)
-		detailLabel.Position = UDim2.new(0, 10, 0, 32)
+		detailLabel.Position = UDim2.new(0, 14, 0, 32)
 		detailLabel.BackgroundTransparency = 1
-		detailLabel.Text = string.format("%s | Lv.%d | %s", className, entry.level, if entry.unlocked then "Unlocked" else "Locked")
-		detailLabel.TextColor3 = if entry.unlocked then Color3.fromRGB(205, 205, 220) else Color3.fromRGB(160, 130, 130)
-		detailLabel.TextSize = 13
+		detailLabel.Text = detailText
+		detailLabel.TextColor3 = if entry.unlocked then COLORS.TEXT_SECONDARY else COLORS.TEXT_LOCKED
+		detailLabel.TextSize = 12
 		detailLabel.Font = Enum.Font.Gotham
 		detailLabel.TextXAlignment = Enum.TextXAlignment.Left
 		detailLabel.Parent = card
 
-		local description = entry.description or "No description"
-		local descLabel = Instance.new("TextLabel")
-		descLabel.Size = UDim2.new(1, -150, 0, 28)
-		descLabel.Position = UDim2.new(0, 10, 0, 52)
-		descLabel.BackgroundTransparency = 1
-		descLabel.Text = description
-		descLabel.TextColor3 = if entry.unlocked then Color3.fromRGB(175, 175, 190) else Color3.fromRGB(145, 145, 155)
-		descLabel.TextSize = 12
-		descLabel.Font = Enum.Font.Gotham
-		descLabel.TextXAlignment = Enum.TextXAlignment.Left
-		descLabel.TextYAlignment = Enum.TextYAlignment.Top
-		descLabel.TextWrapped = true
-		descLabel.Parent = card
-
+		-- Action button (right side)
 		local actionButton = Instance.new("TextButton")
-		actionButton.Size = UDim2.new(0, 124, 0, 32)
-		actionButton.Position = UDim2.new(1, -134, 0.5, -16)
-		actionButton.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+		actionButton.Size = UDim2.new(0, 90, 0, 30)
+		actionButton.Position = UDim2.new(1, -100, 0.5, -15)
 		actionButton.BorderSizePixel = 0
-		actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		actionButton.TextSize = 12
+		actionButton.TextColor3 = COLORS.TEXT_WHITE
+		actionButton.TextSize = 13
 		actionButton.Font = Enum.Font.GothamBold
 		actionButton.Parent = card
 
@@ -776,19 +860,19 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 			actionButton.Text = "LOCKED"
 			actionButton.Active = false
 			actionButton.AutoButtonColor = false
-			actionButton.BackgroundColor3 = Color3.fromRGB(85, 70, 70)
+			actionButton.BackgroundColor3 = COLORS.BG_LOCKED_BTN
+			actionButton.TextColor3 = COLORS.TEXT_MUTED
 		else
-			local isActive = activeId == entry.id
 			if isActive then
-				actionButton.Text = "UNEQUIP"
+				actionButton.Text = "EQUIPPED"
 				actionButton.Active = true
 				actionButton.AutoButtonColor = true
-				actionButton.BackgroundColor3 = Color3.fromRGB(125, 85, 70)
+				actionButton.BackgroundColor3 = COLORS.BG_UNEQUIP
 			else
 				actionButton.Text = "EQUIP"
 				actionButton.Active = true
 				actionButton.AutoButtonColor = true
-				actionButton.BackgroundColor3 = theme.frameColor
+				actionButton.BackgroundColor3 = COLORS.BG_EQUIP
 			end
 
 			actionButton.MouseButton1Click:Connect(function()
@@ -819,7 +903,7 @@ function TitleCollectionUI:applyTitleUpdatePayload(data: {[string]: any})
 		self.activeTitle = cloneTitleEntry(data.activeTitle)
 	end
 
-	self:updateActiveTitleLabel()
+	self:updateActiveTitleBanner()
 	self:rebuildEntries()
 end
 
@@ -840,12 +924,12 @@ function TitleCollectionUI:show()
 
 	self.isVisible = true
 	self.container.Visible = true
-	self.container.Position = UDim2.new(0.5, 0, 0.5, 24)
-	self.container.BackgroundTransparency = 0.45
+	self.container.Position = UDim2.new(0.5, 0, 0.5, 20)
+	self.container.BackgroundTransparency = 0.3
 
 	TweenService:Create(self.container, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
-		BackgroundTransparency = 0.08,
+		BackgroundTransparency = 0.02,
 	}):Play()
 end
 
@@ -856,8 +940,8 @@ function TitleCollectionUI:hide()
 
 	self.isVisible = false
 	local tween = TweenService:Create(self.container, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-		Position = UDim2.new(0.5, 0, 0.5, 24),
-		BackgroundTransparency = 0.5,
+		Position = UDim2.new(0.5, 0, 0.5, 20),
+		BackgroundTransparency = 0.4,
 	})
 	tween:Play()
 

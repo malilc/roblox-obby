@@ -663,12 +663,15 @@ Mastery = {
   - ผ่านด่าน: `Config.Mastery.PerStageXP` (เฉพาะตอนผ่านด่านจริง)
   - เข้าเส้นชัย: `Config.Mastery.FinishBonusXP`
 - ส่งข้อมูลผ่าน `MasteryUpdate` ไปที่ client
-- UI หน้า Class Selection แสดง Mastery Lv และความคืบหน้า XP ของแต่ละ class
-- UI หน้า Class Selection มี panel preview milestone rewards ของ class ที่เลือก
-- UI หน้า Class Selection มีตัวเลือก `Active Title` (เลือก title ที่ปลดแล้วเพื่อ equip/unequip)
-- มี `TitleHUD` แสดง `Active Title` ที่มุมบนซ้าย
-- มี `TitleCollection` แยกหน้า: ดู title ทั้งหมด (ล็อก/ปลดล็อก), กด equip/unequip ได้
-- หน้า `TitleCollection` มี `All/Unlocked/Locked` filter + search ชื่อ title/class/rarity
+- UI หน้า Class Selection แสดง Mastery Lv, XP progress bar, stat bars (green=buff, red=nerf) ของแต่ละ class
+- UI หน้า Class Selection มี panel preview milestone rewards + ปุ่ม "VIEW ALL" ไปหน้า Title Collection
+- Title selector ถูกย้ายไปอยู่ใน `TitleCollectionUI` แยกหน้าต่างหาก (ไม่มีใน Class modal แล้ว)
+- มี `TitleHUD` แสดง `Active Title` ที่มุมบนซ้าย (light bar + ปุ่ม 📋 เปิด Collection)
+- ถ้ายังไม่มี title จะแสดง "Tap to set title ›" เป็น hint text (คลิกเปิด Collection ได้)
+- มี `TitleCollection` แยกหน้า: ดู title ทั้งหมด (ล็อก/ปลดล็อก), Active Title Banner, กด equip/unequip ได้
+- หน้า `TitleCollection` มี `All/Unlocked/Locked` filter + search ชื่อ title/class/rarity + Sort dropdown
+- Title cards แบบ compact (62px) มี rarity-colored left border strip
+- **Modal mutual exclusion**: Class modal และ Title Collection เปิดพร้อมกันไม่ได้ (เปิดอันหนึ่งจะปิดอีกอัน)
 - Reward ยังเป็น cosmetic-only (Title/Trail/Badge/CardFrame) ไม่มีผลเพิ่มพลัง
 
 ### การเลือก Class:
@@ -934,7 +937,9 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 |--------|---------|-------------|
 | `ScoreUI` | มุมบนซ้าย | ⭐ คะแนน + 🏆 High Score + 🚩 Progress Bar |
 | `CurrencyUI` | มุมบนซ้าย (ใต้ StageFrame) | 💰 แสดงเงิน |
-| `ClassSelectionUI` | มุมบนซ้าย (ใต้ Currency) | 🎭 แสดง Class + คลิกเพื่อเปลี่ยน |
+| `ClassSelectionUI` | มุมบนซ้าย (ใต้ Currency) | 🎭 แสดง Class indicator + คลิกเปิด modal เลือก Class (light theme) |
+| `TitleHUDUI` | มุมบนซ้าย (ใต้ Class) | 🏷️ แสดง Active Title + ปุ่ม 📋 เปิด Collection |
+| `TitleCollectionUI` | กลางจอ (modal) | 🏷️ หน้ารวม Title ทั้งหมด + filter/search/equip |
 | `ItemUI` | มุมล่างขวา | 🎯 2 Item slots (horizontal) + Tooltip |
 | `ItemTestingUI` | มุมบนขวา (toggle) | 🧪 เมนูทดสอบ Item (กด T) |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
@@ -1162,9 +1167,11 @@ end)
 28. **Remember Last Class**: เข้าเกมใหม่จะ equip class ล่าสุดอัตโนมัติ
 29. **Rate Limit**: `SelectClass` มี cooldown 0.25 วิ กัน spam
 30. **Stats Apply**: เมื่อเลือก Class หรือ respawn จะ apply stats ใหม่
-31. **Active Title HUD**: มุมบนซ้ายแสดง title ที่ใส่อยู่พร้อมสีตาม rarity/class
-32. **Title Collection UI**: มีหน้า title list แยก (เปิดจากปุ่ม `≡` บน HUD)
-33. **Title Filter/Search**: รองรับ `All/Unlocked/Locked` และค้นหาชื่อ title/class/rarity
+31. **Active Title HUD**: มุมบนซ้าย light bar แสดง title + ปุ่ม 📋 เปิด Collection (hint text เมื่อไม่มี title)
+32. **Title Collection UI**: หน้า title list แยก (light theme, compact 62px cards, Active Title Banner, rarity border strips)
+33. **Title Filter/Search**: รองรับ `All/Unlocked/Locked` + search + Sort dropdown (Class/Rarity/Level)
+34. **Modal Exclusion**: Class modal กับ Title Collection เปิดพร้อมกันไม่ได้
+35. **Light Theme**: Class modal, Title HUD, Title Collection ใช้ light palette (white/near-white backgrounds)
 
 ### 🏁 Match/Race System
 34. **Match Config**: `Config.Match` - MinPlayers, MaxPlayers, WaitTime, TimeLimit
@@ -1182,8 +1189,8 @@ end)
 42. **Y=16**: High Score (🏆)
 43. **Y=58**: Stage Frame (🚩 Progress)
 44. **Y=92**: Currency Frame (💰 เงิน)
-45. **Y=140**: Class Indicator (🎭 Class)
-46. **Y=220**: Active Title HUD (🏷️ มีปุ่ม `≡` เปิดหน้า Collection)
+45. **Y=140**: Class Indicator (🎭 Class - light pill 168x40 + mastery badge + chevron)
+46. **Y=186**: Active Title HUD (🏷️ light bar 220x36 + ปุ่ม 📋 เปิด Collection)
 
 ### 📊 Leaderstats
 47. **Built-in UI**: แสดง HighScore, RoundScore, Currency
