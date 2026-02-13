@@ -976,12 +976,29 @@ function ClassSelectionUI:refreshClassStates()
 		local masteryXp = masteryInfo and masteryInfo.xp or 0
 		local masteryXpToNext = masteryInfo and masteryInfo.xpToNext or 0
 		local masteryIsMax = masteryInfo and masteryInfo.isMax or false
+		
+		-- Check if ultimate is unlocked (level >= 20)
+		local ultimateUnlockLevel = Config.Mastery and Config.Mastery.UltimateUnlockLevel or 20
+		local hasUltimate = masteryLevel >= ultimateUnlockLevel
+		local ultimateSkillConfig = Config.Mastery and Config.Mastery.UltimateSkills and Config.Mastery.UltimateSkills[classId]
 
 		if masteryIsMax then
-			buttonData.masteryLabel.Text = string.format("Mastery Lv.%d (MAX)", masteryLevel)
+			if hasUltimate and ultimateSkillConfig then
+				buttonData.masteryLabel.Text = string.format("Lv.%d ⚡ %s", masteryLevel, ultimateSkillConfig.name or "ULTIMATE")
+			else
+				buttonData.masteryLabel.Text = string.format("Mastery Lv.%d (MAX)", masteryLevel)
+			end
+			buttonData.masteryLabel.TextColor3 = COLORS.MASTERY_MAX
+		elseif hasUltimate and ultimateSkillConfig then
+			buttonData.masteryLabel.Text = string.format("Lv.%d ⚡ %s", masteryLevel, ultimateSkillConfig.name or "ULTIMATE")
 			buttonData.masteryLabel.TextColor3 = COLORS.MASTERY_MAX
 		elseif masteryXpToNext > 0 then
-			buttonData.masteryLabel.Text = string.format("Mastery Lv.%d  %d/%d", masteryLevel, masteryXp, masteryXpToNext)
+			local toUltimate = ultimateUnlockLevel - masteryLevel
+			if toUltimate > 0 and toUltimate <= 5 then
+				buttonData.masteryLabel.Text = string.format("Lv.%d (%d to ⚡)", masteryLevel, toUltimate)
+			else
+				buttonData.masteryLabel.Text = string.format("Mastery Lv.%d  %d/%d", masteryLevel, masteryXp, masteryXpToNext)
+			end
 			buttonData.masteryLabel.TextColor3 = COLORS.TEXT_ACCENT
 		else
 			buttonData.masteryLabel.Text = string.format("Mastery Lv.%d", masteryLevel)
@@ -1075,7 +1092,7 @@ function ClassSelectionUI:showToast(text: string, color: Color3?)
 	toast.Name = "ClassToast"
 	toast.AnchorPoint = Vector2.new(0, 0)
 	toast.Size = UDim2.new(0, 380, 0, 38)
-	toast.Position = UDim2.new(0, 10, 0, 186)
+	toast.Position = UDim2.new(0, 10, 0, 230)  -- Moved down to not overlap TitleHUD (which is at Y=186)
 	toast.BackgroundColor3 = COLORS.TOAST_BG
 	toast.BackgroundTransparency = 0.05
 	toast.BorderSizePixel = 0
@@ -1085,6 +1102,7 @@ function ClassSelectionUI:showToast(text: string, color: Color3?)
 	toast.Font = Enum.Font.GothamBold
 	toast.TextXAlignment = Enum.TextXAlignment.Left
 	toast.TextTransparency = 1
+	toast.ZIndex = 1  -- Low ZIndex to not overlap other UIs
 	toast.Parent = self.parent
 	self.activeToast = toast
 

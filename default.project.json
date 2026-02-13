@@ -76,6 +76,24 @@
         },
         "TitleUpdate": {
           "$className": "RemoteEvent"
+        },
+        "VoteStages": {
+          "$className": "RemoteEvent"
+        },
+        "StageVoteUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "SetMasteryLevel": {
+          "$className": "RemoteEvent"
+        },
+        "MasteryTestUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "UseUltimateSkill": {
+          "$className": "RemoteEvent"
+        },
+        "UltimateSkillUpdate": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

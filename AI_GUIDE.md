@@ -9,11 +9,11 @@ src/
 ├── server/                      # Server-side code
 │   ├── init.server.luau         # Entry point - สร้าง GameManager
 │   ├── GameManager.luau         # ควบคุมเกมทั้งหมด
-│   ├── MapManager.luau          # จัดการ map/stages + animations
+│   ├── MapManager.luau          # จัดการ map/stages + animations + per-match instancing
 │   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (auto-save ทุก 30วิ)
-│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + DataStore
+│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + Ultimate Skills + DataStore
 │   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Mario Kart
-│   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race
+│   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race + Stage Voting
 │   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
 │
@@ -21,12 +21,14 @@ src/
 │   ├── init.client.luau         # Entry point
 │   ├── FlyController.luau       # ระบบบินทดสอบ (กด F)
 │   ├── ItemEffects.luau         # 🎯 Screen effects (shake, flash, zoom)
+│   ├── UltimateSkillController.luau # ⚡ Ultimate Skills (Sprint, Double Jump, Iron Will)
 │   └── UI/
 │       ├── MainUI.luau          # Controller หลัก
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # 🎯 แสดง Item (2 slots) + Tooltip
 │       ├── ItemTestingUI.luau   # 🧪 UI ทดสอบ Item (กด T)
+│       ├── MasteryTestingUI.luau # 🧪 UI ทดสอบ Mastery (กด M)
 │       ├── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
 │       ├── SummaryUI.luau       # 🏆 แสดง Summary จบเกม
 │       ├── MatchLobbyUI.luau    # 🏁 UI Matchmaking lobby
@@ -36,11 +38,11 @@ src/
 │       └── RaceResultsUI.luau   # 🏁 UI ผลการแข่ง
 │
 └── shared/                      # Shared code (server + client)
-    ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags)
+    ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags + Ultimate Skills)
     ├── Types.luau               # Type definitions
     ├── Logger.luau              # 🔧 Centralized logging (configurable levels)
     ├── ItemTypes.luau           # 🎯 นิยาม Items ทั้งหมด
-    └── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด
+    └── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด (+ ultimateSkill field)
 ```
 
 ---
@@ -694,6 +696,179 @@ Mastery = {
 1. **Class Mastery (Lv1-20)**: ได้ XP จากการเล่นด้วย class นั้น ปลดล็อก title/trail/frame
 2. **Class Prestige**: ครบ mastery แล้วรีเซ็ต progression ของ class แลก `Class Token`
 3. **Class Contracts**: ภารกิจรายวัน/รายสัปดาห์ที่บังคับใช้ class เฉพาะ เพื่อเพิ่ม retention
+
+---
+
+## ⚡ Ultimate Skills System
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/shared/Config.luau` - `Mastery.UltimateUnlockLevel` + `Mastery.UltimateSkills` config
+- `src/shared/ClassTypes.luau` - `ultimateSkill` field ใน ClassDefinition
+- `src/server/CurrencyManager.luau` - `hasUltimateUnlocked()` function
+- `src/client/UltimateSkillController.luau` - จัดการ Ultimate Skills (Sprint, Double Jump, Iron Will)
+- `src/server/ItemManager.luau` - `checkIronWillImmunity()` for Tank stun immunity
+
+### Ultimate Skills Config (Config.luau):
+
+```lua
+Mastery = {
+    MaxLevel = 20,
+    UltimateUnlockLevel = 20,  -- ⚡ Unlock at mastery level 20
+    UltimateSkills = {
+        Runner = {
+            id = "Sprint",
+            name = "Sprint",
+            description = "Press Shift to run 50% faster for 3 seconds",
+            cooldown = 15,
+            duration = 3,
+            speedMultiplier = 1.5,
+        },
+        Jumper = {
+            id = "DoubleJump",
+            name = "Double Jump",
+            description = "Jump again in mid-air",
+            maxAirJumps = 1,
+        },
+        Tank = {
+            id = "IronWill",
+            name = "Iron Will",
+            description = "Immune to all item stuns",
+            stunImmunity = true,
+        },
+    },
+    -- ... other mastery config
+},
+```
+
+### Ultimate Skills ที่มี:
+
+| Class | Ultimate Skill | Input | Description |
+|-------|---------------|-------|-------------|
+| Runner | Sprint | Shift | วิ่งเร็วขึ้น 50% เป็นเวลา 3 วินาที, cooldown 15 วินาที |
+| Jumper | Double Jump | Space (mid-air) | กระโดดได้ 2 ครั้งในอากาศ |
+| Tank | Iron Will | Passive | ไม่โดน stun จาก items (Banana, Missile, Lightning) |
+
+### Ultimate Skill Controller:
+
+```lua
+-- UltimateSkillController tracks:
+-- - currentClass: string
+-- - ultimateUnlocked: boolean
+-- - isSprintActive: boolean
+-- - sprintCooldown: number
+-- - airJumpCount: number
+-- - classMastery: table (from server)
+
+-- Sprint (Runner):
+-- - Press Shift to activate
+-- - WalkSpeed *= speedMultiplier
+-- - Visual: Blue trail effect
+-- - Auto-end after duration
+
+-- Double Jump (Jumper):
+-- - Press Space while in air
+-- - Reset airJumpCount when grounded
+-- - Visual: Green burst effect
+
+-- Iron Will (Tank):
+-- - Passive - always active when LV 20+
+-- - Server-side check in ItemManager:applySlip/applyStunWithFall
+```
+
+### Visual Effects:
+
+| Skill | VFX |
+|-------|-----|
+| Sprint | Blue trail (Trail attachment) on HumanoidRootPart |
+| Double Jump | Green burst (Part + ParticleEmitter) at jump position |
+
+### Testing:
+
+1. กด **M** เพื่อเปิด Mastery Testing UI
+2. กด **MAX** หรือ **SET ALL LV 20** เพื่อปลดล็อก ultimate
+3. เลือก class ที่มี LV 20 แล้ว
+4. ทดสอบ ultimate skill:
+   - **Runner**: กด Shift ขณะวิ่ง
+   - **Jumper**: กระโดดแล้วกด Space ในอากาศ
+   - **Tank**: โดน Banana/Missile → จะไม่ถูก stun
+
+### Debug Config:
+
+```lua
+Debug = {
+    Enabled = true,
+    FlyMode = true,
+    ItemTesting = true,
+    MasteryTesting = true,  -- ⚡ Press M for mastery test menu
+},
+```
+
+---
+
+## 🗺️ Per-Match Map Instancing
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/server/MapManager.luau` - `matchMaps` table, `generateMapForMatch()`, `clearMapForMatch()`
+- `src/server/MatchManager.luau` - `stageVotes`, `selectedStageOrder`, `handleStageVote()`
+- `src/server/GameManager.luau` - `playerMatchIds` tracking
+- `src/client/UI/StageSelectionUI.luau` - `VoteStages` remote integration
+
+### การทำงาน:
+
+```lua
+-- MapManager keeps track of maps per match:
+self.matchMaps = {
+    [matchId] = {
+        map = Model,           -- The generated map
+        stageOrder = {3, 1, 5, 2, 4},
+        checkpoints = {...},
+    }
+}
+
+-- Generate map for specific match:
+function MapManager:generateMapForMatch(matchId: string, stageOrder: {number})
+    self:clearMapForMatch(matchId)
+    -- Generate map in separate folder...
+end
+
+-- Get checkpoint position for specific match:
+function MapManager:getCheckpointPositionForMatch(matchId: string, stageIndex: number): Vector3?
+```
+
+### Stage Voting System:
+
+```lua
+-- MatchManager handles stage voting:
+self.stageVotes = {
+    [player] = {3, 1, 5},  -- Player's vote for stage order
+}
+
+-- When match starts:
+-- 1. Collect all votes
+-- 2. Calculate final order (majority/random)
+-- 3. Generate map with selected order
+-- 4. Bind players to match
+```
+
+### Client Integration:
+
+```lua
+-- StageSelectionUI sends vote:
+self.voteStagesRemote:FireServer(selectedStages)
+
+-- Server handles vote:
+function MatchManager:handleStageVote(player: Player, stageOrder: {number})
+    self.stageVotes[player] = stageOrder
+    -- Broadcast update to all players in match...
+end
+```
+
+### RemoteEvents for Match System:
+
+| Event | Direction | Usage |
+|-------|-----------|-------|
+| `VoteStages` | Client → Server | ส่งคะแนนโหวต stage order |
+| `StageVoteUpdate` | Server → Client | อัพเดทผลโหวตให้ผู้เล่นทุกคน |
 
 ---
 

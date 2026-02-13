@@ -17,6 +17,12 @@ export type ClassDefinition = {
 		description: string,
 		cooldown: number?,
 	},
+	-- Ultimate skill (unlocked at mastery LV 20)
+	ultimateSkill: {
+		id: string,
+		name: string,
+		description: string,
+	}?,
 }
 
 local ClassTypes = {}

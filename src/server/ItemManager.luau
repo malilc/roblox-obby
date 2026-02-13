@@ -937,6 +937,12 @@ end
 
 -- Apply slip effect
 function ItemManager:applySlip(player: Player, itemDef)
+	-- Check for Tank Iron Will (immune to stuns)
+	if self:checkIronWillImmunity(player) then
+		print("[ItemManager]", player.Name, "ignored slip due to Iron Will!")
+		return
+	end
+	
 	local character = player.Character
 	if not character then return end
 	
@@ -2018,6 +2024,12 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	local isPlayer = false
 	
 	if typeof(target) == "Instance" and target:IsA("Player") then
+		-- Check for Tank Iron Will (immune to stuns)
+		if self:checkIronWillImmunity(target) then
+			print("[ItemManager]", target.Name, "ignored stun due to Iron Will!")
+			return
+		end
+		
 		character = target.Character
 		targetName = target.Name
 		isPlayer = true
@@ -3039,6 +3051,18 @@ end
 -- Set match manager reference
 function ItemManager:setMatchManager(matchManager: any)
 	self.matchManager = matchManager
+end
+
+-- Check if player has Iron Will (Tank ultimate) - immune to stuns
+function ItemManager:checkIronWillImmunity(player: Player): boolean
+	-- Check if player is Tank class with ultimate unlocked
+	if not self.currencyManager then return false end
+	
+	local classId = self.currencyManager:getEquippedClass(player)
+	if classId ~= "Tank" then return false end
+	
+	-- Check if ultimate is unlocked
+	return self.currencyManager:hasUltimateUnlocked(player, "Tank")
 end
 
 return ItemManager

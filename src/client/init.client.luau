@@ -7,6 +7,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Wait for remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
+-- Local player reference (define early for use in debug tools)
+local LocalPlayer = Players.LocalPlayer
+
 -- Initialize UI
 local MainUI = require(script.UI.MainUI)
 local mainUI = MainUI.new()
@@ -29,10 +32,41 @@ if Config.Debug and Config.Debug.ItemTesting then
 	local itemTestingUI = ItemTestingUI.new()
 end
 
-print("[Client] UI and Effects initialized!")
+-- Mastery Testing UI (Press M to toggle)
+if Config.Debug and Config.Debug.MasteryTesting then
+	local UserInputService = game:GetService("UserInputService")
+	local MasteryTestingUI = require(script.UI.MasteryTestingUI)
+	
+	-- Get PlayerGui
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+	local gameUI = playerGui:FindFirstChild("GameUI")
+	if not gameUI then
+		gameUI = Instance.new("ScreenGui")
+		gameUI.Name = "GameUI"
+		gameUI.ResetOnSpawn = false
+		gameUI.Parent = playerGui
+	end
+	
+	local masteryTestingUI = MasteryTestingUI.new(gameUI)
+	
+	-- Keybind M to toggle
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+		
+		if input.KeyCode == Enum.KeyCode.M then
+			masteryTestingUI:toggle()
+		end
+	end)
+	
+	print("[Client] Mastery Testing UI enabled - Press M to toggle")
+end
 
--- Local player reference
-local LocalPlayer = Players.LocalPlayer
+-- Initialize Ultimate Skill Controller (handles Sprint, Double Jump, Iron Will)
+local UltimateSkillController = require(script.UltimateSkillController)
+local ultimateSkillController = UltimateSkillController.new()
+print("[Client] Ultimate Skill Controller initialized")
+
+print("[Client] UI and Effects initialized!")
 
 -- Show welcome message
 local function showWelcomeMessage()

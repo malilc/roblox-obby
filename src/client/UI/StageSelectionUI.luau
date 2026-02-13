@@ -13,6 +13,8 @@ function StageSelectionUI.new(parent: ScreenGui)
 	self.parent = parent
 	self.selectedStages = {} :: {number}
 	self.isVisible = false
+	self.isVotingMode = false  -- Flag for multiplayer voting mode
+	self.currentVotes = {}     -- Store votes from other players
 	
 	-- Remotes
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -20,6 +22,10 @@ function StageSelectionUI.new(parent: ScreenGui)
 	self.hideRemote = remotes:WaitForChild("HideStageSelection")
 	self.confirmRemote = remotes:WaitForChild("ConfirmStageSelection")
 	self.countdownRemote = remotes:WaitForChild("CountdownUpdate")
+	
+	-- Stage voting remotes
+	self.voteStagesRemote = remotes:WaitForChild("VoteStages")
+	self.stageVoteUpdateRemote = remotes:WaitForChild("StageVoteUpdate")
 	
 	-- Create UI
 	self:createUI()
@@ -510,6 +516,33 @@ function StageSelectionUI:setupRemotes()
 	self.countdownRemote.OnClientEvent:Connect(function(data)
 		self:updateCountdown(data)
 	end)
+	
+	-- Stage voting update
+	self.stageVoteUpdateRemote.OnClientEvent:Connect(function(data)
+		self:onStageVoteUpdate(data)
+	end)
+end
+
+-- Handle stage vote update from server
+function StageSelectionUI:onStageVoteUpdate(data)
+	if data.type == "voteUpdate" then
+		self.currentVotes = data.votes
+		self:updateVotesDisplay()
+	end
+end
+
+-- Update votes display (show other players' votes)
+function StageSelectionUI:updateVotesDisplay()
+	-- For now, just update the subtitle to show vote count
+	-- In a full implementation, you'd show each player's vote
+	local subtitle = self.mainFrame:FindFirstChild("TitleContainer")
+	if subtitle then
+		local subtitleLabel = subtitle:FindFirstChild("Subtitle")
+		if subtitleLabel then
+			-- This would be enhanced to show actual votes
+			-- For now, just indicate voting is happening
+		end
+	end
 end
 
 function StageSelectionUI:show()
@@ -700,6 +733,9 @@ function StageSelectionUI:confirmSelection(isRandom: boolean)
 				isRandom = false,
 				stageOrder = self.selectedStages
 			})
+			
+			-- Also send vote for multiplayer matches (server will ignore if not in a match)
+			self.voteStagesRemote:FireServer(self.selectedStages)
 		end
 	end
 	

@@ -70,6 +70,31 @@ Stages = {
 		XpGrowthMultiplier = 1.25,
 		PerStageXP = 20,
 		FinishBonusXP = 60,
+		-- Ultimate skill unlock level
+		UltimateUnlockLevel = 20,
+		-- Ultimate skills configuration
+		UltimateSkills = {
+			Runner = {
+				id = "Sprint",
+				name = "Sprint",
+				description = "Press Shift to run 50% faster for 3 seconds",
+				cooldown = 15,
+				duration = 3,
+				speedMultiplier = 1.5,
+			},
+			Jumper = {
+				id = "DoubleJump",
+				name = "Double Jump",
+				description = "Jump again in mid-air",
+				maxAirJumps = 1,
+			},
+			Tank = {
+				id = "IronWill",
+				name = "Iron Will",
+				description = "Immune to all item stuns",
+				stunImmunity = true,
+			},
+		},
 		TitleThemes = {
 			Common = {
 				textColor = Color3.fromRGB(210, 210, 210),
@@ -146,6 +171,7 @@ Stages = {
 		Enabled = true,    -- Master toggle: set false for production
 		FlyMode = true,    -- Press F to fly (client)
 		ItemTesting = true, -- Press T for item test menu (client + server remotes)
+		MasteryTesting = true, -- Press M for mastery test menu (client + server remotes)
 	},
 }
 

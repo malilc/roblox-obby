@@ -34,6 +34,9 @@ function GameManager.new()
 	self.playerCheckpoints = {} :: {[Player]: Vector3}
 	self.teleportingToLobby = {} :: {[Player]: boolean} -- Track teleporting players
 	
+	-- Per-player match tracking (for instanced maps)
+	self.playerMatchIds = {} :: {[Player]: string} -- Player -> MatchId mapping
+	
 	-- Round statistics for summary
 	self.playerRoundStats = {} :: {[Player]: {
 		startTime: number,
@@ -70,6 +73,18 @@ end
 
 function GameManager:canPlayerChangeClass(player: Player): boolean
 	return self.playerStates[player] == "Lobby"
+end
+
+-- Get match ID for a player (returns nil if not in a match / solo play)
+function GameManager:getMatchIdForPlayer(player: Player): string?
+	return self.playerMatchIds[player]
+end
+
+-- Check if player is in an active match with instanced map
+function GameManager:isPlayerInInstancedMatch(player: Player): boolean
+	local matchId = self.playerMatchIds[player]
+	if not matchId then return false end
+	return self.mapManager:getMatchMapData(matchId) ~= nil
 end
 
 -- Setup remote events
@@ -209,19 +224,38 @@ function GameManager:checkPlayerPosition(player: Player)
 	
 	local position = humanoidRootPart.Position
 	
-	-- Check for stage completion
-	local currentStageIndex = self.mapManager:getStageIndexFromPosition(position)
-	if currentStageIndex then
-		local playerCurrentStage = self.scoreManager:getCurrentStage(player)
-		
-		if currentStageIndex > playerCurrentStage then
-			self:onStageComplete(player, currentStageIndex)
+	-- Check if player is in an instanced match
+	local matchId = self:getMatchIdForPlayer(player)
+	if matchId then
+		-- Use per-match map functions
+		local currentStageIndex = self.mapManager:getStageIndexFromPositionForMatch(matchId, position)
+		if currentStageIndex then
+			local playerCurrentStage = self.scoreManager:getCurrentStage(player)
+			
+			if currentStageIndex > playerCurrentStage then
+				self:onStageComplete(player, currentStageIndex)
+			end
 		end
-	end
-	
-	-- Check for finish line
-	if self.mapManager:isAtFinishLine(position) then
-		self:onPlayerFinished(player)
+		
+		-- Check for finish line
+		if self.mapManager:isAtFinishLineForMatch(matchId, position) then
+			self:onPlayerFinished(player)
+		end
+	else
+		-- Use global map (backwards compatibility)
+		local currentStageIndex = self.mapManager:getStageIndexFromPosition(position)
+		if currentStageIndex then
+			local playerCurrentStage = self.scoreManager:getCurrentStage(player)
+			
+			if currentStageIndex > playerCurrentStage then
+				self:onStageComplete(player, currentStageIndex)
+			end
+		end
+		
+		-- Check for finish line
+		if self.mapManager:isAtFinishLine(position) then
+			self:onPlayerFinished(player)
+		end
 	end
 	
 	-- Check for kill zone (fall off map)
@@ -245,6 +279,12 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 	self.scoreManager:addStageScore(player, stageIndex)
 	self.scoreManager:updateLeaderstats(player)
 	
+	-- Get stage order based on player's match
+	local matchId = self:getMatchIdForPlayer(player)
+	local stageOrder = if matchId 
+		then self.mapManager:getStageOrderForMatch(matchId) 
+		else self.mapManager.stageOrder
+	
 	-- Give currency for completing stage (except stage 1 start)
 	if stageIndex > 1 then
 		-- Stage Clear bonus (คงที่)
@@ -254,7 +294,7 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 		self:addMasteryXP(player, stageMasteryXP, "StageComplete")
 		
 		-- Stage Reward (ตามด่านที่ผ่าน)
-		local completedStageNum = self.mapManager.stageOrder[stageIndex - 1] -- ด่านที่เพิ่งผ่าน
+		local completedStageNum = stageOrder[stageIndex - 1] -- ด่านที่เพิ่งผ่าน
 		local stageReward = Config.Currency.StageRewards[completedStageNum] or 0
 		if stageReward > 0 then
 			self.currencyManager:addCurrency(player, stageReward)
@@ -268,13 +308,18 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 	end
 	
 	-- Save checkpoint
-	local checkpointPos = self.mapManager:getCheckpointPosition(stageIndex)
+	local checkpointPos
+	if matchId then
+		checkpointPos = self.mapManager:getCheckpointPositionForMatch(matchId, stageIndex)
+	else
+		checkpointPos = self.mapManager:getCheckpointPosition(stageIndex)
+	end
 	if checkpointPos then
 		self.playerCheckpoints[player] = checkpointPos
 	end
 	
 	-- Get dynamic total stages
-	local totalStages = #self.mapManager.stageOrder
+	local totalStages = #stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.Count end
 	
 	-- Update MatchManager with progress
@@ -311,8 +356,14 @@ function GameManager:onPlayerFinished(player: Player)
 	self.scoreManager:addFinishBonus(player)
 	self.scoreManager:updateLeaderstats(player)
 	
+	-- Get stage order based on player's match
+	local matchId = self:getMatchIdForPlayer(player)
+	local stageOrder = if matchId 
+		then self.mapManager:getStageOrderForMatch(matchId) 
+		else self.mapManager.stageOrder
+	
 	-- Get dynamic total stages
-	local totalStages = #self.mapManager.stageOrder
+	local totalStages = #stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.Count end
 	
 	-- Give Stage Clear bonus and Stage Reward for the LAST stage (not given in onStageComplete)
@@ -321,7 +372,7 @@ function GameManager:onPlayerFinished(player: Player)
 		self.currencyManager:addCurrency(player, Config.Currency.PerStage)
 		
 		-- Stage Reward for last stage
-		local lastStageNum = self.mapManager.stageOrder[totalStages]
+		local lastStageNum = stageOrder[totalStages]
 		local lastStageReward = Config.Currency.StageRewards[lastStageNum] or 0
 		if lastStageReward > 0 then
 			self.currencyManager:addCurrency(player, lastStageReward)
@@ -346,9 +397,6 @@ function GameManager:onPlayerFinished(player: Player)
 	local coinsCollected = roundStats and roundStats.coinsCollected or 0
 	local stageRewardsTotal = roundStats and roundStats.stageRewardsTotal or 0
 
-	-- Get stage order for summary
-	local stageOrder = self.mapManager.stageOrder or {}
-	
 	-- Calculate stages cleared (all stages count now, including last one given in onPlayerFinished)
 	local stagesCleared = totalStages
 
@@ -397,7 +445,14 @@ function GameManager:teleportToStart(player: Player)
 	self.playerCheckpoints[player] = nil
 	
 	-- Teleport to first stage
-	local startPos = self.mapManager:getCheckpointPosition(1)
+	local startPos
+	local matchId = self:getMatchIdForPlayer(player)
+	if matchId then
+		startPos = self.mapManager:getCheckpointPositionForMatch(matchId, 1)
+	else
+		startPos = self.mapManager:getCheckpointPosition(1)
+	end
+	
 	if startPos then
 		local character = player.Character
 		if character then
@@ -438,7 +493,12 @@ function GameManager:respawnPlayer(player: Player)
 	local checkpoint = self.playerCheckpoints[player]
 	if not checkpoint then
 		-- Use first stage checkpoint
-		checkpoint = self.mapManager:getCheckpointPosition(1)
+		local matchId = self:getMatchIdForPlayer(player)
+		if matchId then
+			checkpoint = self.mapManager:getCheckpointPositionForMatch(matchId, 1)
+		else
+			checkpoint = self.mapManager:getCheckpointPosition(1)
+		end
 	end
 	
 	if checkpoint then
@@ -618,28 +678,50 @@ function GameManager:onStageSelectionConfirmed(player: Player, data: any)
 end
 
 -- Start game with specific stage order
--- NOTE: The map is globally shared in workspace. If multiple players start games
--- simultaneously, generateMapWithOrder() destroys and rebuilds the map for everyone.
--- This will need a per-player or instanced map system for true multiplayer support.
+-- Uses per-match instanced maps for multiplayer support
 function GameManager:startGameWithOrder(player: Player, stageOrder: {number})
-	-- Generate map with new order
-	self.mapManager:generateMapWithOrder(stageOrder)
+	-- Check if player is in a match room
+	local matchRoom = self.matchManager:getPlayerRoom(player)
+	local matchId: string?
 	
-	-- Setup map elements
-	self:setupKillParts()
-	self:setupFinishLine()
-	
-	local pickups = self.mapManager:getAllItemPickups()
-	self.itemManager:setupItemPickups(pickups)
+	if matchRoom then
+		-- Player is in a match - use per-match instanced map
+		matchId = matchRoom.id
+		self.playerMatchIds[player] = matchId
+		
+		-- Set the stage order in MatchManager
+		self.matchManager:setStageOrderForMatch(matchId, stageOrder)
+		
+		-- Generate instanced map for this match
+		self.mapManager:generateMapForMatch(matchId, stageOrder)
+		
+		-- Setup map elements for this match
+		self:setupKillPartsForMatch(matchId)
+		self:setupFinishLineForMatch(matchId)
+		
+		local pickups = self.mapManager:getAllItemPickupsForMatch(matchId)
+		self.itemManager:setupItemPickups(pickups)
+	else
+		-- Solo play - use global map (backwards compatibility)
+		self.playerMatchIds[player] = nil
+		self.mapManager:generateMapWithOrder(stageOrder)
+		
+		-- Setup map elements
+		self:setupKillParts()
+		self:setupFinishLine()
+		
+		local pickups = self.mapManager:getAllItemPickups()
+		self.itemManager:setupItemPickups(pickups)
+	end
 	
 	-- Start countdown
-	self:startCountdown(player, 3)
+	self:startCountdown(player, 3, stageOrder)
 end
 
--- Start countdown
-function GameManager:startCountdown(player: Player, seconds: number)
+-- Start countdown (with stageOrder parameter for total stages)
+function GameManager:startCountdown(player: Player, seconds: number, stageOrder: {number}?)
 	-- Get dynamic total stages
-	local totalStages = #self.mapManager.stageOrder
+	local totalStages = stageOrder and #stageOrder or #self.mapManager.stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.Count end
 	
 	for i = seconds, 1, -1 do
@@ -681,7 +763,14 @@ function GameManager:startGameForPlayer(player: Player)
 	self.playerCheckpoints[player] = nil
 	
 	-- Teleport to first stage
-	local startPos = self.mapManager:getCheckpointPosition(1)
+	local startPos
+	local matchId = self:getMatchIdForPlayer(player)
+	if matchId then
+		startPos = self.mapManager:getCheckpointPositionForMatch(matchId, 1)
+	else
+		startPos = self.mapManager:getCheckpointPosition(1)
+	end
+	
 	if startPos then
 		local character = player.Character
 		if character then
@@ -709,6 +798,10 @@ function GameManager:teleportToLobby(player: Player)
 
 	-- Clear checkpoint
 	self.playerCheckpoints[player] = nil
+	
+	-- Clear match ID (player leaves match when returning to lobby)
+	local matchId = self.playerMatchIds[player]
+	self.playerMatchIds[player] = nil
 
 	-- Use Config position directly for more reliable teleport
 	local targetPosition = Config.Lobby.SpawnPosition
@@ -820,6 +913,63 @@ function GameManager:addCoinCollected(player: Player)
 		roundStats.coinsCollected = roundStats.coinsCollected + 1
 		print("[GameManager]", player.Name, "collected coin - Total:", roundStats.coinsCollected)
 	end
+end
+
+-- ============================================
+-- PER-MATCH MAP SETUP FUNCTIONS
+-- ============================================
+
+-- Setup finish line touch detection for a specific match
+function GameManager:setupFinishLineForMatch(matchId: string)
+	local matchData = self.mapManager:getMatchMapData(matchId)
+	if not matchData then return end
+	
+	local lastStage = matchData.stages[#matchData.stages]
+	if lastStage then
+		local endPart = lastStage:FindFirstChild("EndPart")
+		if endPart then
+			-- เพิ่ม touch detection
+			endPart.Touched:Connect(function(hit)
+				local humanoid = hit.Parent:FindFirstChild("Humanoid")
+				if humanoid then
+					local player = Players:GetPlayerFromCharacter(hit.Parent)
+					-- Check if this player belongs to this match
+					if player and self.playerStates[player] == "Playing" and self.playerMatchIds[player] == matchId then
+						self:onPlayerFinished(player)
+					end
+				end
+			end)
+			
+			-- เปลี่ยนสี EndPart ให้เด่นชัด (เส้นชัย)
+			endPart.Color = Color3.fromRGB(0, 255, 100)
+			endPart.Material = Enum.Material.Neon
+			
+			print("[GameManager] Finish line setup for match:", matchId, "at:", endPart.Position)
+		end
+	end
+end
+
+-- Setup kill parts for a specific match
+function GameManager:setupKillPartsForMatch(matchId: string)
+	local killParts = self.mapManager:getAllKillPartsForMatch(matchId)
+	
+	for _, part in ipairs(killParts) do
+		part.Touched:Connect(function(hit)
+			local humanoid = hit.Parent:FindFirstChild("Humanoid")
+			if humanoid then
+				local player = Players:GetPlayerFromCharacter(hit.Parent)
+				-- Check if this player belongs to this match
+				if player and self.playerStates[player] == "Playing" and self.playerMatchIds[player] == matchId then
+					self:respawnPlayer(player)
+				end
+			end
+		end)
+	end
+end
+
+-- Get match ID for player (public accessor)
+function GameManager:getPlayerMatchId(player: Player): string?
+	return self.playerMatchIds[player]
 end
 
 return GameManager

@@ -406,6 +406,42 @@ function CurrencyManager:setupRemotes()
 	self.setActiveTitleRemote.OnServerEvent:Connect(function(player, titleId)
 		self:handleSetActiveTitleRequest(player, titleId)
 	end)
+	
+	-- Setup testing remotes if in debug mode
+	if Config.Debug and Config.Debug.MasteryTesting then
+		self.setupMasteryLevelRemote = ReplicatedStorage.Remotes:FindFirstChild("SetMasteryLevel")
+		if self.setupMasteryLevelRemote then
+			self.setupMasteryLevelRemote.OnServerEvent:Connect(function(player, data)
+				self:handleSetMasteryLevelRequest(player, data)
+			end)
+			print("[CurrencyManager] SetMasteryLevel remote initialized for testing")
+		end
+	end
+end
+
+-- Handle set mastery level request (testing only)
+function CurrencyManager:handleSetMasteryLevelRequest(player: Player, data: {[string]: any})
+	if not Config.Debug or not Config.Debug.MasteryTesting then
+		warn("[CurrencyManager] handleSetMasteryLevelRequest is only available in testing mode")
+		return
+	end
+	
+	if type(data) ~= "table" then return end
+	
+	-- Set all classes to same level
+	if data.setAll == true then
+		local level = tonumber(data.level) or 1
+		self:setAllMasteryLevels(player, level)
+		return
+	end
+	
+	-- Set single class level
+	local classId = data.classId
+	local level = tonumber(data.level)
+	
+	if classId and level then
+		self:setMasteryLevel(player, classId, level)
+	end
 end
 
 -- Initialize player currency
@@ -1133,6 +1169,90 @@ function CurrencyManager:removePlayer(player: Player)
 	-- Clear data
 	self.playerData[player] = nil
 	self.pendingSaves[player] = nil
+end
+
+-- ============================================
+-- TESTING FUNCTIONS (Debug only)
+-- ============================================
+
+-- Set mastery level for a specific class (testing only)
+function CurrencyManager:setMasteryLevel(player: Player, classId: string, level: number)
+	if not Config.Debug or not Config.Debug.MasteryTesting then
+		warn("[CurrencyManager] setMasteryLevel is only available in testing mode")
+		return false
+	end
+	
+	local playerData = self.playerData[player]
+	if not playerData then return false end
+	if not ClassTypes.getClass(classId) then return false end
+	
+	local maxLevel = getMasteryMaxLevel()
+	level = math.clamp(math.floor(level), 1, maxLevel)
+	
+	-- Initialize mastery if not exists
+	if not playerData.classMastery[classId] then
+		playerData.classMastery[classId] = {level = 1, xp = 0}
+	end
+	
+	local previousLevel = playerData.classMastery[classId].level
+	playerData.classMastery[classId].level = level
+	playerData.classMastery[classId].xp = 0
+	
+	-- Unlock rewards for the new level
+	if level > previousLevel then
+		self:unlockMasteryRewardsForLevelRange(player, classId, previousLevel + 1, level)
+	end
+	
+	self.pendingSaves[player] = true
+	self:sendMasteryUpdate(player, {
+		type = "testSet",
+		classId = classId,
+		newLevel = level,
+	})
+	
+	print("[CurrencyManager] TEST: Set", player.Name, classId, "mastery to level", level)
+	return true
+end
+
+-- Set all mastery levels to same level (testing only)
+function CurrencyManager:setAllMasteryLevels(player: Player, level: number)
+	if not Config.Debug or not Config.Debug.MasteryTesting then
+		warn("[CurrencyManager] setAllMasteryLevels is only available in testing mode")
+		return false
+	end
+	
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		self:setMasteryLevel(player, classId, level)
+	end
+	
+	return true
+end
+
+-- ============================================
+-- ULTIMATE SKILL FUNCTIONS
+-- ============================================
+
+-- Check if player has ultimate skill unlocked for a class
+function CurrencyManager:hasUltimateUnlocked(player: Player, classId: string): boolean
+	local playerData = self.playerData[player]
+	if not playerData then return false end
+	
+	local mastery = playerData.classMastery[classId]
+	if not mastery then return false end
+	
+	local unlockLevel = Config.Mastery and Config.Mastery.UltimateUnlockLevel or 20
+	return mastery.level >= unlockLevel
+end
+
+-- Get ultimate skill info for a class (returns nil if no ultimate or not configured)
+function CurrencyManager:getUltimateSkillInfo(classId: string): {[string]: any}?
+	if not Config.Mastery or not Config.Mastery.UltimateSkills then return nil end
+	return Config.Mastery.UltimateSkills[classId]
+end
+
+-- Get ultimate skill unlock level
+function CurrencyManager:getUltimateUnlockLevel(): number
+	return Config.Mastery and Config.Mastery.UltimateUnlockLevel or 20
 end
 
 return CurrencyManager

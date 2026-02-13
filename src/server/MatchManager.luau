@@ -25,6 +25,9 @@ export type MatchRoom = {
 		finished: boolean,
 		finishTime: number?,
 	}},
+	-- Stage voting
+	stageVotes: {[Player]: {number}},  -- Each player's stage vote
+	selectedStageOrder: {number}?,      -- Final selected stage order after voting
 }
 
 function MatchManager.new(gameManager: any?)
@@ -45,6 +48,10 @@ function MatchManager.new(gameManager: any?)
 	self.raceUpdateRemote = ReplicatedStorage.Remotes.RaceUpdate
 	self.timeWarningRemote = ReplicatedStorage.Remotes.TimeWarning
 	
+	-- Stage voting remotes
+	self.voteStagesRemote = ReplicatedStorage.Remotes.VoteStages
+	self.stageVoteUpdateRemote = ReplicatedStorage.Remotes.StageVoteUpdate
+	
 	self:setupRemotes()
 	
 	return self
@@ -62,6 +69,11 @@ function MatchManager:setupRemotes()
 	
 	self.leaveMatchRemote.OnServerEvent:Connect(function(player)
 		self:leaveRoom(player)
+	end)
+	
+	-- Stage voting
+	self.voteStagesRemote.OnServerEvent:Connect(function(player, stageOrder)
+		self:handleStageVote(player, stageOrder)
 	end)
 end
 
@@ -99,6 +111,8 @@ function MatchManager:createRoom(host: Player, settings: {stageOrder: {number}?}
 				finishTime = nil,
 			}
 		},
+		stageVotes = {},
+		selectedStageOrder = nil,
 	}
 	
 	self.rooms[roomId] = room
@@ -517,6 +531,154 @@ end
 -- Remove player (when they leave the game)
 function MatchManager:removePlayer(player: Player)
 	self:leaveRoom(player)
+end
+
+-- ============================================
+-- STAGE VOTING SYSTEM
+-- ============================================
+
+-- Handle stage vote from player
+function MatchManager:handleStageVote(player: Player, stageOrder: {number})
+	local roomId = self.playerRooms[player]
+	if not roomId then return end
+	
+	local room = self.rooms[roomId]
+	if not room or room.state ~= "Waiting" then return end
+	
+	-- Validate stage order
+	if type(stageOrder) ~= "table" or #stageOrder == 0 or #stageOrder > Config.Stages.Count then
+		return
+	end
+	
+	-- Validate each stage number
+	local seen = {}
+	for _, stageNum in ipairs(stageOrder) do
+		if type(stageNum) ~= "number" or stageNum < 1 or stageNum > Config.Stages.Count then
+			return
+		end
+		if seen[stageNum] then return end -- duplicate
+		seen[stageNum] = true
+	end
+	
+	-- Store vote
+	room.stageVotes[player] = stageOrder
+	
+	print("[MatchManager]", player.Name, "voted for stages:", table.concat(stageOrder, ", "))
+	
+	-- Broadcast vote update to all players
+	self:broadcastStageVoteUpdate(room)
+end
+
+-- Broadcast stage vote update to all players
+function MatchManager:broadcastStageVoteUpdate(room: MatchRoom)
+	local voteData = {}
+	for _, player in ipairs(room.players) do
+		local vote = room.stageVotes[player]
+		if vote then
+			table.insert(voteData, {
+				playerName = player.Name,
+				stageOrder = vote,
+			})
+		end
+	end
+	
+	for _, player in ipairs(room.players) do
+		self.stageVoteUpdateRemote:FireClient(player, {
+			type = "voteUpdate",
+			votes = voteData,
+			playerCount = #room.players,
+			votedCount = #voteData,
+		})
+	end
+end
+
+-- Calculate final stage order from votes (weighted random)
+function MatchManager:calculateFinalStageOrder(room: MatchRoom): {number}
+	-- If no votes, shuffle all stages
+	if #table.clear({}) == 0 and next(room.stageVotes) == nil then
+		return self:shuffleAllStages()
+	end
+	
+	-- Count votes for each stage
+	local stageCounts = {}
+	for i = 1, Config.Stages.Count do
+		stageCounts[i] = 0
+	end
+	
+	-- Tally votes
+	for player, vote in pairs(room.stageVotes) do
+		for _, stageNum in ipairs(vote) do
+			stageCounts[stageNum] = (stageCounts[stageNum] or 0) + 1
+		end
+	end
+	
+	-- Build weighted pool based on votes
+	-- More votes = higher chance to be selected
+	local allStages = {}
+	for i = 1, Config.Stages.Count do
+		allStages[i] = i
+	end
+	
+	-- Shuffle first
+	for i = #allStages, 2, -1 do
+		local j = math.random(1, i)
+		allStages[i], allStages[j] = allStages[j], allStages[i]
+	end
+	
+	-- Sort by vote count (descending), with randomness for ties
+	table.sort(allStages, function(a, b)
+		local countA = stageCounts[a] or 0
+		local countB = stageCounts[b] or 0
+		if countA ~= countB then
+			return countA > countB
+		end
+		-- Random tiebreaker (already shuffled)
+		return a < b
+	end)
+	
+	-- Return all stages in vote-weighted order
+	return allStages
+end
+
+-- Shuffle all stages
+function MatchManager:shuffleAllStages(): {number}
+	local stages = {}
+	for i = 1, Config.Stages.Count do
+		stages[i] = i
+	end
+	
+	for i = #stages, 2, -1 do
+		local j = math.random(1, i)
+		stages[i], stages[j] = stages[j], stages[i]
+	end
+	
+	return stages
+end
+
+-- Get stage order for a match (used by GameManager)
+function MatchManager:getStageOrderForMatch(roomId: string): {number}
+	local room = self.rooms[roomId]
+	if not room then
+		return self:shuffleAllStages()
+	end
+	
+	-- If already selected, return it
+	if room.selectedStageOrder then
+		return room.selectedStageOrder
+	end
+	
+	-- Calculate from votes
+	room.selectedStageOrder = self:calculateFinalStageOrder(room)
+	return room.selectedStageOrder
+end
+
+-- Set stage order for a match (used when solo player selects stages)
+function MatchManager:setStageOrderForMatch(roomId: string, stageOrder: {number})
+	local room = self.rooms[roomId]
+	if room then
+		room.selectedStageOrder = stageOrder
+		room.stageOrder = stageOrder
+	end
 end
 
 return MatchManager
