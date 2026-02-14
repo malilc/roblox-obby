@@ -369,9 +369,22 @@ function MatchManager:broadcastRaceUpdate(room: MatchRoom)
 			end
 		end
 		
+		-- Build detailed ranking info for spectator support
+		local rankingDetails = {}
+		for i, rankedPlayer in ipairs(rankings) do
+			local progress = room.playerProgress[rankedPlayer]
+			table.insert(rankingDetails, {
+				playerName = rankedPlayer.Name,
+				position = i,
+				finished = progress and progress.finished or false,
+				finishTime = progress and progress.finishTime,
+				stage = progress and progress.currentStage or 0,
+			})
+		end
+
 		self.raceUpdateRemote:FireClient(player, {
 			timeRemaining = room.timeRemaining,
-			rankings = self:getPlayerNames(rankings),
+			rankings = rankingDetails,
 			yourRank = playerRank,
 			totalPlayers = #room.players,
 			finishedCount = #room.finishOrder,
@@ -488,6 +501,18 @@ function MatchManager:endMatch(roomId: string, reason: string)
 		})
 	end
 	
+	-- Teleport spectating/finished players back to lobby, then clean up
+	task.delay(8, function()
+		if self.gameManager then
+			for _, player in ipairs(room.players) do
+				local state = self.gameManager.playerStates[player]
+				if state == "Spectating" or state == "Finished" then
+					self.gameManager:onSpectatorLeave(player)
+				end
+			end
+		end
+	end)
+
 	-- Clean up room after delay
 	task.delay(10, function()
 		self:closeRoom(roomId)
@@ -526,6 +551,11 @@ end
 -- Check if player is in a match
 function MatchManager:isPlayerInMatch(player: Player): boolean
 	return self.playerRooms[player] ~= nil
+end
+
+-- Get room by ID
+function MatchManager:getRoom(roomId: string): MatchRoom?
+	return self.rooms[roomId]
 end
 
 -- Remove player (when they leave the game)

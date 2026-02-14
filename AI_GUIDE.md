@@ -22,8 +22,9 @@ src/
 │   ├── FlyController.luau       # ระบบบินทดสอบ (กด F)
 │   ├── ItemEffects.luau         # 🎯 Screen effects (shake, flash, zoom)
 │   ├── UltimateSkillController.luau # ⚡ Ultimate Skills (Sprint, Double Jump, Iron Will)
+│   ├── SpectatorCamera.luau     # 👁️ กล้อง Follow + FreeCam สำหรับ Spectator Mode
 │   └── UI/
-│       ├── MainUI.luau          # Controller หลัก
+│       ├── MainUI.luau          # Controller หลัก (popup mutual exclusion)
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # 🎯 แสดง Item (2 slots) + Tooltip
@@ -35,7 +36,10 @@ src/
 │       ├── ClassSelectionUI.luau # 🎭 UI เลือก Class
 │       ├── TitleHUDUI.luau      # 🏷️ HUD แสดง Active Title
 │       ├── TitleCollectionUI.luau # 🏷️ หน้ารายการ Title (ล็อก/ปลดล็อก + filter/search)
-│       └── RaceResultsUI.luau   # 🏁 UI ผลการแข่ง
+│       ├── RaceResultsUI.luau   # 🏁 UI ผลการแข่ง
+│       ├── TutorialUI.luau      # ❓ Game Guide popup (ปุ่ม "?" + 5 tabs RichText)
+│       ├── SpectatorUI.luau     # 👁️ Spectator HUD + prompt + rankings
+│       └── MobileInputUI.luau   # 📱 Touch buttons สำหรับมือถือ (Item/Sprint/Jump)
 │
 └── shared/                      # Shared code (server + client)
     ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags + Ultimate Skills)
@@ -898,6 +902,12 @@ Match = {
 - `Racing` - กำลังแข่ง
 - `Finished` - จบแล้ว
 
+### Player States:
+- `Lobby` - อยู่ใน lobby
+- `Playing` - กำลังแข่ง
+- `Finished` - จบแล้ว (รอเลือก spectate/leave)
+- `Spectating` - ดูคนอื่นแข่ง (character ซ่อน)
+
 ---
 
 ## 📡 RemoteEvents
@@ -934,6 +944,9 @@ Match = {
 | `ClearTestItems` | Client → Server | 🧪 ล้าง items ทั้งหมด |
 | `SpawnTestDummy` | Client → Server | 🤖 สร้าง Test Dummy |
 | `RemoveTestDummies` | Client → Server | 🤖 ลบ Test Dummies ทั้งหมด |
+| `TutorialSeen` | Client → Server | ❓ ผู้เล่นเปิด Tutorial ครั้งแรก (persist ใน DataStore) |
+| `SpectateMatch` | Client → Server | 👁️ ผู้เล่นเลือก Spectate หลังจบ |
+| `SpectatorLeave` | Client → Server | 👁️ ออกจาก Spectator mode |
 
 **ClassUpdate Payload (สำคัญ):**
 ```lua
@@ -1123,6 +1136,7 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 | `ClassSelectionUI` | มุมบนซ้าย (ใต้ Currency) | 🎭 แสดง Class indicator + คลิกเปิด modal เลือก Class (light theme) |
 | `TitleHUDUI` | มุมบนซ้าย (ใต้ Class) | 🏷️ แสดง Active Title + ปุ่ม 📋 เปิด Collection |
 | `TitleCollectionUI` | กลางจอ (modal) | 🏷️ หน้ารวม Title ทั้งหมด + filter/search/equip |
+| `TutorialUI` | มุมบนซ้าย (Y=240) + กลางจอ (popup) | ❓ ปุ่ม "?" + Game Guide 5 tabs (RichText) |
 | `ItemUI` | มุมล่างขวา | 🎯 2 Item slots (horizontal) + Tooltip |
 | `ItemTestingUI` | มุมบนขวา (toggle) | 🧪 เมนูทดสอบ Item (กด T) |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
@@ -1130,6 +1144,8 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 | `SummaryUI` | กลางจอ (popup) | 🏆 Summary เมื่อจบเกม |
 | `MatchLobbyUI` | กลางจอ | 🏁 Matchmaking lobby + Rankings |
 | `RaceResultsUI` | กลางจอ (popup) | 🏁 ผลการแข่งขัน |
+| `SpectatorUI` | กลางจอ (popup + HUD) | 👁️ Spectate prompt + rankings + camera controls |
+| `MobileInputUI` | มุมล่าง (มือถือเท่านั้น) | 📱 Touch buttons: Item1/2, Sprint, Jump |
 
 ### StageSelectionUI:
 - **ปุ่มด่าน 1-5**: คลิกเพื่อเพิ่ม/ลบจากลำดับ
@@ -1376,6 +1392,7 @@ end)
 44. **Y=92**: Currency Frame (💰 เงิน)
 45. **Y=140**: Class Indicator (🎭 Class - light pill 168x40 + mastery badge + chevron)
 46. **Y=186**: Active Title HUD (🏷️ light bar 220x36 + ปุ่ม 📋 เปิด Collection)
+47. **Y=240**: Tutorial "?" Button (❓ วงกลม 40x40 + hint label ข้างๆ)
 
 ### 📊 Leaderstats
 47. **Built-in UI**: แสดง HighScore, RoundScore, Currency
@@ -1388,13 +1405,38 @@ end)
 52. **UI Display**: แสดงทั้ง level/xp บน class card และ preview rewards ของ class ที่เลือก
 53. **Remote**: ใช้ `MasteryUpdate` ส่ง level/xp/xpToNext/isMax + masteryRewards + unlockedRewards action
 
+### ❓ Tutorial System
+54. **ปุ่ม "?"**: Y=240 มุมบนซ้าย (ใต้ TitleHUD), วงกลม 40x40
+55. **Hint**: ผู้เล่นใหม่เห็น "Tap ? for help!" (fade out หลัง 8 วิ), persist ใน DataStore (`hasSeenTutorial`)
+56. **Panel**: 680x500 กลางจอ, dark theme, overlay 2x จอ (มืด 70%)
+57. **Tabs**: 5 tabs (Movement/Items/Classes/Mastery/Ultimates) อ่านจาก `Config.Tutorial.Sections`
+58. **RichText**: content ใช้ `<font color="">` + `<b>` สำหรับ headers/keys/class names สีต่างๆ
+59. **Popup Exclusion**: Tutorial, ClassSelection, TitleCollection เปิดพร้อมกันไม่ได้ (MainUI จัดการ callbacks)
+60. **Remote**: `TutorialSeen` fire ครั้งแรกที่เปิด → server save `hasSeenTutorial = true`
+
+### 👁️ Spectator Mode
+61. **Spectate Prompt**: แสดง "SPECTATE" + "LEAVE" หลังจบ race ใน match ที่ยังแข่ง (`canSpectate` flag)
+62. **SpectatorCamera**: Follow mode (lerp behind target) + FreeCam mode (WASD + mouse look)
+63. **SpectatorUI**: HUD top label, left rankings panel, bottom controls (Prev/ModeToggle/Next/Leave)
+64. **Rankings**: จาก `RaceUpdate` data (table objects: `{playerName, position, finished, finishTime, stage}`)
+65. **Auto-exit**: Match end → auto-exit spectator, teleport lobby
+66. **Character hide**: Spectating → Transparency=1, Anchored=true; Leave → restore + teleport lobby
+67. **Config**: `Config.Spectator` (FreeCamSpeed=50, FollowDistance=15, FollowHeight=8, CameraSmoothness=0.1)
+
+### 📱 Mobile Touch Buttons
+68. **Detection**: `UserInputService.TouchEnabled` — ไม่สร้าง UI ถ้าไม่ใช่มือถือ
+69. **Buttons**: Item 1/2 (ขวาล่าง 70x70), Sprint/Jump (ซ้ายล่าง 70x70)
+70. **Integration**: เรียก `itemUI:useItemFromSlot(1/2)` และ `ultimateSkillController:tryActivateSprint()/tryDoubleJump()`
+71. **Heartbeat**: loop อัพเดทสถานะปุ่ม (item icon, cooldown, ultimate visibility)
+72. **Sprint/Jump**: ซ่อนเมื่อไม่มี ultimate ที่ปลดล็อค
+
 ### 🔧 Code Quality (Audit Feb 2026)
-54. **Debug Flags**: `Config.Debug.Enabled`, `FlyMode`, `ItemTesting` - ต้อง set `false` ก่อน production
-55. **Logger**: `src/shared/Logger.luau` - ใช้ `Logger.debug/info/warn/error(tag, ...)` แทน `print("[Tag]", ...)`
-56. **os.clock()**: ใช้ `os.clock()` แทน `tick()` ทั้ง project (tick deprecated)
-57. **LinearVelocity/AngularVelocity**: ใช้ constraint-based แทน BodyVelocity/BodyAngularVelocity (deprecated)
-58. **UpdateAsync**: DataStore ใช้ `UpdateAsync` (atomic) ไม่ใช่ `GetAsync`+`SetAsync` (race condition)
-59. **Connection Cleanup**: CharacterAdded/Died connections ถูก track ใน `playerConnections` table และ disconnect เมื่อ player leave
-60. **Input Validation**: `ConfirmStageSelection` remote ผ่าน `validateStageOrder()` ก่อนใช้งาน
-61. **Shared Map Limitation**: Map เป็น global shared ใน workspace - ถ้า 2+ players เล่นพร้อมกันจะมีปัญหา (ต้องทำ instanced map ในอนาคต)
-62. **Race Direction**: Stages progress ตามแกน +X (ไม่ใช่ +Z) - "ahead" check ใช้ `Position.X`
+73. **Debug Flags**: `Config.Debug.Enabled`, `FlyMode`, `ItemTesting` - ต้อง set `false` ก่อน production
+74. **Logger**: `src/shared/Logger.luau` - ใช้ `Logger.debug/info/warn/error(tag, ...)` แทน `print("[Tag]", ...)`
+75. **os.clock()**: ใช้ `os.clock()` แทน `tick()` ทั้ง project (tick deprecated)
+76. **LinearVelocity/AngularVelocity**: ใช้ constraint-based แทน BodyVelocity/BodyAngularVelocity (deprecated)
+77. **UpdateAsync**: DataStore ใช้ `UpdateAsync` (atomic) ไม่ใช่ `GetAsync`+`SetAsync` (race condition)
+78. **Connection Cleanup**: CharacterAdded/Died connections ถูก track ใน `playerConnections` table และ disconnect เมื่อ player leave
+79. **Input Validation**: `ConfirmStageSelection` remote ผ่าน `validateStageOrder()` ก่อนใช้งาน
+80. **Shared Map Limitation**: Map เป็น global shared ใน workspace - ถ้า 2+ players เล่นพร้อมกันจะมีปัญหา (ต้องทำ instanced map ในอนาคต)
+81. **Race Direction**: Stages progress ตามแกน +X (ไม่ใช่ +Z) - "ahead" check ใช้ `Position.X`

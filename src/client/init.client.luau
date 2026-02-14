@@ -66,6 +66,13 @@ local UltimateSkillController = require(script.UltimateSkillController)
 local ultimateSkillController = UltimateSkillController.new()
 print("[Client] Ultimate Skill Controller initialized")
 
+-- Initialize Mobile Touch Buttons (only shows on touch devices)
+local MobileInputUI = require(script.UI.MobileInputUI)
+local mobileInputUI = MobileInputUI.new(mainUI.screenGui, {
+	itemUI = mainUI.itemUI,
+	ultimateSkillController = ultimateSkillController,
+})
+
 print("[Client] UI and Effects initialized!")
 
 -- Show welcome message

@@ -66,6 +66,7 @@ export type PlayerCurrencyData = {
 	classMastery: {[string]: ClassMasteryData},
 	masteryRewards: {[string]: {[string]: boolean}},
 	activeTitle: string?,
+	hasSeenTutorial: boolean,
 }
 
 local function getDefaultClassId(): string
@@ -406,7 +407,19 @@ function CurrencyManager:setupRemotes()
 	self.setActiveTitleRemote.OnServerEvent:Connect(function(player, titleId)
 		self:handleSetActiveTitleRequest(player, titleId)
 	end)
-	
+
+	-- Tutorial seen remote
+	local tutorialSeenRemote = ReplicatedStorage.Remotes:FindFirstChild("TutorialSeen")
+	if tutorialSeenRemote then
+		tutorialSeenRemote.OnServerEvent:Connect(function(player)
+			local playerData = self.playerData[player]
+			if playerData and not playerData.hasSeenTutorial then
+				playerData.hasSeenTutorial = true
+				self.pendingSaves[player] = true
+			end
+		end)
+	end
+
 	-- Setup testing remotes if in debug mode
 	if Config.Debug and Config.Debug.MasteryTesting then
 		self.setupMasteryLevelRemote = ReplicatedStorage.Remotes:FindFirstChild("SetMasteryLevel")
@@ -455,6 +468,7 @@ function CurrencyManager:initPlayer(player: Player)
 		classMastery = defaultMasteryData,
 		masteryRewards = buildMasteryRewardUnlocks(nil, defaultMasteryData),
 		activeTitle = nil,
+		hasSeenTutorial = false,
 	}
 
 	-- Load from DataStore
@@ -485,6 +499,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 		playerData.classMastery = buildMasteryData(data.classMastery)
 		playerData.masteryRewards = buildMasteryRewardUnlocks(data.masteryRewards, playerData.classMastery)
 		playerData.activeTitle = sanitizeActiveTitle(data.activeTitle, playerData.masteryRewards)
+		playerData.hasSeenTutorial = data.hasSeenTutorial == true
 
 		print(
 			"[CurrencyManager] Loaded profile for",
@@ -523,6 +538,7 @@ function CurrencyManager:savePlayerData(player: Player)
 			existingData.classMastery = self:getClassMasteryData(player)
 			existingData.masteryRewards = self:getUnlockedMasteryRewards(player)
 			existingData.activeTitle = playerData.activeTitle
+			existingData.hasSeenTutorial = playerData.hasSeenTutorial
 			return existingData
 		end)
 	end)
@@ -1156,6 +1172,7 @@ function CurrencyManager:sendCurrencyUpdate(player: Player)
 
 	self.updateCurrencyRemote:FireClient(player, {
 		currency = playerData.currency,
+		hasSeenTutorial = playerData.hasSeenTutorial,
 	})
 end
 

@@ -14,6 +14,8 @@ local ClassSelectionUI = require(script.Parent.ClassSelectionUI)
 local RaceResultsUI = require(script.Parent.RaceResultsUI)
 local TitleHUDUI = require(script.Parent.TitleHUDUI)
 local TitleCollectionUI = require(script.Parent.TitleCollectionUI)
+local TutorialUI = require(script.Parent.TutorialUI)
+local SpectatorUI = require(script.Parent.SpectatorUI)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -43,6 +45,17 @@ function MainUI.new()
 	self.matchLobbyUI = MatchLobbyUI.new(screenGui)
 	self.raceResultsUI = RaceResultsUI.new(screenGui)
 	self.titleCollectionUI = TitleCollectionUI.new(screenGui)
+	self.tutorialUI = TutorialUI.new(screenGui, {
+		onShow = function()
+			if self.classSelectionUI and self.classSelectionUI.isVisible then
+				self.classSelectionUI:hide()
+			end
+			if self.titleCollectionUI and self.titleCollectionUI.isVisible then
+				self.titleCollectionUI:hide()
+			end
+		end,
+	})
+	self.spectatorUI = SpectatorUI.new(screenGui)
 
 	-- ClassSelectionUI with cross-navigation callback
 	self.classSelectionUI = ClassSelectionUI.new(screenGui, {
@@ -53,9 +66,11 @@ function MainUI.new()
 			end)
 		end,
 		onShow = function()
-			-- Close title collection if open when class modal opens
 			if self.titleCollectionUI and self.titleCollectionUI.isVisible then
 				self.titleCollectionUI:hide()
+			end
+			if self.tutorialUI and self.tutorialUI.isVisible then
+				self.tutorialUI:hide()
 			end
 		end,
 	})
@@ -76,9 +91,11 @@ function MainUI:toggleTitleCollection()
 		if self.titleCollectionUI.isVisible then
 			self.titleCollectionUI:hide()
 		else
-			-- Close class modal first if open
 			if self.classSelectionUI and self.classSelectionUI.isVisible then
 				self.classSelectionUI:hide()
+			end
+			if self.tutorialUI and self.tutorialUI.isVisible then
+				self.tutorialUI:hide()
 			end
 			self.titleCollectionUI:show()
 		end
@@ -156,6 +173,13 @@ function MainUI:onStageComplete(data: {[string]: any})
 			-- Small delay to let stage complete notification show first
 			task.delay(0.5, function()
 				self.summaryUI:show(data.summary)
+			end)
+		end
+
+		-- Show spectate prompt if in a match that's still racing
+		if data.summary and data.summary.canSpectate then
+			task.delay(2, function()
+				self.spectatorUI:showSpectatePrompt()
 			end)
 		end
 

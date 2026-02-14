@@ -94,6 +94,15 @@
         },
         "UltimateSkillUpdate": {
           "$className": "RemoteEvent"
+        },
+        "TutorialSeen": {
+          "$className": "RemoteEvent"
+        },
+        "SpectateMatch": {
+          "$className": "RemoteEvent"
+        },
+        "SpectatorLeave": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

@@ -166,6 +166,26 @@ Stages = {
 	-- Kill Zone
 	KillZoneY = -120, -- ความสูงที่จะตายเมื่อตกลงไป
 
+	-- Tutorial Settings
+	Tutorial = {
+		Sections = {
+			{id = "movement", title = "Movement", icon = "🏃", content = '<font color="#AAD4FF"><b>Controls</b></font>\n  <font color="#FFDD77">WASD</font> — Move    <font color="#FFDD77">Space</font> — Jump\n  <font color="#FFDD77">Shift</font> — Sprint (if unlocked)\n\n<font color="#AAD4FF"><b>Mobile</b></font>\n  Use the joystick and jump button on screen.\n\n<font color="#AAD4FF"><b>Falling</b></font>\n  Fall off the map? No worries!\n  You\'ll respawn at the <font color="#77FF77">last checkpoint</font>.'},
+			{id = "items", title = "Items", icon = "🎁", content = '<font color="#AAD4FF"><b>How to Get Items</b></font>\n  Run through <font color="#FFDD77">item boxes</font> on the course to collect them.\n\n<font color="#AAD4FF"><b>Using Items</b></font>\n  Press <font color="#FFDD77">[1]</font> or <font color="#FFDD77">[2]</font> to use items from your slots.\n  On mobile, tap the item buttons on screen.\n\n<font color="#AAD4FF"><b>Rarities</b></font>\n  <font color="#CCCCCC">Common</font> · <font color="#77DD77">Uncommon</font> · <font color="#7799FF">Rare</font> · <font color="#CC77FF">Epic</font>\n  Players behind get <font color="#FFDD77">better items</font>!'},
+			{id = "classes", title = "Classes", icon = "⚔️", content = '<font color="#AAD4FF"><b>Choose a Class</b></font>\n  Pick your play style in the lobby before a match.\n\n<font color="#CCCCCC"><b>Normal</b></font> — Balanced stats <font color="#77FF77">(Free)</font>\n<font color="#FF9944"><b>Runner</b></font> — +15% speed, -10% jump\n<font color="#44BBFF"><b>Jumper</b></font> — -10% speed, +20% jump\n<font color="#FFDD44"><b>Tank</b></font> — -15% speed, stun immunity\n\n  Unlock new classes with <font color="#FFDD77">currency</font>!'},
+			{id = "mastery", title = "Mastery & Titles", icon = "🏆", content = '<font color="#AAD4FF"><b>Mastery XP</b></font>\n  Earn XP by completing stages in matches.\n  Each class levels up independently <font color="#FFDD77">(Lv.1 — 20)</font>.\n\n<font color="#AAD4FF"><b>Titles</b></font>\n  Unlock cosmetic titles at mastery milestones.\n  Equip titles to show off your skill!\n  Titles appear above your character.'},
+			{id = "ultimates", title = "Ultimate Skills", icon = "⚡", content = '<font color="#AAD4FF"><b>How to Unlock</b></font>\n  Reach <font color="#FFDD77">mastery level 20</font> on a class to unlock its ultimate!\n\n<font color="#AAD4FF"><b>Ultimate Skills</b></font>\n  <font color="#FF9944"><b>Runner</b></font> — Sprint <font color="#999999">(Shift)</font>: 50% speed boost\n  <font color="#44BBFF"><b>Jumper</b></font> — Double Jump <font color="#999999">(Space in air)</font>\n  <font color="#FFDD44"><b>Tank</b></font> — Iron Will: immune to stuns'},
+		},
+		HintDuration = 8,
+	},
+
+	-- Spectator Settings
+	Spectator = {
+		FreeCamSpeed = 50,
+		FollowDistance = 15,
+		FollowHeight = 8,
+		CameraSmoothness = 0.1,
+	},
+
 	-- Debug / Development Settings
 	Debug = {
 		Enabled = true,    -- Master toggle: set false for production

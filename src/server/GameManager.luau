@@ -14,7 +14,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local GameManager = {}
 GameManager.__index = GameManager
 
-export type PlayerState = "Lobby" | "Playing" | "Finished"
+export type PlayerState = "Lobby" | "Playing" | "Finished" | "Spectating"
 
 function GameManager.new()
 	local self = setmetatable({}, GameManager)
@@ -98,6 +98,21 @@ function GameManager:setupRemotes()
 	self.confirmStageSelectionRemote.OnServerEvent:Connect(function(player, data)
 		self:onStageSelectionConfirmed(player, data)
 	end)
+
+	-- Spectator system
+	local spectateRemote = ReplicatedStorage.Remotes:FindFirstChild("SpectateMatch")
+	if spectateRemote then
+		spectateRemote.OnServerEvent:Connect(function(player)
+			self:onPlayerSpectate(player)
+		end)
+	end
+
+	local spectatorLeaveRemote = ReplicatedStorage.Remotes:FindFirstChild("SpectatorLeave")
+	if spectatorLeaveRemote then
+		spectatorLeaveRemote.OnServerEvent:Connect(function(player)
+			self:onSpectatorLeave(player)
+		end)
+	end
 end
 
 -- Setup player events
@@ -400,6 +415,10 @@ function GameManager:onPlayerFinished(player: Player)
 	-- Calculate stages cleared (all stages count now, including last one given in onPlayerFinished)
 	local stagesCleared = totalStages
 
+	-- Check if player is in an active match (for spectator support)
+	local matchRoom = self.matchManager:getPlayerRoom(player)
+	local canSpectate = matchRoom ~= nil and matchRoom.state == "Racing"
+
 	-- Notify client with summary data
 	self.stageCompleteRemote:FireClient(player, {
 		finished = true,
@@ -418,19 +437,90 @@ function GameManager:onPlayerFinished(player: Player)
 			finishBonus = Config.Currency.FinishBonus, -- โบนัสจบเกม
 			totalCurrency = self.currencyManager:getCurrency(player),
 			stageOrder = stageOrder, -- Stage ที่เลือกเล่น
+			canSpectate = canSpectate, -- Can spectate other racers
 		},
 	})
-	
+
 	print("[GameManager]", player.Name, "FINISHED THE OBBY!")
-	
-	-- Teleport กลับ Lobby (หลังแสดง Summary 5 วินาที)
-	task.delay(5, function()
-		self:teleportToLobby(player)
-		-- Clear teleporting flag after teleport
-		task.delay(0.5, function()
-			self.teleportingToLobby[player] = nil
+
+	if canSpectate then
+		-- Match still racing: don't auto-teleport, let client choose spectate or leave
+		print("[GameManager]", player.Name, "can spectate - waiting for client decision")
+	else
+		-- Solo or match already finished: auto-teleport after 5 seconds
+		task.delay(5, function()
+			if self.playerStates[player] == "Finished" then
+				self:teleportToLobby(player)
+				task.delay(0.5, function()
+					self.teleportingToLobby[player] = nil
+				end)
+			end
 		end)
+	end
+end
+
+-- ============================================
+-- SPECTATOR SYSTEM
+-- ============================================
+
+function GameManager:onPlayerSpectate(player: Player)
+	local state = self.playerStates[player]
+	if state ~= "Finished" then return end
+
+	self.playerStates[player] = "Spectating"
+
+	-- Hide player's character
+	local character = player.Character
+	if character then
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.Anchored = true
+		end
+		for _, part in ipairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Transparency = 1
+				part.CanCollide = false
+			elseif part:IsA("Decal") or part:IsA("Texture") then
+				part.Transparency = 1
+			end
+		end
+	end
+
+	print("[GameManager]", player.Name, "started spectating")
+end
+
+function GameManager:onSpectatorLeave(player: Player)
+	local state = self.playerStates[player]
+	if state ~= "Spectating" and state ~= "Finished" then return end
+
+	-- Restore character visibility
+	local character = player.Character
+	if character then
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.Anchored = false
+		end
+		for _, part in ipairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				if part.Name == "HumanoidRootPart" then
+					part.Transparency = 1 -- HRP is normally transparent
+				else
+					part.Transparency = 0
+				end
+				part.CanCollide = true
+			elseif part:IsA("Decal") or part:IsA("Texture") then
+				part.Transparency = 0
+			end
+		end
+	end
+
+	-- Teleport to lobby
+	self:teleportToLobby(player)
+	task.delay(0.5, function()
+		self.teleportingToLobby[player] = nil
 	end)
+
+	print("[GameManager]", player.Name, "left spectator mode")
 end
 
 -- Teleport กลับจุดเริ่มต้น (Stage 1)
