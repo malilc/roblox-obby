@@ -707,11 +707,51 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 	xpBarFillCorner.CornerRadius = UDim.new(0, 2)
 	xpBarFillCorner.Parent = xpBarFill
 
+	-- Reward icons row (Title / Trail / Badge / CardFrame)
+	local REWARD_ICONS = {
+		{type = "Title", icon = "\xF0\x9F\x8F\xB7\xEF\xB8\x8F", suffix = "_title_"},
+		{type = "Trail", icon = "\xE2\x9C\xA8", suffix = "_trail_"},
+		{type = "Badge", icon = "\xF0\x9F\x8F\x85", suffix = "_badge_"},
+		{type = "CardFrame", icon = "\xF0\x9F\x96\xBC\xEF\xB8\x8F", suffix = "_frame_"},
+	}
+	local rewardIconFrames = {}
+	local iconRowY = 212
+	local iconSize = 14
+	local iconSpacing = 6
+	local totalIconWidth = #REWARD_ICONS * iconSize + (#REWARD_ICONS - 1) * iconSpacing
+	local iconStartX = math.floor((160 - totalIconWidth) / 2)
+
+	for i, rewardDef in ipairs(REWARD_ICONS) do
+		local iconLabel = Instance.new("TextLabel")
+		iconLabel.Name = "RewardIcon_" .. rewardDef.type
+		iconLabel.Size = UDim2.new(0, iconSize, 0, iconSize)
+		iconLabel.Position = UDim2.new(0, iconStartX + (i - 1) * (iconSize + iconSpacing), 0, iconRowY)
+		iconLabel.BackgroundTransparency = 1
+		iconLabel.Text = rewardDef.icon
+		iconLabel.TextSize = 12
+		iconLabel.TextTransparency = 0.7
+		iconLabel.Parent = card
+
+		table.insert(rewardIconFrames, {
+			label = iconLabel,
+			rewardType = rewardDef.type,
+			suffix = rewardDef.suffix,
+		})
+	end
+
+	-- CardFrame mastery stroke (hidden by default, shown when CardFrame reward unlocked)
+	local masteryFrameStroke = Instance.new("UIStroke")
+	masteryFrameStroke.Name = "MasteryFrameStroke"
+	masteryFrameStroke.Color = Config.Mastery and Config.Mastery.TitleThemes and Config.Mastery.TitleThemes.Legendary and Config.Mastery.TitleThemes.Legendary.frameColor or Color3.fromRGB(220, 170, 70)
+	masteryFrameStroke.Thickness = 3
+	masteryFrameStroke.Transparency = 1
+	masteryFrameStroke.Parent = card
+
 	-- Cost label
 	local costLabel = Instance.new("TextLabel")
 	costLabel.Name = "CostLabel"
 	costLabel.Size = UDim2.new(1, -16, 0, 16)
-	costLabel.Position = UDim2.new(0, 8, 0, 214)
+	costLabel.Position = UDim2.new(0, 8, 0, 228)
 	costLabel.BackgroundTransparency = 1
 	costLabel.Text = ""
 	costLabel.TextColor3 = COLORS.STATUS_CAN_BUY
@@ -724,7 +764,7 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
 	statusLabel.Size = UDim2.new(1, -16, 0, 22)
-	statusLabel.Position = UDim2.new(0, 8, 0, 236)
+	statusLabel.Position = UDim2.new(0, 8, 0, 246)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.Text = ""
 	statusLabel.TextColor3 = COLORS.TEXT_SECONDARY
@@ -742,6 +782,8 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 		xpBarBg = xpBarBg,
 		costLabel = costLabel,
 		statusLabel = statusLabel,
+		rewardIcons = rewardIconFrames,
+		masteryFrameStroke = masteryFrameStroke,
 	}
 
 	card.MouseButton1Click:Connect(function()
@@ -1023,6 +1065,42 @@ function ClassSelectionUI:refreshClassStates()
 			buttonData.costLabel.Text = string.format("Cost: %d", classCost)
 		else
 			buttonData.costLabel.Text = ""
+		end
+
+		-- Reward icons (unlocked = vivid, locked = dim)
+		if buttonData.rewardIcons then
+			local rewards = self.classMasteryRewards[classId] or {}
+			local unlockedById = {}
+			for _, reward in ipairs(rewards) do
+				if reward.unlocked then
+					unlockedById[reward.id] = reward
+				end
+			end
+
+			local classPrefix = string.lower(classId)
+			for _, iconData in ipairs(buttonData.rewardIcons) do
+				local isRewardUnlocked = false
+				for rewardId, _ in pairs(unlockedById) do
+					if string.find(rewardId, classPrefix .. iconData.suffix) then
+						isRewardUnlocked = true
+						break
+					end
+				end
+				iconData.label.TextTransparency = isRewardUnlocked and 0 or 0.7
+			end
+		end
+
+		-- CardFrame mastery stroke
+		if buttonData.masteryFrameStroke then
+			local hasFrame = false
+			local rewards = self.classMasteryRewards[classId] or {}
+			for _, reward in ipairs(rewards) do
+				if reward.rewardType == "CardFrame" and reward.unlocked then
+					hasFrame = true
+					break
+				end
+			end
+			buttonData.masteryFrameStroke.Transparency = hasFrame and 0 or 1
 		end
 	end
 

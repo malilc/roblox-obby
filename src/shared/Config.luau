@@ -146,15 +146,6 @@ Stages = {
 		},
 	},
 
-	-- Push Item Settings
-	PushItem = {
-		StartingAmount = 1, -- จำนวน Push item เริ่มต้น
-		MaxAmount = 5, -- จำนวนสูงสุดที่เก็บได้
-		Range = 15, -- ระยะโจมตี (studs)
-		Force = 100, -- แรงผลัก
-		Cooldown = 10, -- cooldown (วินาที)
-	},
-
 	-- DataStore
 	DataStore = {
 		Name = "ObbyGameData_v1",

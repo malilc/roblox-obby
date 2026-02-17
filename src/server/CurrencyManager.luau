@@ -930,6 +930,84 @@ function CurrencyManager:applyActiveTitleToCharacter(player: Player, character: 
 	textLabel.Parent = container
 end
 
+-- Trail colors per class (matching ClassTypes.color)
+local TRAIL_COLORS = {
+	Normal = Color3.fromRGB(220, 220, 220),
+	Runner = Color3.fromRGB(100, 200, 255),
+	Jumper = Color3.fromRGB(100, 255, 100),
+	Tank = Color3.fromRGB(255, 200, 100),
+}
+
+function CurrencyManager:applyActiveTrailToCharacter(player: Player, character: Model?)
+	local targetCharacter = character or player.Character
+	if not targetCharacter then return end
+
+	local hrp = targetCharacter:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	-- Remove existing trail (attachments + trail instance on HRP)
+	for _, child in ipairs(hrp:GetChildren()) do
+		if child.Name == "TrailTop" or child.Name == "TrailBottom" or child.Name == "MasteryTrailEffect" then
+			child:Destroy()
+		end
+	end
+
+	local playerData = self.playerData[player]
+	if not playerData then return end
+
+	local equippedClass = self:getEquippedClass(player)
+	local rewards = Config.Mastery.Rewards[equippedClass]
+	if not rewards then return end
+
+	-- Find trail reward for this class
+	local trailReward = nil
+	for _, reward in ipairs(rewards) do
+		if reward.rewardType == "Trail" then
+			trailReward = reward
+			break
+		end
+	end
+	if not trailReward then return end
+
+	-- Check if trail is unlocked
+	local unlockedByClass = playerData.masteryRewards[equippedClass]
+	if not unlockedByClass or not unlockedByClass[trailReward.id] then return end
+
+	-- Create attachments on HumanoidRootPart
+	local topAttach = Instance.new("Attachment")
+	topAttach.Name = "TrailTop"
+	topAttach.Position = Vector3.new(0, 0.5, 0)
+	topAttach.Parent = hrp
+
+	local bottomAttach = Instance.new("Attachment")
+	bottomAttach.Name = "TrailBottom"
+	bottomAttach.Position = Vector3.new(0, -0.5, 0)
+	bottomAttach.Parent = hrp
+
+	-- Create trail on HRP
+	local trailColor = TRAIL_COLORS[equippedClass] or Color3.fromRGB(220, 220, 220)
+	local trail = Instance.new("Trail")
+	trail.Name = "MasteryTrailEffect"
+	trail.Attachment0 = topAttach
+	trail.Attachment1 = bottomAttach
+	trail.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, trailColor),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+	})
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	trail.Lifetime = 0.5
+	trail.MinLength = 0.1
+	trail.LightEmission = 0.5
+	trail.WidthScale = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	trail.Parent = hrp
+end
+
 function CurrencyManager:sendTitleUpdate(player: Player, action: {[string]: any}?)
 	local playerData = self.playerData[player]
 	if not playerData then

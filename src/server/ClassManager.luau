@@ -78,9 +78,7 @@ function ClassManager:markClassRequest(player: Player): boolean
 end
 
 function ClassManager:resetAbilityState(data: PlayerClassData)
-	data.sprintCooldown = 0
-	data.isChargingJump = false
-	data.chargeStartTime = nil
+	-- Ability state reset (reserved for future abilities)
 end
 
 function ClassManager:getInitialClass(player: Player): string
@@ -114,9 +112,6 @@ function ClassManager:initPlayer(player: Player)
 
 	self.playerClasses[player] = {
 		classId = initialClass,
-		sprintCooldown = 0,
-		isChargingJump = false,
-		chargeStartTime = nil,
 	}
 	self.playerConnections[player] = {}
 
@@ -288,6 +283,11 @@ function ClassManager:applyClassStats(player: Player, character: Model)
 	character:SetAttribute("BaseJumpPower", jumpPower)
 	character:SetAttribute("PlayerClass", data.classId)
 	
+	-- Apply mastery trail if unlocked
+	if self.currencyManager and self.currencyManager.applyActiveTrailToCharacter then
+		self.currencyManager:applyActiveTrailToCharacter(player, character)
+	end
+
 	print("[ClassManager] Applied", data.classId, "stats to", player.Name)
 	print("  WalkSpeed:", walkSpeed, "JumpPower:", jumpPower)
 end
@@ -320,88 +320,6 @@ function ClassManager:shouldIgnoreCommonStun(player: Player): boolean
 	if not data then return false end
 	
 	return data.classId == "Tank"
-end
-
--- ========== PASSIVE ABILITIES ==========
-
--- Runner: Sprint Burst
-function ClassManager:trySprintBurst(player: Player): boolean
-	local data = self.playerClasses[player]
-	if not data or data.classId ~= "Runner" then return false end
-	
-	local now = os.clock()
-	local classDef = ClassTypes.getClass("Runner")
-	local cooldown = classDef.passiveAbility.cooldown or 15
-	
-	if now - data.sprintCooldown < cooldown then
-		return false -- On cooldown
-	end
-	
-	local character = player.Character
-	if not character then return false end
-	
-	local humanoid = character:FindFirstChild("Humanoid")
-	if not humanoid then return false end
-	
-	-- Apply sprint burst
-	local originalSpeed = humanoid.WalkSpeed
-	humanoid.WalkSpeed = originalSpeed * 1.5 -- 50% boost
-	
-	-- Reset after 0.5 seconds
-	task.delay(0.5, function()
-		if humanoid.Parent then
-			humanoid.WalkSpeed = originalSpeed
-		end
-	end)
-	
-	data.sprintCooldown = now
-	
-	print("[ClassManager]", player.Name, "used Sprint Burst!")
-	
-	-- Send cooldown update
-	self.classUpdateRemote:FireClient(player, {
-		sprintCooldownRemaining = cooldown,
-	})
-	
-	return true
-end
-
--- Jumper: Start charging jump
-function ClassManager:startChargeJump(player: Player)
-	local data = self.playerClasses[player]
-	if not data or data.classId ~= "Jumper" then return end
-	
-	if data.isChargingJump then return end
-	
-	data.isChargingJump = true
-	data.chargeStartTime = os.clock()
-	
-	print("[ClassManager]", player.Name, "started charging jump")
-end
-
--- Jumper: Execute charged jump
-function ClassManager:executeChargeJump(player: Player): number?
-	local data = self.playerClasses[player]
-	if not data or data.classId ~= "Jumper" then return nil end
-	
-	if not data.isChargingJump then return nil end
-	
-	local chargeTime = os.clock() - (data.chargeStartTime or os.clock())
-	data.isChargingJump = false
-	data.chargeStartTime = nil
-	
-	-- Calculate bonus (max 50% bonus at 1.5 seconds charge)
-	local maxChargeTime = 1.5
-	local chargePercent = math.min(chargeTime / maxChargeTime, 1)
-	local jumpBonus = chargePercent * 0.5 -- 0-50% bonus
-	
-	if chargePercent < 0.3 then
-		return nil -- Not enough charge
-	end
-	
-	print("[ClassManager]", player.Name, "released charged jump with", math.floor(jumpBonus * 100), "% bonus")
-	
-	return 1 + jumpBonus -- Return multiplier
 end
 
 -- ========== UTILITY ==========

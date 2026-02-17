@@ -103,6 +103,18 @@
         },
         "SpectatorLeave": {
           "$className": "RemoteEvent"
+        },
+        "GiveTestItem": {
+          "$className": "RemoteEvent"
+        },
+        "ClearTestItems": {
+          "$className": "RemoteEvent"
+        },
+        "SpawnTestDummy": {
+          "$className": "RemoteEvent"
+        },
+        "RemoveTestDummies": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

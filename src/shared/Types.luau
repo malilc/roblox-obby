@@ -6,7 +6,6 @@ export type PlayerData = {
 	TotalScore: number,
 	HighScore: number,
 	CurrentStage: number,
-	PushItemCount: number,
 	Currency: number,
 	LastCheckpoint: Vector3?,
 	IsPlaying: boolean,

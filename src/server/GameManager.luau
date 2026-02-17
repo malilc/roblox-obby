@@ -596,8 +596,8 @@ function GameManager:respawnPlayer(player: Player)
 		humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 		humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
 		
-		-- Teleport และหันหน้าไปทาง +Z (ไปข้างหน้าในด่าน)
-		humanoidRootPart.CFrame = CFrame.lookAt(checkpoint, checkpoint + Vector3.new(0, 0, 1))
+		-- Teleport และหันหน้าไปทาง +X (ไปข้างหน้าในด่าน)
+		humanoidRootPart.CFrame = CFrame.lookAt(checkpoint, checkpoint + Vector3.new(1, 0, 0))
 		
 		print("[GameManager] Respawned", player.Name, "at checkpoint")
 	end

@@ -53,63 +53,37 @@ function ItemManager.new(currencyManager: any?, gameManager: any?, matchManager:
 	return self
 end
 
--- Setup testing remotes for item testing menu
+-- Setup testing remotes for item testing menu (remotes defined in default.project.json)
 function ItemManager:setupTestingRemotes()
 	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 	if not remotes then return end
-	
-	-- Create GiveTestItem remote if not exists
+
 	local giveTestItem = remotes:FindFirstChild("GiveTestItem")
-	if not giveTestItem then
-		giveTestItem = Instance.new("RemoteEvent")
-		giveTestItem.Name = "GiveTestItem"
-		giveTestItem.Parent = remotes
-	end
-	
-	-- Create ClearTestItems remote if not exists
 	local clearTestItems = remotes:FindFirstChild("ClearTestItems")
-	if not clearTestItems then
-		clearTestItems = Instance.new("RemoteEvent")
-		clearTestItems.Name = "ClearTestItems"
-		clearTestItems.Parent = remotes
-	end
-	
-	-- Create SpawnTestDummy remote if not exists
 	local spawnDummy = remotes:FindFirstChild("SpawnTestDummy")
-	if not spawnDummy then
-		spawnDummy = Instance.new("RemoteEvent")
-		spawnDummy.Name = "SpawnTestDummy"
-		spawnDummy.Parent = remotes
-	end
-	
-	-- Create RemoveTestDummies remote if not exists
 	local removeDummies = remotes:FindFirstChild("RemoveTestDummies")
-	if not removeDummies then
-		removeDummies = Instance.new("RemoteEvent")
-		removeDummies.Name = "RemoveTestDummies"
-		removeDummies.Parent = remotes
+
+	if not (giveTestItem and clearTestItems and spawnDummy and removeDummies) then
+		warn("[ItemManager] Testing remotes not found in Rojo tree")
+		return
 	end
-	
-	-- Handle GiveTestItem
+
 	giveTestItem.OnServerEvent:Connect(function(player, itemId)
 		self:giveTestItem(player, itemId)
 	end)
-	
-	-- Handle ClearTestItems
+
 	clearTestItems.OnServerEvent:Connect(function(player)
 		self:clearTestItems(player)
 	end)
-	
-	-- Handle SpawnTestDummy
+
 	spawnDummy.OnServerEvent:Connect(function(player)
 		self:spawnTestDummy(player)
 	end)
-	
-	-- Handle RemoveTestDummies
+
 	removeDummies.OnServerEvent:Connect(function(player)
 		self:removeTestDummies()
 	end)
-	
+
 	print("[ItemManager] Testing remotes initialized")
 end
 
