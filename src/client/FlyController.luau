@@ -3,6 +3,9 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -165,7 +168,7 @@ function FlyController:startFly()
 		self:updateFly()
 	end)
 	
-	print("[FlyController] Flying enabled!")
+	Logger.debug("FlyController", "Flying enabled!")
 end
 
 function FlyController:stopFly()
@@ -197,7 +200,7 @@ function FlyController:stopFly()
 	self.flyButton.BackgroundTransparency = 0.4
 	self.flyButton.Text = "FLY"
 	
-	print("[FlyController] Flying disabled!")
+	Logger.debug("FlyController", "Flying disabled!")
 end
 
 function FlyController:updateFly()

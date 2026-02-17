@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local CurrencyManager = {}
 CurrencyManager.__index = CurrencyManager
@@ -427,7 +428,7 @@ function CurrencyManager:setupRemotes()
 			self.setupMasteryLevelRemote.OnServerEvent:Connect(function(player, data)
 				self:handleSetMasteryLevelRequest(player, data)
 			end)
-			print("[CurrencyManager] SetMasteryLevel remote initialized for testing")
+			Logger.info("CurrencyManager", "SetMasteryLevel remote initialized for testing")
 		end
 	end
 end
@@ -435,7 +436,7 @@ end
 -- Handle set mastery level request (testing only)
 function CurrencyManager:handleSetMasteryLevelRequest(player: Player, data: {[string]: any})
 	if not Config.Debug or not Config.Debug.MasteryTesting then
-		warn("[CurrencyManager] handleSetMasteryLevelRequest is only available in testing mode")
+		Logger.warn("CurrencyManager", "handleSetMasteryLevelRequest is only available in testing mode")
 		return
 	end
 	
@@ -501,16 +502,9 @@ function CurrencyManager:loadPlayerData(player: Player)
 		playerData.activeTitle = sanitizeActiveTitle(data.activeTitle, playerData.masteryRewards)
 		playerData.hasSeenTutorial = data.hasSeenTutorial == true
 
-		print(
-			"[CurrencyManager] Loaded profile for",
-			player.Name,
-			"- Currency:",
-			playerData.currency,
-			"- Equipped:",
-			playerData.equippedClass
-		)
+		Logger.debug("CurrencyManager", "Loaded profile for", player.Name, "- Currency:", playerData.currency, "- Equipped:", playerData.equippedClass)
 	else
-		print("[CurrencyManager] No saved currency for", player.Name, "- Using starting amount")
+		Logger.debug("CurrencyManager", "No saved currency for", player.Name, "- Using starting amount")
 	end
 
 	-- Update client
@@ -544,9 +538,9 @@ function CurrencyManager:savePlayerData(player: Player)
 	end)
 
 	if success then
-		print("[CurrencyManager] Saved currency profile for", player.Name)
+		Logger.debug("CurrencyManager", "Saved currency profile for", player.Name)
 	else
-		warn("[CurrencyManager] Failed to save currency for", player.Name, ":", err)
+		Logger.warn("CurrencyManager", "Failed to save currency for", player.Name, ":", err)
 	end
 end
 
@@ -557,7 +551,7 @@ function CurrencyManager:addCurrency(player: Player, amount: number)
 	if amount == 0 then return end
 
 	playerData.currency = playerData.currency + amount
-	print("[CurrencyManager]", player.Name, "gained", amount, "currency - Total:", playerData.currency)
+	Logger.debug("CurrencyManager", player.Name, "gained", amount, "currency - Total:", playerData.currency)
 
 	-- Mark for pending save (will be saved in auto-save loop)
 	self.pendingSaves[player] = true
@@ -586,7 +580,7 @@ function CurrencyManager:spendCurrency(player: Player, amount: number, reason: s
 	playerData.currency = playerData.currency - amount
 	self.pendingSaves[player] = true
 
-	print("[CurrencyManager]", player.Name, "spent", amount, "currency - Total:", playerData.currency, if reason then "(" .. reason .. ")" else "")
+	Logger.debug("CurrencyManager", player.Name, "spent", amount, "currency - Total:", playerData.currency, if reason then "(" .. reason .. ")" else "")
 
 	self:sendCurrencyUpdate(player)
 	return true
@@ -633,7 +627,7 @@ function CurrencyManager:unlockClass(player: Player, classId: string): boolean
 	self:sendMasteryUpdate(player)
 	self:sendTitleUpdate(player)
 
-	print("[CurrencyManager]", player.Name, "unlocked class:", classId)
+	Logger.debug("CurrencyManager", player.Name, "unlocked class:", classId)
 	return true
 end
 
@@ -1171,21 +1165,7 @@ function CurrencyManager:addMasteryXP(player: Player, classId: string, amount: n
 
 	self.pendingSaves[player] = true
 
-	print(
-		"[CurrencyManager]",
-		player.Name,
-		"gained",
-		xpToAdd,
-		"mastery XP for",
-		classId,
-		"- Level:",
-		mastery.level,
-		"XP:",
-		mastery.xp,
-		"- RewardsUnlocked:",
-		#unlockedRewards,
-		if reason then "(" .. reason .. ")" else ""
-	)
+	Logger.debug("CurrencyManager", player.Name, "gained", xpToAdd, "mastery XP for", classId, "- Level:", mastery.level, "XP:", mastery.xp, "- RewardsUnlocked:", #unlockedRewards, if reason then "(" .. reason .. ")" else "")
 
 	local actionPayload = {
 		type = "xp",
@@ -1273,7 +1253,7 @@ end
 -- Set mastery level for a specific class (testing only)
 function CurrencyManager:setMasteryLevel(player: Player, classId: string, level: number)
 	if not Config.Debug or not Config.Debug.MasteryTesting then
-		warn("[CurrencyManager] setMasteryLevel is only available in testing mode")
+		Logger.warn("CurrencyManager", "setMasteryLevel is only available in testing mode")
 		return false
 	end
 	
@@ -1305,14 +1285,14 @@ function CurrencyManager:setMasteryLevel(player: Player, classId: string, level:
 		newLevel = level,
 	})
 	
-	print("[CurrencyManager] TEST: Set", player.Name, classId, "mastery to level", level)
+	Logger.debug("CurrencyManager", "TEST: Set", player.Name, classId, "mastery to level", level)
 	return true
 end
 
 -- Set all mastery levels to same level (testing only)
 function CurrencyManager:setAllMasteryLevels(player: Player, level: number)
 	if not Config.Debug or not Config.Debug.MasteryTesting then
-		warn("[CurrencyManager] setAllMasteryLevels is only available in testing mode")
+		Logger.warn("CurrencyManager", "setAllMasteryLevels is only available in testing mode")
 		return false
 	end
 	

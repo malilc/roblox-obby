@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -318,9 +319,9 @@ function ItemTestingUI:giveItem(itemId: string)
 		local giveItemRemote = remotes:FindFirstChild("GiveTestItem")
 		if giveItemRemote then
 			giveItemRemote:FireServer(itemId)
-			print("[ItemTestingUI] Requested item:", itemId)
+			Logger.debug("ItemTestingUI", "Requested item:", itemId)
 		else
-			warn("[ItemTestingUI] GiveTestItem remote not found!")
+			Logger.warn("ItemTestingUI", "GiveTestItem remote not found!")
 		end
 	end
 end
@@ -331,9 +332,9 @@ function ItemTestingUI:clearItems()
 		local clearRemote = remotes:FindFirstChild("ClearTestItems")
 		if clearRemote then
 			clearRemote:FireServer()
-			print("[ItemTestingUI] Cleared all items")
+			Logger.debug("ItemTestingUI", "Cleared all items")
 		else
-			warn("[ItemTestingUI] ClearTestItems remote not found!")
+			Logger.warn("ItemTestingUI", "ClearTestItems remote not found!")
 		end
 	end
 end
@@ -344,9 +345,9 @@ function ItemTestingUI:spawnDummy()
 		local spawnRemote = remotes:FindFirstChild("SpawnTestDummy")
 		if spawnRemote then
 			spawnRemote:FireServer()
-			print("[ItemTestingUI] Spawning test dummy...")
+			Logger.debug("ItemTestingUI", "Spawning test dummy...")
 		else
-			warn("[ItemTestingUI] SpawnTestDummy remote not found!")
+			Logger.warn("ItemTestingUI", "SpawnTestDummy remote not found!")
 		end
 	end
 end
@@ -357,9 +358,9 @@ function ItemTestingUI:removeDummies()
 		local removeRemote = remotes:FindFirstChild("RemoveTestDummies")
 		if removeRemote then
 			removeRemote:FireServer()
-			print("[ItemTestingUI] Removing all test dummies...")
+			Logger.debug("ItemTestingUI", "Removing all test dummies...")
 		else
-			warn("[ItemTestingUI] RemoveTestDummies remote not found!")
+			Logger.warn("ItemTestingUI", "RemoveTestDummies remote not found!")
 		end
 	end
 end

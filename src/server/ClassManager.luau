@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local ClassManager = {}
 ClassManager.__index = ClassManager
@@ -160,7 +161,7 @@ function ClassManager:applySelectedClass(player: Player, classId: string, action
 		self:applyClassStats(player, player.Character)
 	end
 
-	print("[ClassManager]", player.Name, "changed class from", oldClass, "to", classId)
+	Logger.debug("ClassManager", player.Name, "changed class from", oldClass, "to", classId)
 
 	self:sendClassUpdate(player, action)
 end
@@ -184,7 +185,7 @@ function ClassManager:setPlayerClass(player: Player, classId: string)
 	end
 
 	if not ClassTypes.getClass(classId) then
-		warn("[ClassManager] Invalid class:", classId)
+		Logger.warn("ClassManager", "Invalid class:", classId)
 		self:sendClassError(player, classId, "INVALID_CLASS")
 		return
 	end
@@ -288,8 +289,8 @@ function ClassManager:applyClassStats(player: Player, character: Model)
 		self.currencyManager:applyActiveTrailToCharacter(player, character)
 	end
 
-	print("[ClassManager] Applied", data.classId, "stats to", player.Name)
-	print("  WalkSpeed:", walkSpeed, "JumpPower:", jumpPower)
+	Logger.debug("ClassManager", "Applied", data.classId, "stats to", player.Name)
+	Logger.debug("ClassManager", "WalkSpeed:", walkSpeed, "JumpPower:", jumpPower)
 end
 
 -- Get player's class

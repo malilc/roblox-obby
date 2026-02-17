@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local ItemManager = {}
 ItemManager.__index = ItemManager
@@ -64,7 +65,7 @@ function ItemManager:setupTestingRemotes()
 	local removeDummies = remotes:FindFirstChild("RemoveTestDummies")
 
 	if not (giveTestItem and clearTestItems and spawnDummy and removeDummies) then
-		warn("[ItemManager] Testing remotes not found in Rojo tree")
+		Logger.warn("ItemManager", "Testing remotes not found in Rojo tree")
 		return
 	end
 
@@ -84,7 +85,7 @@ function ItemManager:setupTestingRemotes()
 		self:removeTestDummies()
 	end)
 
-	print("[ItemManager] Testing remotes initialized")
+	Logger.info("ItemManager", "Testing remotes initialized")
 end
 
 -- Give a specific item for testing
@@ -97,7 +98,7 @@ function ItemManager:giveTestItem(player: Player, itemId: string)
 	
 	local itemDef = ItemTypes.getItem(itemId)
 	if not itemDef then
-		warn("[ItemManager] Invalid item ID for testing:", itemId)
+		Logger.warn("ItemManager", "Invalid item ID for testing:", itemId)
 		return
 	end
 	
@@ -106,7 +107,7 @@ function ItemManager:giveTestItem(player: Player, itemId: string)
 	data.itemSlots[slotIndex] = itemId
 	
 	self:sendItemUpdate(player)
-	print("[ItemManager] Test item given to", player.Name, ":", itemDef.name, "in slot", slotIndex)
+	Logger.debug("ItemManager", "Test item given to", player.Name, ":", itemDef.name, "in slot", slotIndex)
 end
 
 -- Clear all items for testing
@@ -127,7 +128,7 @@ function ItemManager:clearTestItems(player: Player)
 		self:removeSlowEffect(player)
 		
 		self:sendItemUpdate(player)
-		print("[ItemManager] Test items cleared for", player.Name)
+		Logger.debug("ItemManager", "Test items cleared for", player.Name)
 	end
 end
 
@@ -245,7 +246,7 @@ function ItemManager:spawnTestDummy(player: Player)
 	-- Register dummy as a "fake player" for item targeting
 	self:registerDummy(dummy)
 	
-	print("[ItemManager] Test dummy spawned for", player.Name)
+	Logger.debug("ItemManager", "Test dummy spawned for", player.Name)
 end
 
 -- Register dummy for item targeting
@@ -284,7 +285,7 @@ function ItemManager:removeTestDummies()
 		self.testDummies = {}
 	end
 	
-	print("[ItemManager] All test dummies removed")
+	Logger.debug("ItemManager", "All test dummies removed")
 end
 
 -- Get all targetable entities (players + dummies)
@@ -403,7 +404,7 @@ function ItemManager:giveRandomItem(player: Player)
 	-- Find first empty slot
 	local emptySlot = self:getFirstEmptySlot(player)
 	if not emptySlot then
-		print("[ItemManager]", player.Name, "inventory full! Both slots occupied.")
+		Logger.debug("ItemManager", player.Name, "inventory full! Both slots occupied.")
 		return
 	end
 	
@@ -429,7 +430,7 @@ function ItemManager:giveRandomItem(player: Player)
 	local item = ItemTypes.getWeightedRandomItem(playerRank, totalPlayers)
 	data.itemSlots[emptySlot] = item.id
 	
-	print("[ItemManager]", player.Name, "got item:", item.name, "in slot", emptySlot, "(Rank:", playerRank, "/", totalPlayers, ")")
+	Logger.debug("ItemManager", player.Name, "got item:", item.name, "in slot", emptySlot, "(Rank:", playerRank, "/", totalPlayers, ")")
 	
 	self:sendItemUpdate(player)
 end
@@ -438,7 +439,7 @@ end
 function ItemManager:useItem(player: Player, slotIndex: number)
 	local data = self.playerItems[player]
 	if not data or not data.itemSlots then
-		print("[ItemManager]", player.Name, "has no item data")
+		Logger.debug("ItemManager", player.Name, "has no item data")
 		return
 	end
 	
@@ -450,7 +451,7 @@ function ItemManager:useItem(player: Player, slotIndex: number)
 	
 	local itemId = data.itemSlots[slotIndex]
 	if not itemId then
-		print("[ItemManager]", player.Name, "has no item in slot", slotIndex)
+		Logger.debug("ItemManager", player.Name, "has no item in slot", slotIndex)
 		return
 	end
 	
@@ -460,7 +461,7 @@ function ItemManager:useItem(player: Player, slotIndex: number)
 	-- Check cooldown
 	local now = os.clock()
 	if now - data.lastUseTime < itemDef.cooldown then
-		print("[ItemManager]", player.Name, "item on cooldown")
+		Logger.debug("ItemManager", player.Name, "item on cooldown")
 		return
 	end
 	
@@ -472,7 +473,7 @@ function ItemManager:useItem(player: Player, slotIndex: number)
 		data.itemSlots[slotIndex] = nil
 		data.lastUseTime = now
 		
-		print("[ItemManager]", player.Name, "used item:", itemDef.name, "from slot", slotIndex)
+		Logger.debug("ItemManager", player.Name, "used item:", itemDef.name, "from slot", slotIndex)
 		self:sendItemUpdate(player)
 	end
 end
@@ -658,9 +659,9 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	
 	if targetHRP then
 		local targetName = targetModel and targetModel.Name or "Unknown"
-		print("[ItemManager] Missile locked on target:", targetName)
+		Logger.debug("ItemManager", "Missile locked on target:", targetName)
 	else
-		print("[ItemManager] Missile fired without target (straight shot)")
+		Logger.debug("ItemManager", "Missile fired without target (straight shot)")
 	end
 	
 	task.spawn(function()
@@ -736,7 +737,7 @@ function ItemManager:checkMissileHit(owner: Player, missile: Part): (Player | Mo
 							data.shieldExpiry = nil
 							self:removeShieldVisual(player)
 							self:sendItemUpdate(player)
-							print("[ItemManager]", player.Name, "'s shield blocked missile!")
+							Logger.debug("ItemManager", player.Name, "'s shield blocked missile!")
 							return nil -- Shield blocked
 						end
 						return player
@@ -759,7 +760,7 @@ function ItemManager:checkMissileHit(owner: Player, missile: Part): (Player | Mo
 					if data and data.hasShield then
 						data.hasShield = false
 						data.shieldExpiry = nil
-						print("[ItemManager] Dummy's shield blocked missile!")
+						Logger.debug("ItemManager", "Dummy's shield blocked missile!")
 						return nil -- Shield blocked
 					end
 					return dummy
@@ -878,7 +879,7 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 		
 		-- Handle dummy slip
 		if isDummy then
-			print("[ItemManager] Dummy", character.Name, "slipped on banana!")
+			Logger.debug("ItemManager", "Dummy", character.Name, "slipped on banana!")
 			self:applyDummySlip(character, itemDef)
 			-- Destroy banana
 			if banana and banana.Parent then
@@ -894,7 +895,7 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 			data.shieldExpiry = nil
 			self:removeShieldVisual(hitPlayer)
 			self:sendItemUpdate(hitPlayer)
-			print("[ItemManager]", hitPlayer.Name, "'s shield blocked banana!")
+			Logger.debug("ItemManager", hitPlayer.Name, "'s shield blocked banana!")
 		else
 			self:applySlip(hitPlayer, itemDef)
 		end
@@ -913,7 +914,7 @@ end
 function ItemManager:applySlip(player: Player, itemDef)
 	-- Check for Tank Iron Will (immune to stuns)
 	if self:checkIronWillImmunity(player) then
-		print("[ItemManager]", player.Name, "ignored slip due to Iron Will!")
+		Logger.debug("ItemManager", player.Name, "ignored slip due to Iron Will!")
 		return
 	end
 	
@@ -928,7 +929,7 @@ function ItemManager:applySlip(player: Player, itemDef)
 	
 	local slipDuration = itemDef.slipDuration or 1.5
 	
-	print("[ItemManager]", player.Name, "slipped on banana!")
+	Logger.debug("ItemManager", player.Name, "slipped on banana!")
 	
 	-- Save original values
 	local originalWalkSpeed = humanoid.WalkSpeed
@@ -1106,7 +1107,7 @@ function ItemManager:useShield(player: Player, itemDef): boolean
 		end
 	end
 	
-	print("[ItemManager]", player.Name, "activated shield!")
+	Logger.debug("ItemManager", player.Name, "activated shield!")
 	return true
 end
 
@@ -1400,7 +1401,7 @@ function ItemManager:useSpeedBoost(player: Player, itemDef): boolean
 	data.originalWalkSpeed = originalWalkSpeed
 	data.originalJumpPower = originalJumpPower
 	
-	print("[ItemManager]", player.Name, "activated speed boost!")
+	Logger.debug("ItemManager", player.Name, "activated speed boost!")
 	return true
 end
 
@@ -1642,7 +1643,7 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 	
 	-- No valid target ahead
 	if not targetHRP then
-		print("[ItemManager]", player.Name, "tried to swap but no one is ahead!")
+		Logger.debug("ItemManager", player.Name, "tried to swap but no one is ahead!")
 		return false
 	end
 	
@@ -1673,7 +1674,7 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 			self:createSwapFlash(myCFrame.Position)
 			
 			local targetName = targetPlayer and targetPlayer.Name or targetChar.Name
-			print("[ItemManager]", player.Name, "swapped positions with", targetName, "(ahead, distance:", math.floor(closestDistance), "studs)")
+			Logger.debug("ItemManager", player.Name, "swapped positions with", targetName, "(ahead, distance:", math.floor(closestDistance), "studs)")
 		end
 		
 		if chargeSound.Parent then chargeSound:Destroy() end
@@ -1684,7 +1685,7 @@ end
 
 -- Lightning: ทำให้ทุกคนช้าลง
 function ItemManager:useLightning(player: Player, itemDef): boolean
-	print("[ItemManager]", player.Name, "used Lightning!")
+	Logger.debug("ItemManager", player.Name, "used Lightning!")
 	
 	-- Thunder sound (global)
 	local thunderSound = Instance.new("Sound")
@@ -1710,7 +1711,7 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 					data.shieldExpiry = nil
 					self:removeShieldVisual(otherPlayer)
 					self:sendItemUpdate(otherPlayer)
-					print("[ItemManager]", otherPlayer.Name, "'s shield blocked lightning!")
+					Logger.debug("ItemManager", otherPlayer.Name, "'s shield blocked lightning!")
 				else
 					self:applyLightningSlow(otherPlayer, itemDef)
 					
@@ -1822,7 +1823,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		end)
 	end
 	
-	print("[ItemManager]", player.Name, "struck by lightning!")
+	Logger.debug("ItemManager", player.Name, "struck by lightning!")
 end
 
 -- Apply stun to test dummy
@@ -1872,7 +1873,7 @@ function ItemManager:applyDummyStun(dummy: Model, duration: number)
 		if zapSound.Parent then zapSound:Destroy() end
 	end)
 	
-	print("[ItemManager] Test dummy struck by lightning!")
+	Logger.debug("ItemManager", "Test dummy struck by lightning!")
 end
 
 -- Apply slip effect to dummy (similar to player slip)
@@ -2000,7 +2001,7 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	if typeof(target) == "Instance" and target:IsA("Player") then
 		-- Check for Tank Iron Will (immune to stuns)
 		if self:checkIronWillImmunity(target) then
-			print("[ItemManager]", target.Name, "ignored stun due to Iron Will!")
+			Logger.debug("ItemManager", target.Name, "ignored stun due to Iron Will!")
 			return
 		end
 		
@@ -2020,7 +2021,7 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	local humanoid = character:FindFirstChild("Humanoid")
 	if not humanoid then return end
 	
-	print("[ItemManager]", targetName, "hit by missile! Falling...")
+	Logger.debug("ItemManager", targetName, "hit by missile! Falling...")
 	
 	-- Save original values
 	local originalWalkSpeed = humanoid.WalkSpeed
@@ -2271,7 +2272,7 @@ function ItemManager:applyStun(target: Player | Model, duration: number)
 		end
 	end)
 	
-	print("[ItemManager]", targetName, "stunned for", duration, "seconds")
+	Logger.debug("ItemManager", targetName, "stunned for", duration, "seconds")
 end
 
 -- ========== VISUAL EFFECTS ==========

@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local MobileInputUI = {}
 MobileInputUI.__index = MobileInputUI
@@ -24,14 +25,14 @@ function MobileInputUI.new(parent: ScreenGui, dependencies: {
 	self.isTouchDevice = UserInputService.TouchEnabled
 
 	if not self.isTouchDevice then
-		print("[MobileInputUI] Not a touch device, skipping")
+		Logger.debug("MobileInputUI", "Not a touch device, skipping")
 		return self
 	end
 
 	self:createUI()
 	self:startUpdateLoop()
 
-	print("[MobileInputUI] Touch buttons initialized")
+	Logger.info("MobileInputUI", "Touch buttons initialized")
 	return self
 end
 

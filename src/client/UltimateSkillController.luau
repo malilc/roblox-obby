@@ -8,6 +8,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
+local Logger = require(ReplicatedStorage.Shared.Logger)
+
 local Config = require(ReplicatedStorage.Shared.Config)
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 
@@ -40,7 +42,7 @@ function UltimateSkillController.new()
 	-- Start update loop
 	self:startUpdateLoop()
 	
-	print("[UltimateSkillController] Initialized")
+	Logger.info("UltimateSkill", "Initialized")
 	return self
 end
 
@@ -78,7 +80,7 @@ function UltimateSkillController:onClassChanged(classId: string)
 	self:resetSkillState()
 	self:checkUltimateUnlock()
 	
-	print("[UltimateSkillController] Class changed to:", classId)
+	Logger.debug("UltimateSkill", "Class changed to:", classId)
 end
 
 function UltimateSkillController:resetSkillState()
@@ -107,7 +109,7 @@ function UltimateSkillController:checkUltimateUnlock()
 	local classMastery = self.classMastery
 	
 	if not classMastery then
-		print("[UltimateSkillController] No classMastery data available yet")
+		Logger.debug("UltimateSkill", "No classMastery data available yet")
 		return
 	end
 	
@@ -118,7 +120,7 @@ function UltimateSkillController:checkUltimateUnlock()
 		local level = classMastery[self.currentClass].level
 		self.ultimateUnlocked = level >= unlockLevel
 		
-		print("[UltimateSkillController] Checking ultimate unlock for", self.currentClass, "- Level:", level, "- Unlocked:", self.ultimateUnlocked)
+		Logger.debug("UltimateSkill", "Checking ultimate unlock for", self.currentClass, "- Level:", level, "- Unlocked:", self.ultimateUnlocked)
 		
 		if self.ultimateUnlocked then
 			self:setupClassUltimate()
@@ -130,7 +132,7 @@ function UltimateSkillController:checkUltimateUnlock()
 		if mastery.level >= unlockLevel then
 			local skillConfig = Config.Mastery and Config.Mastery.UltimateSkills and Config.Mastery.UltimateSkills[classId]
 			if skillConfig then
-				print("[UltimateSkillController] ⚡", classId, "has ultimate unlocked:", skillConfig.name)
+				Logger.debug("UltimateSkill", classId, "has ultimate unlocked:", skillConfig.name)
 			end
 		end
 	end
@@ -147,11 +149,11 @@ function UltimateSkillController:setupClassUltimate()
 	
 	if skillConfig.id == "DoubleJump" then
 		self.maxAirJumps = skillConfig.maxAirJumps or 1
-		print("[UltimateSkillController] Double Jump enabled - max air jumps:", self.maxAirJumps)
+		Logger.debug("UltimateSkill", "Double Jump enabled - max air jumps:", self.maxAirJumps)
 	elseif skillConfig.id == "Sprint" then
-		print("[UltimateSkillController] Sprint enabled - press Shift")
+		Logger.debug("UltimateSkill", "Sprint enabled - press Shift")
 	elseif skillConfig.id == "IronWill" then
-		print("[UltimateSkillController] Iron Will enabled - stun immunity")
+		Logger.debug("UltimateSkill", "Iron Will enabled - stun immunity")
 	end
 end
 
@@ -265,7 +267,7 @@ function UltimateSkillController:activateSprint(skillConfig: {[string]: any})
 	-- Visual feedback
 	self:showSprintEffect(character, true)
 	
-	print("[UltimateSkillController] Sprint activated! Speed:", sprintSpeed)
+	Logger.debug("UltimateSkill", "Sprint activated! Speed:", sprintSpeed)
 end
 
 function UltimateSkillController:endSprint()
@@ -285,7 +287,7 @@ function UltimateSkillController:endSprint()
 	-- Remove visual effect
 	self:showSprintEffect(character, false)
 	
-	print("[UltimateSkillController] Sprint ended. Cooldown:", self.sprintCooldown)
+	Logger.debug("UltimateSkill", "Sprint ended. Cooldown:", self.sprintCooldown)
 end
 
 function UltimateSkillController:showSprintEffect(character: Model, enabled: boolean)
@@ -378,7 +380,7 @@ function UltimateSkillController:performAirJump()
 	-- Visual feedback
 	self:showAirJumpEffect(humanoidRootPart)
 	
-	print("[UltimateSkillController] Air jump performed! Count:", self.airJumpCount)
+	Logger.debug("UltimateSkill", "Air jump performed! Count:", self.airJumpCount)
 end
 
 function UltimateSkillController:showAirJumpEffect(humanoidRootPart: Part)

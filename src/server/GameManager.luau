@@ -10,6 +10,7 @@ local CurrencyManager = require(script.Parent.CurrencyManager)
 local MatchManager = require(script.Parent.MatchManager)
 local ClassManager = require(script.Parent.ClassManager)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local GameManager = {}
 GameManager.__index = GameManager
@@ -58,7 +59,11 @@ function GameManager.new()
 	-- Player event connections (for cleanup on leave)
 	self.playerConnections = {} :: {[Player]: {RBXScriptConnection}}
 	self.playerDiedConnections = {} :: {[Player]: RBXScriptConnection?}
-	
+
+	-- Map touch connections (for cleanup on map regenerate)
+	self.mapConnections = {} :: {RBXScriptConnection}
+	self.matchConnections = {} :: {[string]: {RBXScriptConnection}}
+
 	-- Setup
 	self:setupRemotes()
 	self:setupPlayerEvents()
@@ -154,7 +159,7 @@ function GameManager:onPlayerAdded(player: Player)
 		self:onCharacterAdded(player, player.Character)
 	end
 
-	print("[GameManager] Player joined:", player.Name)
+	Logger.debug("GameManager", "Player joined:", player.Name)
 end
 
 -- Player removing
@@ -182,7 +187,7 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.matchManager:removePlayer(player)
 	self.classManager:removePlayer(player)
 
-	print("[GameManager] Player left:", player.Name)
+	Logger.debug("GameManager", "Player left:", player.Name)
 end
 
 -- Character added
@@ -352,7 +357,7 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 		isStart = (stageIndex == 1),
 	})
 	
-	print("[GameManager]", player.Name, if stageIndex == 1 then "started stage 1" else "completed stage " .. (stageIndex - 1))
+	Logger.debug("GameManager", player.Name, if stageIndex == 1 then "started stage 1" else "completed stage " .. (stageIndex - 1))
 end
 
 -- On player finished
@@ -441,14 +446,15 @@ function GameManager:onPlayerFinished(player: Player)
 		},
 	})
 
-	print("[GameManager]", player.Name, "FINISHED THE OBBY!")
+	Logger.debug("GameManager", player.Name, "FINISHED THE OBBY!")
 
 	if canSpectate then
 		-- Match still racing: don't auto-teleport, let client choose spectate or leave
-		print("[GameManager]", player.Name, "can spectate - waiting for client decision")
+		Logger.debug("GameManager", player.Name, "can spectate - waiting for client decision")
 	else
 		-- Solo or match already finished: auto-teleport after 5 seconds
 		task.delay(5, function()
+			if not player.Parent then return end -- Player left the game
 			if self.playerStates[player] == "Finished" then
 				self:teleportToLobby(player)
 				task.delay(0.5, function()
@@ -486,7 +492,7 @@ function GameManager:onPlayerSpectate(player: Player)
 		end
 	end
 
-	print("[GameManager]", player.Name, "started spectating")
+	Logger.debug("GameManager", player.Name, "started spectating")
 end
 
 function GameManager:onSpectatorLeave(player: Player)
@@ -520,7 +526,7 @@ function GameManager:onSpectatorLeave(player: Player)
 		self.teleportingToLobby[player] = nil
 	end)
 
-	print("[GameManager]", player.Name, "left spectator mode")
+	Logger.debug("GameManager", player.Name, "left spectator mode")
 end
 
 -- Teleport กลับจุดเริ่มต้น (Stage 1)
@@ -556,7 +562,7 @@ function GameManager:teleportToStart(player: Player)
 		end
 	end
 	
-	print("[GameManager]", player.Name, "teleported back to start!")
+	Logger.debug("GameManager", player.Name, "teleported back to start!")
 end
 
 -- On player died
@@ -564,7 +570,7 @@ function GameManager:onPlayerDied(player: Player)
 	local state = self.playerStates[player]
 	if state ~= "Playing" then return end
 	
-	print("[GameManager]", player.Name, "died")
+	Logger.debug("GameManager", player.Name, "died")
 	
 	-- Will respawn at checkpoint via respawnPlayer when character is added again
 end
@@ -599,7 +605,7 @@ function GameManager:respawnPlayer(player: Player)
 		-- Teleport และหันหน้าไปทาง +X (ไปข้างหน้าในด่าน)
 		humanoidRootPart.CFrame = CFrame.lookAt(checkpoint, checkpoint + Vector3.new(1, 0, 0))
 		
-		print("[GameManager] Respawned", player.Name, "at checkpoint")
+		Logger.debug("GameManager", "Respawned", player.Name, "at checkpoint")
 	end
 	
 	-- Notify client
@@ -704,14 +710,14 @@ end
 function GameManager:onPlayerEnterSelectionZone(player: Player)
 	-- Show stage selection UI
 	self.showStageSelectionRemote:FireClient(player)
-	print("[GameManager]", player.Name, "entered selection zone")
+	Logger.debug("GameManager", player.Name, "entered selection zone")
 end
 
 -- Player left selection zone
 function GameManager:onPlayerLeaveSelectionZone(player: Player)
 	-- Hide stage selection UI
 	self.hideStageSelectionRemote:FireClient(player)
-	print("[GameManager]", player.Name, "left selection zone")
+	Logger.debug("GameManager", player.Name, "left selection zone")
 end
 
 -- Validate stage order from client input
@@ -738,7 +744,7 @@ function GameManager:onStageSelectionConfirmed(player: Player, data: any)
 
 	-- Validate client input
 	if type(data) ~= "table" then
-		warn("[GameManager] Invalid data from", player.Name)
+		Logger.warn("GameManager", "Invalid data from", player.Name)
 		return
 	end
 
@@ -751,7 +757,7 @@ function GameManager:onStageSelectionConfirmed(player: Player, data: any)
 		-- Custom order - validate
 		local validated = self:validateStageOrder(data.stageOrder)
 		if not validated then
-			warn("[GameManager] Invalid stageOrder from", player.Name)
+			Logger.warn("GameManager", "Invalid stageOrder from", player.Name)
 			return
 		end
 		stageOrder = validated
@@ -875,7 +881,7 @@ function GameManager:startGameForPlayer(player: Player)
 		end
 	end
 	
-	print("[GameManager]", player.Name, "started the obby!")
+	Logger.debug("GameManager", player.Name, "started the obby!")
 end
 
 -- Teleport to lobby
@@ -895,7 +901,7 @@ function GameManager:teleportToLobby(player: Player)
 
 	-- Use Config position directly for more reliable teleport
 	local targetPosition = Config.Lobby.SpawnPosition
-	print("[GameManager] Teleporting", player.Name, "to lobby at:", targetPosition)
+	Logger.debug("GameManager", "Teleporting", player.Name, "to lobby at:", targetPosition)
 
 	local character = player.Character
 	if character then
@@ -907,15 +913,15 @@ function GameManager:teleportToLobby(player: Player)
 
 			-- Teleport to Config position
 			humanoidRootPart.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
-			print("[GameManager] Teleport successful for", player.Name)
+			Logger.debug("GameManager", "Teleport successful for", player.Name)
 		else
-			warn("[GameManager] Could not find HumanoidRootPart for", player.Name)
+			Logger.warn("GameManager", "Could not find HumanoidRootPart for", player.Name)
 		end
 	else
-		warn("[GameManager] Could not find character for", player.Name)
+		Logger.warn("GameManager", "Could not find character for", player.Name)
 	end
 
-	print("[GameManager]", player.Name, "returned to lobby")
+	Logger.debug("GameManager", player.Name, "returned to lobby")
 end
 
 -- Generate new map
@@ -932,8 +938,27 @@ function GameManager:generateNewMap()
 	local pickups = self.mapManager:getAllItemPickups()
 	self.itemManager:setupItemPickups(pickups)
 	
-	print("[GameManager] New map generated!")
-	print("[GameManager] Stage order:", table.concat(self.mapManager.stageOrder, ", "))
+	Logger.info("GameManager", "New map generated!")
+	Logger.info("GameManager", "Stage order:", table.concat(self.mapManager.stageOrder, ", "))
+end
+
+-- Disconnect all map touch connections (called before map regenerate)
+function GameManager:disconnectMapConnections()
+	for _, conn in ipairs(self.mapConnections) do
+		conn:Disconnect()
+	end
+	self.mapConnections = {}
+end
+
+-- Disconnect match-specific touch connections
+function GameManager:disconnectMatchConnections(matchId: string)
+	local conns = self.matchConnections[matchId]
+	if conns then
+		for _, conn in ipairs(conns) do
+			conn:Disconnect()
+		end
+		self.matchConnections[matchId] = nil
+	end
 end
 
 -- Setup finish line touch detection
@@ -947,7 +972,7 @@ function GameManager:setupFinishLine()
 		local endPart = lastStage:FindFirstChild("EndPart")
 		if endPart then
 			-- เพิ่ม touch detection
-			endPart.Touched:Connect(function(hit)
+			local conn = endPart.Touched:Connect(function(hit)
 				local humanoid = hit.Parent:FindFirstChild("Humanoid")
 				if humanoid then
 					local player = Players:GetPlayerFromCharacter(hit.Parent)
@@ -956,12 +981,13 @@ function GameManager:setupFinishLine()
 					end
 				end
 			end)
-			
+			table.insert(self.mapConnections, conn)
+
 			-- เปลี่ยนสี EndPart ให้เด่นชัด (เส้นชัย)
 			endPart.Color = Color3.fromRGB(0, 255, 100)
 			endPart.Material = Enum.Material.Neon
-			
-			print("[GameManager] Finish line setup at:", endPart.Position)
+
+			Logger.info("GameManager", "Finish line setup at:", endPart.Position)
 		end
 	end
 end
@@ -971,7 +997,7 @@ function GameManager:setupKillParts()
 	local killParts = self.mapManager:getAllKillParts()
 	
 	for _, part in ipairs(killParts) do
-		part.Touched:Connect(function(hit)
+		local conn = part.Touched:Connect(function(hit)
 			local humanoid = hit.Parent:FindFirstChild("Humanoid")
 			if humanoid then
 				local player = Players:GetPlayerFromCharacter(hit.Parent)
@@ -980,18 +1006,22 @@ function GameManager:setupKillParts()
 				end
 			end
 		end)
+		table.insert(self.mapConnections, conn)
 	end
 end
 
 -- Regenerate map (for admin or periodic reset)
 function GameManager:regenerateMap()
+	-- Disconnect old map connections before regenerating
+	self:disconnectMapConnections()
+
 	-- Reset all playing players to lobby
 	for player, state in pairs(self.playerStates) do
 		if state == "Playing" then
 			self:teleportToLobby(player)
 		end
 	end
-	
+
 	-- Generate new map
 	self:generateNewMap()
 end
@@ -1001,7 +1031,7 @@ function GameManager:addCoinCollected(player: Player)
 	local roundStats = self.playerRoundStats[player]
 	if roundStats then
 		roundStats.coinsCollected = roundStats.coinsCollected + 1
-		print("[GameManager]", player.Name, "collected coin - Total:", roundStats.coinsCollected)
+		Logger.debug("GameManager", player.Name, "collected coin - Total:", roundStats.coinsCollected)
 	end
 end
 
@@ -1019,7 +1049,10 @@ function GameManager:setupFinishLineForMatch(matchId: string)
 		local endPart = lastStage:FindFirstChild("EndPart")
 		if endPart then
 			-- เพิ่ม touch detection
-			endPart.Touched:Connect(function(hit)
+			if not self.matchConnections[matchId] then
+				self.matchConnections[matchId] = {}
+			end
+			local conn = endPart.Touched:Connect(function(hit)
 				local humanoid = hit.Parent:FindFirstChild("Humanoid")
 				if humanoid then
 					local player = Players:GetPlayerFromCharacter(hit.Parent)
@@ -1029,12 +1062,13 @@ function GameManager:setupFinishLineForMatch(matchId: string)
 					end
 				end
 			end)
-			
+			table.insert(self.matchConnections[matchId], conn)
+
 			-- เปลี่ยนสี EndPart ให้เด่นชัด (เส้นชัย)
 			endPart.Color = Color3.fromRGB(0, 255, 100)
 			endPart.Material = Enum.Material.Neon
-			
-			print("[GameManager] Finish line setup for match:", matchId, "at:", endPart.Position)
+
+			Logger.info("GameManager", "Finish line setup for match:", matchId, "at:", endPart.Position)
 		end
 	end
 end
@@ -1042,9 +1076,12 @@ end
 -- Setup kill parts for a specific match
 function GameManager:setupKillPartsForMatch(matchId: string)
 	local killParts = self.mapManager:getAllKillPartsForMatch(matchId)
-	
+	if not self.matchConnections[matchId] then
+		self.matchConnections[matchId] = {}
+	end
+
 	for _, part in ipairs(killParts) do
-		part.Touched:Connect(function(hit)
+		local conn = part.Touched:Connect(function(hit)
 			local humanoid = hit.Parent:FindFirstChild("Humanoid")
 			if humanoid then
 				local player = Players:GetPlayerFromCharacter(hit.Parent)
@@ -1054,6 +1091,7 @@ function GameManager:setupKillPartsForMatch(matchId: string)
 				end
 			end
 		end)
+		table.insert(self.matchConnections[matchId], conn)
 	end
 end
 

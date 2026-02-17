@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local StageTemplates = require(script.Parent.StageTemplates)
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local MapManager = {}
 MapManager.__index = MapManager
@@ -79,7 +80,7 @@ function MapManager:generateMapWithOrder(stageOrder: {number})
 	
 	-- ใช้ลำดับที่กำหนด
 	self.stageOrder = stageOrder
-	print("[MapManager] Stage order:", table.concat(self.stageOrder, ", "))
+	Logger.info("MapManager", "Stage order:", table.concat(self.stageOrder, ", "))
 	
 	local stageCreators = StageTemplates.getStageCreators()
 	local currentPosition = Config.Stages.StartOffset
@@ -111,7 +112,7 @@ function MapManager:generateMapWithOrder(stageOrder: {number})
 	-- Start animations
 	self:startAnimations()
 	
-	print("[MapManager] Generated " .. #self.currentStages .. " stages")
+	Logger.info("MapManager", "Generated", #self.currentStages, "stages")
 end
 
 -- ลงทะเบียน parts ที่ต้องมี animation
@@ -439,7 +440,7 @@ function MapManager:generateMapForMatch(matchId: string, stageOrder: {number}): 
 		folder = matchFolder,
 	}
 	
-	print("[MapManager] Generating map for match:", matchId, "- Stage order:", table.concat(stageOrder, ", "))
+	Logger.info("MapManager", "Generating map for match:", matchId, "- Stage order:", table.concat(stageOrder, ", "))
 	
 	local stageCreators = StageTemplates.getStageCreators()
 	local currentPosition = Config.Stages.StartOffset
@@ -474,7 +475,7 @@ function MapManager:generateMapForMatch(matchId: string, stageOrder: {number}): 
 	
 	self.matchMaps[matchId] = matchData
 	
-	print("[MapManager] Generated", #matchData.stages, "stages for match:", matchId)
+	Logger.info("MapManager", "Generated", #matchData.stages, "stages for match:", matchId)
 	
 	return matchFolder
 end
@@ -663,7 +664,7 @@ function MapManager:clearMapForMatch(matchId: string)
 	end
 	
 	self.matchMaps[matchId] = nil
-	print("[MapManager] Cleared map for match:", matchId)
+	Logger.info("MapManager", "Cleared map for match:", matchId)
 end
 
 -- Get match map data

@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local MatchManager = {}
 MatchManager.__index = MatchManager
@@ -88,7 +89,7 @@ end
 function MatchManager:createRoom(host: Player, settings: {stageOrder: {number}?}?): string?
 	-- Check if player is already in a room
 	if self.playerRooms[host] then
-		warn("[MatchManager]", host.Name, "is already in a room")
+		Logger.warn("MatchManager", host.Name, "is already in a room")
 		return nil
 	end
 	
@@ -118,7 +119,7 @@ function MatchManager:createRoom(host: Player, settings: {stageOrder: {number}?}
 	self.rooms[roomId] = room
 	self.playerRooms[host] = roomId
 	
-	print("[MatchManager] Room created:", roomId, "by", host.Name)
+	Logger.info("MatchManager", "Room created:", roomId, "by", host.Name)
 	
 	-- Notify host
 	self:broadcastRoomUpdate(room)
@@ -135,23 +136,23 @@ end
 function MatchManager:joinRoom(player: Player, roomId: string): boolean
 	-- Check if player is already in a room
 	if self.playerRooms[player] then
-		warn("[MatchManager]", player.Name, "is already in a room")
+		Logger.warn("MatchManager", player.Name, "is already in a room")
 		return false
 	end
 	
 	local room = self.rooms[roomId]
 	if not room then
-		warn("[MatchManager] Room not found:", roomId)
+		Logger.warn("MatchManager", "Room not found:", roomId)
 		return false
 	end
 	
 	if room.state ~= "Waiting" then
-		warn("[MatchManager] Room", roomId, "is not accepting players")
+		Logger.warn("MatchManager", "Room", roomId, "is not accepting players")
 		return false
 	end
 	
 	if #room.players >= Config.Match.MaxPlayers then
-		warn("[MatchManager] Room", roomId, "is full")
+		Logger.warn("MatchManager", "Room", roomId, "is full")
 		return false
 	end
 	
@@ -165,7 +166,7 @@ function MatchManager:joinRoom(player: Player, roomId: string): boolean
 		finishTime = nil,
 	}
 	
-	print("[MatchManager]", player.Name, "joined room", roomId)
+	Logger.debug("MatchManager", player.Name, "joined room", roomId)
 	
 	-- Notify all players in room
 	self:broadcastRoomUpdate(room)
@@ -195,7 +196,7 @@ function MatchManager:leaveRoom(player: Player)
 	room.playerProgress[player] = nil
 	self.playerRooms[player] = nil
 	
-	print("[MatchManager]", player.Name, "left room", roomId)
+	Logger.debug("MatchManager", player.Name, "left room", roomId)
 	
 	-- If room is empty or host left, close room
 	if #room.players == 0 or room.host == player then
@@ -217,7 +218,13 @@ function MatchManager:closeRoom(roomId: string)
 	end
 	
 	self.rooms[roomId] = nil
-	print("[MatchManager] Room closed:", roomId)
+
+	-- Clean up match touch connections in GameManager
+	if self.gameManager and self.gameManager.disconnectMatchConnections then
+		self.gameManager:disconnectMatchConnections(roomId)
+	end
+
+	Logger.info("MatchManager", "Room closed:", roomId)
 end
 
 -- Start wait timer
@@ -259,7 +266,7 @@ function MatchManager:startMatch(roomId: string)
 	if room.state ~= "Waiting" then return end
 	
 	room.state = "Starting"
-	print("[MatchManager] Starting match in room", roomId, "with", #room.players, "players")
+	Logger.info("MatchManager", "Starting match in room", roomId, "with", #room.players, "players")
 	
 	-- Notify all players
 	for _, player in ipairs(room.players) do
@@ -336,7 +343,7 @@ function MatchManager:sendTimeWarning(room: MatchRoom, secondsLeft: number)
 		})
 	end
 	
-	print("[MatchManager] Time warning:", message)
+	Logger.debug("MatchManager", "Time warning:", message)
 end
 
 -- Broadcast room update to all players
@@ -459,7 +466,7 @@ function MatchManager:playerFinished(player: Player)
 		table.insert(room.finishOrder, player)
 		
 		local position = #room.finishOrder
-		print("[MatchManager]", player.Name, "finished in position", position)
+		Logger.debug("MatchManager", player.Name, "finished in position", position)
 		
 		-- Check if all players finished
 		if #room.finishOrder >= #room.players then
@@ -475,7 +482,7 @@ function MatchManager:endMatch(roomId: string, reason: string)
 	if room.state == "Finished" then return end
 	
 	room.state = "Finished"
-	print("[MatchManager] Match ended:", roomId, "- Reason:", reason)
+	Logger.info("MatchManager", "Match ended:", roomId, "- Reason:", reason)
 	
 	-- Calculate final rankings
 	local rankings = self:calculateRankings(room)
@@ -593,7 +600,7 @@ function MatchManager:handleStageVote(player: Player, stageOrder: {number})
 	-- Store vote
 	room.stageVotes[player] = stageOrder
 	
-	print("[MatchManager]", player.Name, "voted for stages:", table.concat(stageOrder, ", "))
+	Logger.debug("MatchManager", player.Name, "voted for stages:", table.concat(stageOrder, ", "))
 	
 	-- Broadcast vote update to all players
 	self:broadcastStageVoteUpdate(room)

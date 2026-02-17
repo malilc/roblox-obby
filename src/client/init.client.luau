@@ -1,8 +1,9 @@
 -- Roblox Obby Game - Client Entry Point
-print("[Client] Starting Obby Game Client...")
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Logger = require(ReplicatedStorage.Shared.Logger)
+
+Logger.info("Client", "Starting Obby Game Client...")
 
 -- Wait for remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -58,13 +59,13 @@ if Config.Debug and Config.Debug.MasteryTesting then
 		end
 	end)
 	
-	print("[Client] Mastery Testing UI enabled - Press M to toggle")
+	Logger.info("Client", "Mastery Testing UI enabled - Press M to toggle")
 end
 
 -- Initialize Ultimate Skill Controller (handles Sprint, Double Jump, Iron Will)
 local UltimateSkillController = require(script.UltimateSkillController)
 local ultimateSkillController = UltimateSkillController.new()
-print("[Client] Ultimate Skill Controller initialized")
+Logger.info("Client", "Ultimate Skill Controller initialized")
 
 -- Initialize Mobile Touch Buttons (only shows on touch devices)
 local MobileInputUI = require(script.UI.MobileInputUI)
@@ -73,7 +74,7 @@ local mobileInputUI = MobileInputUI.new(mainUI.screenGui, {
 	ultimateSkillController = ultimateSkillController,
 })
 
-print("[Client] UI and Effects initialized!")
+Logger.info("Client", "UI and Effects initialized!")
 
 -- Show welcome message
 local function showWelcomeMessage()
@@ -152,4 +153,4 @@ LocalPlayer.CharacterAdded:Wait()
 task.wait(1)
 showWelcomeMessage()
 
-print("[Client] Ready to play!")
+Logger.info("Client", "Ready to play!")

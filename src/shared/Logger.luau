@@ -1,7 +1,5 @@
 -- Logger: Centralized logging with configurable levels
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 local Logger = {}
 
 Logger.Level = {
@@ -12,8 +10,21 @@ Logger.Level = {
 	NONE = 5,
 }
 
--- Default: show everything. Set to INFO or higher for production.
+-- Default: show everything. Adjusted below based on Config.Debug.
 Logger.currentLevel = Logger.Level.DEBUG
+
+-- Auto-configure based on Config.Debug.Enabled
+local ok, Config = pcall(function()
+	return require(script.Parent.Config)
+end)
+
+if ok and Config and Config.Debug then
+	if Config.Debug.Enabled then
+		Logger.currentLevel = Logger.Level.DEBUG
+	else
+		Logger.currentLevel = Logger.Level.WARN
+	end
+end
 
 local function formatMessage(tag: string, ...: any): string
 	local parts = { "[" .. tag .. "]" }

@@ -5,6 +5,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local ScoreManager = {}
 ScoreManager.__index = ScoreManager
@@ -64,9 +65,9 @@ function ScoreManager:loadPlayerData(player: Player)
 			playerData.totalScore = data.totalScore or 0
 			playerData.highScore = data.highScore or 0
 		end
-		print("[ScoreManager] Loaded data for", player.Name, "- HighScore:", data.highScore or 0)
+		Logger.debug("ScoreManager", "Loaded data for", player.Name, "- HighScore:", data.highScore or 0)
 	else
-		print("[ScoreManager] No saved data for", player.Name)
+		Logger.debug("ScoreManager", "No saved data for", player.Name)
 	end
 	
 	-- Update client
@@ -92,9 +93,9 @@ function ScoreManager:savePlayerData(player: Player)
 	end)
 	
 	if success then
-		print("[ScoreManager] Saved data for", player.Name)
+		Logger.debug("ScoreManager", "Saved data for", player.Name)
 	else
-		warn("[ScoreManager] Failed to save data for", player.Name, ":", err)
+		Logger.warn("ScoreManager", "Failed to save data for", player.Name, ":", err)
 	end
 end
 
@@ -113,9 +114,9 @@ function ScoreManager:addStageScore(player: Player, stageIndex: number)
 	-- Stage 1 is just starting, no score
 	if stageIndex > 1 then
 		playerData.roundScore = playerData.roundScore + Config.Score.PerStage
-		print("[ScoreManager]", player.Name, "passed stage", stageIndex - 1, "- Score:", playerData.roundScore)
+		Logger.debug("ScoreManager", player.Name, "passed stage", stageIndex - 1, "- Score:", playerData.roundScore)
 	else
-		print("[ScoreManager]", player.Name, "started stage 1")
+		Logger.debug("ScoreManager", player.Name, "started stage 1")
 	end
 	
 	self:sendScoreUpdate(player)
@@ -134,10 +135,10 @@ function ScoreManager:addFinishBonus(player: Player)
 	-- Check high score
 	if playerData.roundScore > playerData.highScore then
 		playerData.highScore = playerData.roundScore
-		print("[ScoreManager]", player.Name, "NEW HIGH SCORE:", playerData.highScore)
+		Logger.debug("ScoreManager", player.Name, "NEW HIGH SCORE:", playerData.highScore)
 	end
 	
-	print("[ScoreManager]", player.Name, "FINISHED! Round Score:", playerData.roundScore, "Total:", playerData.totalScore)
+	Logger.debug("ScoreManager", player.Name, "FINISHED! Round Score:", playerData.roundScore, "Total:", playerData.totalScore)
 	
 	-- Mark for pending save (will be saved in auto-save loop or when leaving)
 	self.pendingSaves[player] = true
