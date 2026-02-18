@@ -194,9 +194,13 @@ local function onCharacterSpawned()
 	local character = LocalPlayer.Character
 	if character and character:FindFirstChild("HumanoidRootPart") then
 		local hrp = character.HumanoidRootPart
+		-- หันตัวละครไปทาง +Z (SelectionZone)
+		local pos = hrp.Position
+		hrp.CFrame = CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
+		-- snap กล้องตาม
 		snapCamera(CFrame.lookAt(
-			hrp.Position + Vector3.new(0, 5, -12),
-			hrp.Position + Vector3.new(0, 0, 5)
+			pos + Vector3.new(0, 5, -12),
+			pos + Vector3.new(0, 0, 5)
 		))
 	end
 end
