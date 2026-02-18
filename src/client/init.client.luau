@@ -148,22 +148,43 @@ local function showWelcomeMessage()
 	end)
 end
 
--- Reset camera to face stage direction when countdown ends (GO!)
+-- Helper: snap camera to a position/orientation then return control to Custom
+local function snapCamera(cframe: CFrame)
+	local camera = workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.CFrame = cframe
+	task.wait()
+	camera.CameraType = Enum.CameraType.Custom
+end
+
+-- Reset camera to face stage direction (+X) when countdown ends (GO!)
 local countdownRemote = Remotes:WaitForChild("CountdownUpdate")
 countdownRemote.OnClientEvent:Connect(function(data)
 	if data.number == 1 then
 		task.delay(1.1, function()
-			local camera = workspace.CurrentCamera
 			local character = LocalPlayer.Character
 			if character and character:FindFirstChild("HumanoidRootPart") then
 				local hrp = character.HumanoidRootPart
-				camera.CameraType = Enum.CameraType.Custom
-				camera.CFrame = CFrame.lookAt(
+				snapCamera(CFrame.lookAt(
 					hrp.Position + Vector3.new(-10, 5, 0),
 					hrp.Position
-				)
+				))
 			end
 		end)
+	end
+end)
+
+-- Reset camera to face SelectionZone (+Z) when returning to lobby
+local returnToLobbyRemote = Remotes:WaitForChild("ReturnToLobby")
+returnToLobbyRemote.OnClientEvent:Connect(function()
+	task.wait(0.1)
+	local character = LocalPlayer.Character
+	if character and character:FindFirstChild("HumanoidRootPart") then
+		local hrp = character.HumanoidRootPart
+		snapCamera(CFrame.lookAt(
+			hrp.Position + Vector3.new(0, 5, -12),
+			hrp.Position + Vector3.new(0, 0, 5)
+		))
 	end
 end)
 

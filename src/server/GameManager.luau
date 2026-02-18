@@ -52,6 +52,7 @@ function GameManager.new()
 	self.hideStageSelectionRemote = ReplicatedStorage.Remotes.HideStageSelection
 	self.confirmStageSelectionRemote = ReplicatedStorage.Remotes.ConfirmStageSelection
 	self.countdownUpdateRemote = ReplicatedStorage.Remotes.CountdownUpdate
+	self.returnToLobbyRemote = ReplicatedStorage.Remotes.ReturnToLobby
 	
 	-- Selection zone tracking
 	self.playersInSelectionZone = {} :: {[Player]: boolean}
@@ -921,6 +922,9 @@ function GameManager:teleportToLobby(player: Player)
 	else
 		Logger.warn("GameManager", "Could not find character for", player.Name)
 	end
+
+	-- Notify client to snap camera toward SelectionZone
+	self.returnToLobbyRemote:FireClient(player)
 
 	Logger.debug("GameManager", player.Name, "returned to lobby")
 end

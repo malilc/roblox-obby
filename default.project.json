@@ -115,6 +115,9 @@
         },
         "RemoveTestDummies": {
           "$className": "RemoteEvent"
+        },
+        "ReturnToLobby": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {
@@ -150,7 +153,7 @@
             0,
             0,
             0,
-            1
+            -1
           ],
           "Size": [
             6,
