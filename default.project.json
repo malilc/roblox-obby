@@ -159,86 +159,86 @@
           ],
           "Neutral": true,
           "Color": [
-            0.3,
+            0,
             0.8,
-            0.3
+            1.0
           ],
           "Material": "Neon"
         }
       },
       "Lobby": {
         "$className": "Folder",
-        "GlassFloor": {
+        "ArcadeFloor": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.9, 0.95, 1.0],
-            "Material": "Glass",
+            "Color": [0.05, 0.05, 0.1],
+            "Material": "SmoothPlastic",
             "Size": [100, 2, 100],
             "Position": [0, 99, 0],
-            "Transparency": 0.3
+            "Transparency": 0
           }
         },
-        "GlassCeiling": {
+        "ArcadeCeiling": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.9, 0.95, 1.0],
-            "Material": "Glass",
+            "Color": [0.05, 0.05, 0.1],
+            "Material": "SmoothPlastic",
             "Size": [100, 1, 100],
             "Position": [0, 129, 0],
-            "Transparency": 0.5
+            "Transparency": 0
           }
         },
         "GlassWall_North": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.85, 0.9, 0.98],
+            "Color": [0.1, 0.05, 0.2],
             "Material": "Glass",
             "Size": [98, 30, 1],
             "Position": [0, 114, -49],
-            "Transparency": 0.4
+            "Transparency": 0.25
           }
         },
         "GlassWall_South": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.85, 0.9, 0.98],
+            "Color": [0.1, 0.05, 0.2],
             "Material": "Glass",
             "Size": [98, 30, 1],
             "Position": [0, 114, 49],
-            "Transparency": 0.4
+            "Transparency": 0.25
           }
         },
         "GlassWall_East": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.85, 0.9, 0.98],
+            "Color": [0.1, 0.05, 0.2],
             "Material": "Glass",
             "Size": [1, 30, 98],
             "Position": [49, 114, 0],
-            "Transparency": 0.4
+            "Transparency": 0.25
           }
         },
         "GlassWall_West": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.85, 0.9, 0.98],
+            "Color": [0.1, 0.05, 0.2],
             "Material": "Glass",
             "Size": [1, 30, 98],
             "Position": [-49, 114, 0],
-            "Transparency": 0.4
+            "Transparency": 0.25
           }
         },
         "SelectionZone": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.2, 0.6, 1.0],
+            "Color": [1, 0, 0.8],
             "Material": "Neon",
             "Size": [20, 0.5, 20],
             "Position": [0, 101, 30],
@@ -250,8 +250,8 @@
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.3, 0.3, 0.35],
-            "Material": "Metal",
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
             "Size": [2, 32, 2],
             "Position": [50, 114, -50]
           }
@@ -260,8 +260,8 @@
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.3, 0.3, 0.35],
-            "Material": "Metal",
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
             "Size": [2, 32, 2],
             "Position": [-50, 114, -50]
           }
@@ -270,8 +270,8 @@
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.3, 0.3, 0.35],
-            "Material": "Metal",
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
             "Size": [2, 32, 2],
             "Position": [50, 114, 50]
           }
@@ -280,10 +280,183 @@
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.3, 0.3, 0.35],
-            "Material": "Metal",
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
             "Size": [2, 32, 2],
             "Position": [-50, 114, 50]
+          }
+        },
+        "FloorNeon_N": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
+            "Size": [98, 0.3, 0.5],
+            "Position": [0, 100, -49],
+            "CanCollide": false
+          }
+        },
+        "FloorNeon_S": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
+            "Size": [98, 0.3, 0.5],
+            "Position": [0, 100, 49],
+            "CanCollide": false
+          }
+        },
+        "FloorNeon_E": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
+            "Size": [0.5, 0.3, 98],
+            "Position": [49, 100, 0],
+            "CanCollide": false
+          }
+        },
+        "FloorNeon_W": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
+            "Size": [0.5, 0.3, 98],
+            "Position": [-49, 100, 0],
+            "CanCollide": false
+          }
+        },
+        "CeilLight_1": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [1, 0, 0.8],
+            "Material": "Neon",
+            "Size": [80, 0.3, 2],
+            "Position": [0, 128.5, -30],
+            "CanCollide": false
+          }
+        },
+        "CeilLight_2": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [1, 0, 0.8],
+            "Material": "Neon",
+            "Size": [80, 0.3, 2],
+            "Position": [0, 128.5, 0],
+            "CanCollide": false
+          }
+        },
+        "CeilLight_3": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [1, 0, 0.8],
+            "Material": "Neon",
+            "Size": [80, 0.3, 2],
+            "Position": [0, 128.5, 30],
+            "CanCollide": false
+          }
+        },
+        "GridH_1": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.1, 0.3, 1.0],
+            "Material": "Neon",
+            "Size": [98, 0.1, 0.3],
+            "Position": [0, 100.05, -30],
+            "Transparency": 0.5,
+            "CanCollide": false
+          }
+        },
+        "GridH_2": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.1, 0.3, 1.0],
+            "Material": "Neon",
+            "Size": [98, 0.1, 0.3],
+            "Position": [0, 100.05, -10],
+            "Transparency": 0.5,
+            "CanCollide": false
+          }
+        },
+        "GridH_3": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.1, 0.3, 1.0],
+            "Material": "Neon",
+            "Size": [98, 0.1, 0.3],
+            "Position": [0, 100.05, 10],
+            "Transparency": 0.5,
+            "CanCollide": false
+          }
+        },
+        "GridH_4": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.1, 0.3, 1.0],
+            "Material": "Neon",
+            "Size": [98, 0.1, 0.3],
+            "Position": [0, 100.05, 30],
+            "Transparency": 0.5,
+            "CanCollide": false
+          }
+        },
+        "GridV_1": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.1, 0.3, 1.0],
+            "Material": "Neon",
+            "Size": [0.3, 0.1, 98],
+            "Position": [-30, 100.05, 0],
+            "Transparency": 0.5,
+            "CanCollide": false
+          }
+        },
+        "GridV_2": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.1, 0.3, 1.0],
+            "Material": "Neon",
+            "Size": [0.3, 0.1, 98],
+            "Position": [-10, 100.05, 0],
+            "Transparency": 0.5,
+            "CanCollide": false
+          }
+        },
+        "GridV_3": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.1, 0.3, 1.0],
+            "Material": "Neon",
+            "Size": [0.3, 0.1, 98],
+            "Position": [10, 100.05, 0],
+            "Transparency": 0.5,
+            "CanCollide": false
+          }
+        },
+        "GridV_4": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.1, 0.3, 1.0],
+            "Material": "Neon",
+            "Size": [0.3, 0.1, 98],
+            "Position": [30, 100.05, 0],
+            "Transparency": 0.5,
+            "CanCollide": false
           }
         }
       },

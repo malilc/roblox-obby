@@ -55,13 +55,17 @@ src/
 
 ```
 Workspace/
-├── SpawnLocation          # จุดเกิดเริ่มต้น (หันไปทาง +Z)
-├── Lobby/                 # Folder เก็บ Lobby ทั้งหมด
-│   ├── MainFloor          # พื้น Cyper Platform
-│   ├── NeonRing           # วงแหวนเรืองแสง
-│   ├── FloatingIslands    # เกาะลอยฟ้า
-│   ├── NeonPillars        # เสาไฟ Neon
-│   └── SelectionZone      # ⭐ Zone เลือกด่าน (มีป้าย "SELECT STAGE")
+├── SpawnLocation          # จุดเกิดเริ่มต้น (Neon Cyan)
+├── Lobby/                 # Folder เก็บ Lobby ทั้งหมด (Synthwave Arcade Theme)
+│   ├── ArcadeFloor        # พื้น SmoothPlastic สีดำเข้ม
+│   ├── ArcadeCeiling      # เพดาน SmoothPlastic สีดำเข้ม
+│   ├── GlassWall_N/S/E/W  # ผนัง Glass สีม่วงเข้ม (4 ด้าน)
+│   ├── FrameCorner_NE/NW/SE/SW  # เสามุมห้อง Neon Cyan (4 ต้น)
+│   ├── FloorNeon_N/S/E/W  # ขอบพื้น Neon Cyan (4 เส้น)
+│   ├── CeilLight_1/2/3    # แถบไฟ Neon Magenta ใต้เพดาน (3 เส้น)
+│   ├── GridH_1-4          # เส้น Grid แนวนอน บนพื้น (Neon น้ำเงินจาง)
+│   ├── GridV_1-4          # เส้น Grid แนวตั้ง บนพื้น (Neon น้ำเงินจาง)
+│   └── SelectionZone      # ⭐ Zone เลือกด่าน (Neon Magenta)
 ├── Stages/                # Folder เก็บด่านที่ generate
 └── KillBrick              # พื้นที่ตายเมื่อตก
 ```
@@ -1214,7 +1218,7 @@ GameManager:onPlayerAdded()
     ↓
 ScoreManager:initPlayer() + CurrencyManager:initPlayer() + ItemManager:initPlayer()
     ↓
-เดินเข้า SelectionZone (สีฟ้า)
+เดินเข้า SelectionZone (สี Magenta)
     ↓
 แสดง GUI เลือกด่าน
     ↓
