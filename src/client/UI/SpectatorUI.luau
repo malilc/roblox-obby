@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local SpectatorCamera = require(script.Parent.Parent.SpectatorCamera)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -47,9 +48,9 @@ function SpectatorUI:createUI()
 	spectateBtn.Name = "SpectateButton"
 	spectateBtn.Size = UDim2.new(0, 130, 0, 42)
 	spectateBtn.Position = UDim2.new(0, 0, 0, 0)
-	spectateBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 200)
+	spectateBtn.BackgroundColor3 = Theme.ACCENT_CYAN
 	spectateBtn.Text = "SPECTATE"
-	spectateBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	spectateBtn.TextColor3 = Theme.TEXT_DARK
 	spectateBtn.TextSize = 16
 	spectateBtn.Font = Enum.Font.GothamBold
 	spectateBtn.AutoButtonColor = false
@@ -57,12 +58,12 @@ function SpectatorUI:createUI()
 	spectateBtn.Parent = promptContainer
 
 	local specCorner = Instance.new("UICorner")
-	specCorner.CornerRadius = UDim.new(0, 10)
+	specCorner.CornerRadius = Theme.CORNER_SM
 	specCorner.Parent = spectateBtn
 
 	local specStroke = Instance.new("UIStroke")
-	specStroke.Color = Color3.fromRGB(100, 150, 255)
-	specStroke.Thickness = 2
+	specStroke.Color = Theme.ACCENT_CYAN
+	specStroke.Thickness = Theme.STROKE_MED
 	specStroke.Parent = spectateBtn
 
 	spectateBtn.MouseButton1Click:Connect(function()
@@ -73,9 +74,9 @@ function SpectatorUI:createUI()
 	leavePromptBtn.Name = "LeavePromptButton"
 	leavePromptBtn.Size = UDim2.new(0, 130, 0, 42)
 	leavePromptBtn.Position = UDim2.new(0, 145, 0, 0)
-	leavePromptBtn.BackgroundColor3 = Color3.fromRGB(80, 50, 50)
+	leavePromptBtn.BackgroundColor3 = Theme.BG_SURFACE
 	leavePromptBtn.Text = "LEAVE"
-	leavePromptBtn.TextColor3 = Color3.fromRGB(255, 180, 180)
+	leavePromptBtn.TextColor3 = Theme.DANGER
 	leavePromptBtn.TextSize = 16
 	leavePromptBtn.Font = Enum.Font.GothamBold
 	leavePromptBtn.AutoButtonColor = false
@@ -83,12 +84,12 @@ function SpectatorUI:createUI()
 	leavePromptBtn.Parent = promptContainer
 
 	local leaveCorner = Instance.new("UICorner")
-	leaveCorner.CornerRadius = UDim.new(0, 10)
+	leaveCorner.CornerRadius = Theme.CORNER_SM
 	leaveCorner.Parent = leavePromptBtn
 
 	local leaveStroke = Instance.new("UIStroke")
-	leaveStroke.Color = Color3.fromRGB(180, 100, 100)
-	leaveStroke.Thickness = 2
+	leaveStroke.Color = Theme.DANGER
+	leaveStroke.Thickness = Theme.STROKE_MED
 	leaveStroke.Parent = leavePromptBtn
 
 	leavePromptBtn.MouseButton1Click:Connect(function()
@@ -111,10 +112,10 @@ function SpectatorUI:createUI()
 	topLabel.Name = "SpectatingLabel"
 	topLabel.Size = UDim2.new(0, 300, 0, 36)
 	topLabel.Position = UDim2.new(0.5, -150, 0, 10)
-	topLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+	topLabel.BackgroundColor3 = Theme.BG_BASE
 	topLabel.BackgroundTransparency = 0.3
 	topLabel.Text = "SPECTATING"
-	topLabel.TextColor3 = Color3.fromRGB(100, 180, 255)
+	topLabel.TextColor3 = Theme.ACCENT_CYAN
 	topLabel.TextSize = 16
 	topLabel.Font = Enum.Font.GothamBold
 	topLabel.ZIndex = 9
@@ -122,7 +123,7 @@ function SpectatorUI:createUI()
 	self.spectatingLabel = topLabel
 
 	local topCorner = Instance.new("UICorner")
-	topCorner.CornerRadius = UDim.new(0, 10)
+	topCorner.CornerRadius = Theme.CORNER_SM
 	topCorner.Parent = topLabel
 
 	-- Left: Rankings panel
@@ -130,7 +131,7 @@ function SpectatorUI:createUI()
 	rankingsPanel.Name = "RankingsPanel"
 	rankingsPanel.Size = UDim2.new(0, 200, 0, 300)
 	rankingsPanel.Position = UDim2.new(0, 10, 0, 60)
-	rankingsPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
+	rankingsPanel.BackgroundColor3 = Theme.BG_BASE
 	rankingsPanel.BackgroundTransparency = 0.3
 	rankingsPanel.BorderSizePixel = 0
 	rankingsPanel.ZIndex = 9
@@ -138,12 +139,12 @@ function SpectatorUI:createUI()
 	self.rankingsPanel = rankingsPanel
 
 	local rankCorner = Instance.new("UICorner")
-	rankCorner.CornerRadius = UDim.new(0, 10)
+	rankCorner.CornerRadius = Theme.CORNER_SM
 	rankCorner.Parent = rankingsPanel
 
 	local rankStroke = Instance.new("UIStroke")
-	rankStroke.Color = Color3.fromRGB(60, 60, 90)
-	rankStroke.Thickness = 1
+	rankStroke.Color = Theme.BG_ELEVATED
+	rankStroke.Thickness = Theme.STROKE_THIN
 	rankStroke.Parent = rankingsPanel
 
 	-- Rankings header
@@ -152,7 +153,7 @@ function SpectatorUI:createUI()
 	rankHeader.Size = UDim2.new(1, 0, 0, 28)
 	rankHeader.BackgroundTransparency = 1
 	rankHeader.Text = "RANKINGS"
-	rankHeader.TextColor3 = Color3.fromRGB(180, 180, 220)
+	rankHeader.TextColor3 = Theme.TEXT_MUTED
 	rankHeader.TextSize = 13
 	rankHeader.Font = Enum.Font.GothamBold
 	rankHeader.ZIndex = 10
@@ -165,7 +166,7 @@ function SpectatorUI:createUI()
 	timeLabel.Position = UDim2.new(0, 0, 0, 26)
 	timeLabel.BackgroundTransparency = 1
 	timeLabel.Text = ""
-	timeLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+	timeLabel.TextColor3 = Theme.TEXT_MUTED
 	timeLabel.TextSize = 11
 	timeLabel.Font = Enum.Font.Gotham
 	timeLabel.ZIndex = 10
@@ -192,14 +193,14 @@ function SpectatorUI:createUI()
 	controlBar.Name = "ControlBar"
 	controlBar.Size = UDim2.new(0, 400, 0, 44)
 	controlBar.Position = UDim2.new(0.5, -200, 1, -60)
-	controlBar.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+	controlBar.BackgroundColor3 = Theme.BG_BASE
 	controlBar.BackgroundTransparency = 0.3
 	controlBar.BorderSizePixel = 0
 	controlBar.ZIndex = 9
 	controlBar.Parent = hud
 
 	local controlCorner = Instance.new("UICorner")
-	controlCorner.CornerRadius = UDim.new(0, 10)
+	controlCorner.CornerRadius = Theme.CORNER_SM
 	controlCorner.Parent = controlBar
 
 	local controlLayout = Instance.new("UIListLayout")
@@ -229,17 +230,17 @@ function SpectatorUI:createUI()
 	local leaveBtn = self:createControlButton(controlBar, "Leave", "Leave", 4, function()
 		self:stopSpectating()
 	end)
-	leaveBtn.BackgroundColor3 = Color3.fromRGB(120, 50, 50)
-	leaveBtn.TextColor3 = Color3.fromRGB(255, 180, 180)
+	leaveBtn.BackgroundColor3 = Theme.BG_SURFACE
+	leaveBtn.TextColor3 = Theme.DANGER
 end
 
 function SpectatorUI:createControlButton(parent: Frame, name: string, label: string, order: number, callback: () -> ()): TextButton
 	local button = Instance.new("TextButton")
 	button.Name = name
 	button.Size = UDim2.new(0, 85, 0, 32)
-	button.BackgroundColor3 = Color3.fromRGB(50, 50, 75)
+	button.BackgroundColor3 = Theme.BG_ELEVATED
 	button.Text = label
-	button.TextColor3 = Color3.fromRGB(200, 200, 230)
+	button.TextColor3 = Theme.TEXT_MUTED
 	button.TextSize = 13
 	button.Font = Enum.Font.GothamBold
 	button.AutoButtonColor = false
@@ -248,7 +249,7 @@ function SpectatorUI:createControlButton(parent: Frame, name: string, label: str
 	button.Parent = parent
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = button
 
 	button.MouseButton1Click:Connect(callback)
@@ -427,13 +428,13 @@ function SpectatorUI:updateRankings(data: {[string]: any})
 			and self.activePlayers[self.selectedPlayerIndex].Name == ranking.playerName
 
 		if ranking.playerName == LocalPlayer.Name then
-			entry.TextColor3 = Color3.fromRGB(255, 220, 100)
+			entry.TextColor3 = Theme.PRIMARY
 		elseif isFollowed then
-			entry.TextColor3 = Color3.fromRGB(100, 200, 255)
+			entry.TextColor3 = Theme.ACCENT_CYAN
 		elseif ranking.finished then
-			entry.TextColor3 = Color3.fromRGB(100, 200, 100)
+			entry.TextColor3 = Theme.SUCCESS
 		else
-			entry.TextColor3 = Color3.fromRGB(180, 180, 200)
+			entry.TextColor3 = Theme.TEXT_MUTED
 		end
 
 		entry.TextSize = 12

@@ -1172,6 +1172,77 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 - **OK Button**: ปิด popup
 - **Auto teleport**: กลับ Lobby หลัง 5 วินาที
 
+---
+
+## 🎨 UI Design System (Fall Guys Style)
+
+### ThemeConfig: `src/shared/ThemeConfig.luau`
+
+**ต้อง require ก่อนสร้าง UI ทุกครั้ง — ห้ามใช้ inline Color3:**
+
+```lua
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+```
+
+### Palette Tokens
+
+| Token | RGB | ใช้สำหรับ |
+|-------|-----|----------|
+| `Theme.BG_BASE` | (45, 30, 75) | พื้นหลัง panel หลัก |
+| `Theme.BG_SURFACE` | (65, 50, 105) | card / section |
+| `Theme.BG_ELEVATED` | (85, 68, 135) | hover / selected |
+| `Theme.BG_OVERLAY` | (25, 15, 50) | modal dim / darkest |
+| `Theme.PRIMARY` | (255, 220, 0) | ปุ่มหลัก (เหลือง) |
+| `Theme.PRIMARY_DARK` | (200, 165, 0) | hover/pressed |
+| `Theme.SECONDARY` | (255, 85, 50) | destructive / energy |
+| `Theme.ACCENT_CYAN` | (80, 220, 255) | info / highlight |
+| `Theme.ACCENT_PINK` | (255, 100, 180) | fun / special |
+| `Theme.TEXT_PRIMARY` | (255, 255, 255) | text บน dark bg |
+| `Theme.TEXT_MUTED` | (195, 178, 230) | secondary text |
+| `Theme.SUCCESS` | (80, 230, 120) | equip / success |
+| `Theme.DANGER` | (255, 70, 70) | leave / locked / danger |
+| `Theme.WARNING` | (255, 200, 0) | time warning / can-buy |
+| `Theme.INFO` | (80, 200, 255) | cyan info |
+
+### Structure Tokens
+
+| Token | Value | ใช้สำหรับ |
+|-------|-------|----------|
+| `Theme.CORNER_SM` | 8px | buttons, small badges |
+| `Theme.CORNER_MD` | 14px | HUD panels, cards |
+| `Theme.CORNER_LG` | 20px | modal containers |
+| `Theme.CORNER_FULL` | UDim(1,0) | circles / pills |
+| `Theme.STROKE_THIN` | 1.5 | default border |
+| `Theme.STROKE_MED` | 2.5 | selected / focused |
+| `Theme.STROKE_BOLD` | 4 | emphasis / glow |
+
+### Helper Functions
+
+```lua
+Theme.rarityColor(rarity)   -- "Common"|"Rare"|"Epic"|"Legendary" → Color3
+Theme.classColor(classId)   -- "Runner"|"Jumper"|"Tank" → Color3
+Theme.applyCorner(obj, size) -- "sm"|"md"|"lg"|"full" → UICorner
+Theme.applyStroke(obj, color, weight, transparency) -- "thin"|"med"|"bold" → UIStroke
+```
+
+### UI Rules
+1. **ห้าม** ใช้ inline `Color3.fromRGB(...)` สำหรับสีพื้นหลัง/ข้อความ
+2. **ต้อง** require ThemeConfig ทุกไฟล์ UI
+3. Background: `BG_BASE` → `BG_SURFACE` → `BG_ELEVATED` (dark → light)
+4. Font: Gotham family เท่านั้น (Gotham, GothamBold, GothamBlack)
+5. Text บน dark bg = `TEXT_PRIMARY` (white)
+
+### Checklist สำหรับ UI ใหม่
+
+- [ ] `local Theme = require(ReplicatedStorage.Shared.ThemeConfig)`
+- [ ] background ใช้ `BG_BASE` / `BG_SURFACE` / `BG_ELEVATED`
+- [ ] ปุ่มหลัก = `PRIMARY` (yellow), success = `SUCCESS`, danger = `DANGER`
+- [ ] text = `TEXT_PRIMARY` หรือ `TEXT_MUTED`
+- [ ] UICorner: panel = `CORNER_MD`, button = `CORNER_SM`, modal = `CORNER_LG`
+- [ ] ลงทะเบียนใน `MainUI.luau` ถ้าเป็น popup
+
+---
+
 ### โครงสร้าง UI Module:
 
 ```lua

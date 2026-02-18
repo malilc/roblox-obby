@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
 local Logger = require(ReplicatedStorage.Shared.Logger)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -42,9 +43,9 @@ function ItemTestingUI:createUI()
 	toggleButton.Name = "ToggleButton"
 	toggleButton.Size = UDim2.new(0, 120, 0, 35)
 	toggleButton.Position = UDim2.new(1, -130, 0, 10)
-	toggleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+	toggleButton.BackgroundColor3 = Theme.DANGER
 	toggleButton.Text = "🧪 Test Items"
-	toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	toggleButton.TextColor3 = Theme.TEXT_PRIMARY
 	toggleButton.TextSize = 14
 	toggleButton.Font = Enum.Font.GothamBold
 	toggleButton.Parent = screenGui
@@ -59,7 +60,7 @@ function ItemTestingUI:createUI()
 	mainFrame.Name = "MainPanel"
 	mainFrame.Size = UDim2.new(0, 300, 0, 400)
 	mainFrame.Position = UDim2.new(1, -310, 0, 55)
-	mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	mainFrame.BackgroundColor3 = Theme.BG_BASE
 	mainFrame.BackgroundTransparency = 0.1
 	mainFrame.Visible = false
 	mainFrame.Parent = screenGui
@@ -70,7 +71,7 @@ function ItemTestingUI:createUI()
 	mainCorner.Parent = mainFrame
 	
 	local mainStroke = Instance.new("UIStroke")
-	mainStroke.Color = Color3.fromRGB(255, 100, 100)
+	mainStroke.Color = Theme.DANGER
 	mainStroke.Thickness = 2
 	mainStroke.Parent = mainFrame
 	
@@ -80,7 +81,7 @@ function ItemTestingUI:createUI()
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundTransparency = 1
 	title.Text = "🧪 Item Testing Menu"
-	title.TextColor3 = Color3.fromRGB(255, 100, 100)
+	title.TextColor3 = Theme.DANGER
 	title.TextSize = 18
 	title.Font = Enum.Font.GothamBold
 	title.Parent = mainFrame
@@ -92,7 +93,7 @@ function ItemTestingUI:createUI()
 	subtitle.Position = UDim2.new(0, 0, 0, 35)
 	subtitle.BackgroundTransparency = 1
 	subtitle.Text = "Click item to give yourself"
-	subtitle.TextColor3 = Color3.fromRGB(150, 150, 150)
+	subtitle.TextColor3 = Theme.TEXT_MUTED
 	subtitle.TextSize = 12
 	subtitle.Font = Enum.Font.Gotham
 	subtitle.Parent = mainFrame
@@ -104,7 +105,7 @@ function ItemTestingUI:createUI()
 	scrollFrame.Position = UDim2.new(0, 10, 0, 60)
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.ScrollBarThickness = 6
-	scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 100, 100)
+	scrollFrame.ScrollBarImageColor3 = Theme.DANGER
 	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 	scrollFrame.Parent = mainFrame
 	self.scrollFrame = scrollFrame
@@ -173,9 +174,9 @@ function ItemTestingUI:createItemButtons()
 	local spawnDummyButton = Instance.new("TextButton")
 	spawnDummyButton.Name = "SpawnDummyButton"
 	spawnDummyButton.Size = UDim2.new(1, 0, 0, 45)
-	spawnDummyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+	spawnDummyButton.BackgroundColor3 = Theme.BG_ELEVATED
 	spawnDummyButton.Text = "🤖 Spawn Test Dummy"
-	spawnDummyButton.TextColor3 = Color3.fromRGB(150, 150, 255)
+	spawnDummyButton.TextColor3 = Theme.ACCENT_CYAN
 	spawnDummyButton.TextSize = 14
 	spawnDummyButton.Font = Enum.Font.GothamBold
 	spawnDummyButton.LayoutOrder = layoutOrder + 51
@@ -194,9 +195,9 @@ function ItemTestingUI:createItemButtons()
 	local removeDummyButton = Instance.new("TextButton")
 	removeDummyButton.Name = "RemoveDummyButton"
 	removeDummyButton.Size = UDim2.new(1, 0, 0, 45)
-	removeDummyButton.BackgroundColor3 = Color3.fromRGB(100, 60, 60)
+	removeDummyButton.BackgroundColor3 = Theme.BG_ELEVATED
 	removeDummyButton.Text = "❌ Remove All Dummies"
-	removeDummyButton.TextColor3 = Color3.fromRGB(255, 150, 150)
+	removeDummyButton.TextColor3 = Theme.DANGER
 	removeDummyButton.TextSize = 14
 	removeDummyButton.Font = Enum.Font.GothamBold
 	removeDummyButton.LayoutOrder = layoutOrder + 52
@@ -215,9 +216,9 @@ function ItemTestingUI:createItemButtons()
 	local clearButton = Instance.new("TextButton")
 	clearButton.Name = "ClearButton"
 	clearButton.Size = UDim2.new(1, 0, 0, 45)
-	clearButton.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
+	clearButton.BackgroundColor3 = Theme.BG_OVERLAY
 	clearButton.Text = "🗑️ Clear All Items"
-	clearButton.TextColor3 = Color3.fromRGB(255, 150, 150)
+	clearButton.TextColor3 = Theme.DANGER
 	clearButton.TextSize = 14
 	clearButton.Font = Enum.Font.GothamBold
 	clearButton.LayoutOrder = layoutOrder + 100
@@ -382,10 +383,10 @@ function ItemTestingUI:toggle()
 	self.mainFrame.Visible = self.visible
 	
 	if self.visible then
-		self.toggleButton.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+		self.toggleButton.BackgroundColor3 = Theme.SUCCESS
 		self.toggleButton.Text = "✓ Test Items"
 	else
-		self.toggleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+		self.toggleButton.BackgroundColor3 = Theme.DANGER
 		self.toggleButton.Text = "🧪 Test Items"
 	end
 end

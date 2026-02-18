@@ -5,21 +5,22 @@ local TweenService = game:GetService("TweenService")
 
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local TitleHUDUI = {}
 TitleHUDUI.__index = TitleHUDUI
 
--- Light theme colors
+-- Dark theme colors
 local COLORS = {
-	BG = Color3.fromRGB(255, 255, 255),
+	BG = Theme.BG_SURFACE,
 	BG_TRANSPARENCY = 0.15,
-	BG_BUTTON = Color3.fromRGB(240, 242, 248),
-	BG_BUTTON_HOVER = Color3.fromRGB(220, 228, 245),
-	STROKE_DEFAULT = Color3.fromRGB(210, 215, 225),
-	TEXT_HINT = Color3.fromRGB(150, 155, 170),
-	TEXT_NO_TITLE = Color3.fromRGB(120, 125, 140),
+	BG_BUTTON = Theme.BG_ELEVATED,
+	BG_BUTTON_HOVER = Theme.BG_BASE,
+	STROKE_DEFAULT = Theme.BG_ELEVATED,
+	TEXT_HINT = Theme.TEXT_MUTED,
+	TEXT_NO_TITLE = Theme.TEXT_MUTED,
 }
 
 local function cloneTitleEntry(source: any): {id: string, name: string, classId: string, level: number, rarity: string, description: string?}?
@@ -54,9 +55,9 @@ local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: C
 	local theme = type(configured) == "table" and configured[rarity] or nil
 
 	local result = {
-		textColor = classColor or Color3.fromRGB(60, 65, 80),
+		textColor = classColor or Theme.TEXT_PRIMARY,
 		strokeColor = Color3.fromRGB(40, 40, 50),
-		frameColor = classColor or COLORS.STROKE_DEFAULT,
+		frameColor = classColor or Theme.BG_ELEVATED,
 	}
 
 	if type(theme) == "table" then
@@ -90,7 +91,7 @@ function TitleHUDUI.new(parent: ScreenGui, onOpenCollection: (() -> ())?)
 end
 
 function TitleHUDUI:createUI()
-	-- Main container - light rounded bar
+	-- Main container - dark rounded bar
 	local container = Instance.new("Frame")
 	container.Name = "TitleHUDContainer"
 	container.Size = UDim2.new(0, 220, 0, 36)
@@ -102,12 +103,12 @@ function TitleHUDUI:createUI()
 	self.container = container
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
+	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = container
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = COLORS.STROKE_DEFAULT
-	stroke.Thickness = 1.5
+	stroke.Thickness = Theme.STROKE_THIN
 	stroke.Parent = container
 	self.containerStroke = stroke
 
@@ -151,14 +152,14 @@ function TitleHUDUI:createUI()
 	openButton.BackgroundColor3 = COLORS.BG_BUTTON
 	openButton.BorderSizePixel = 0
 	openButton.Text = "\u{1F4CB}"
-	openButton.TextColor3 = Color3.fromRGB(80, 90, 110)
+	openButton.TextColor3 = Theme.TEXT_MUTED
 	openButton.TextSize = 14
 	openButton.Font = Enum.Font.GothamBold
 	openButton.Parent = container
 	self.openButton = openButton
 
 	local openButtonCorner = Instance.new("UICorner")
-	openButtonCorner.CornerRadius = UDim.new(0, 7)
+	openButtonCorner.CornerRadius = Theme.CORNER_SM
 	openButtonCorner.Parent = openButton
 
 	-- Hover effect for collection button
@@ -183,7 +184,7 @@ function TitleHUDUI:createUI()
 	-- Hover effect for whole container
 	container.MouseEnter:Connect(function()
 		TweenService:Create(stroke, TweenInfo.new(0.12), {
-			Color = if self.activeTitle then self.containerStroke.Color else Color3.fromRGB(180, 190, 210),
+			Color = if self.activeTitle then self.containerStroke.Color else Theme.ACCENT_CYAN,
 		}):Play()
 	end)
 

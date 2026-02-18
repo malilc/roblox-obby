@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Logger = require(ReplicatedStorage.Shared.Logger)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local MobileInputUI = {}
 MobileInputUI.__index = MobileInputUI
@@ -89,7 +90,7 @@ function MobileInputUI:createUI()
 	self.sprintCooldownOverlay.Parent = self.sprintButton
 
 	local cooldownCorner = Instance.new("UICorner")
-	cooldownCorner.CornerRadius = UDim.new(0, 12)
+	cooldownCorner.CornerRadius = Theme.CORNER_MD
 	cooldownCorner.Parent = self.sprintCooldownOverlay
 end
 
@@ -98,11 +99,11 @@ function MobileInputUI:createTouchButton(parent: Frame, name: string, label: str
 	button.Name = name
 	button.Size = UDim2.new(0, 70, 0, 70)
 	button.Position = position
-	button.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+	button.BackgroundColor3 = Theme.BG_ELEVATED
 	button.BackgroundTransparency = 0.3
 	button.BorderSizePixel = 0
 	button.Text = label
-	button.TextColor3 = Color3.fromRGB(200, 200, 200)
+	button.TextColor3 = Theme.TEXT_MUTED
 	button.TextSize = 14
 	button.Font = Enum.Font.GothamBold
 	button.AutoButtonColor = false
@@ -110,12 +111,12 @@ function MobileInputUI:createTouchButton(parent: Frame, name: string, label: str
 	button.Parent = parent
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
+	corner.CornerRadius = Theme.CORNER_MD
 	corner.Parent = button
 
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(100, 100, 120)
-	stroke.Thickness = 2
+	stroke.Color = Theme.BG_ELEVATED
+	stroke.Thickness = Theme.STROKE_MED
 	stroke.Parent = button
 
 	-- Tap feedback
@@ -147,7 +148,7 @@ function MobileInputUI:createEmojiLabel(parent: TextButton): TextLabel
 	emoji.Text = ""
 	emoji.TextSize = 28
 	emoji.Font = Enum.Font.GothamBold
-	emoji.TextColor3 = Color3.fromRGB(255, 255, 255)
+	emoji.TextColor3 = Theme.TEXT_PRIMARY
 	emoji.ZIndex = 3
 	emoji.Visible = false
 	emoji.Parent = parent
@@ -203,13 +204,13 @@ function MobileInputUI:updateUltimateButtons()
 			local ratio = cooldown / maxCooldown
 			self.sprintCooldownOverlay.Size = UDim2.new(1, 0, ratio, 0)
 			self.sprintCooldownOverlay.Visible = true
-			self.sprintButton.TextColor3 = Color3.fromRGB(120, 120, 120)
+			self.sprintButton.TextColor3 = Theme.TEXT_MUTED
 		else
 			self.sprintCooldownOverlay.Visible = false
 			if controller:isSprinting() then
-				self.sprintButton.TextColor3 = Color3.fromRGB(100, 200, 255)
+				self.sprintButton.TextColor3 = Theme.ACCENT_CYAN
 			else
-				self.sprintButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+				self.sprintButton.TextColor3 = Theme.TEXT_MUTED
 			end
 		end
 	else

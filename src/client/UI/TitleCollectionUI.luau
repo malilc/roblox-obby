@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -28,36 +29,36 @@ local RARITY_ORDER = {
 
 -- Rarity accent colors for left border strips
 local RARITY_COLORS = {
-	Common = Color3.fromRGB(180, 185, 195),
-	Rare = Color3.fromRGB(80, 150, 230),
-	Epic = Color3.fromRGB(160, 90, 220),
-	Legendary = Color3.fromRGB(240, 180, 50),
+	Common = Theme.RARITY_COMMON,
+	Rare = Theme.RARITY_RARE,
+	Epic = Theme.RARITY_EPIC,
+	Legendary = Theme.RARITY_LEGENDARY,
 }
 
--- Light theme palette
+-- Dark theme palette (Fall Guys style) mapped from Theme tokens
 local COLORS = {
-	BG_PRIMARY = Color3.fromRGB(245, 245, 250),
-	BG_CARD = Color3.fromRGB(255, 255, 255),
-	BG_CARD_LOCKED = Color3.fromRGB(240, 240, 245),
-	BG_LIST = Color3.fromRGB(238, 240, 246),
-	BG_SEARCH = Color3.fromRGB(255, 255, 255),
-	BG_FILTER = Color3.fromRGB(230, 232, 240),
-	BG_FILTER_ACTIVE = Color3.fromRGB(80, 140, 230),
-	BG_SORT = Color3.fromRGB(80, 120, 190),
-	BG_CLOSE = Color3.fromRGB(220, 100, 100),
-	BG_BANNER = Color3.fromRGB(250, 250, 255),
-	BG_UNEQUIP = Color3.fromRGB(210, 100, 90),
-	BG_EQUIP = Color3.fromRGB(80, 180, 100),
-	BG_LOCKED_BTN = Color3.fromRGB(195, 195, 205),
-	TEXT_PRIMARY = Color3.fromRGB(50, 55, 70),
-	TEXT_SECONDARY = Color3.fromRGB(120, 125, 140),
-	TEXT_MUTED = Color3.fromRGB(160, 165, 175),
-	TEXT_WHITE = Color3.fromRGB(255, 255, 255),
-	TEXT_LOCKED = Color3.fromRGB(160, 160, 175),
-	STROKE_DEFAULT = Color3.fromRGB(210, 215, 225),
-	STROKE_BANNER = Color3.fromRGB(200, 205, 218),
-	STROKE_CARD = Color3.fromRGB(220, 225, 235),
-	STROKE_CARD_LOCKED = Color3.fromRGB(215, 215, 225),
+	BG_PRIMARY = Theme.BG_BASE,
+	BG_CARD = Theme.BG_SURFACE,
+	BG_CARD_LOCKED = Theme.BG_OVERLAY,
+	BG_LIST = Theme.BG_BASE,
+	BG_SEARCH = Theme.BG_SURFACE,
+	BG_FILTER = Theme.BG_ELEVATED,
+	BG_FILTER_ACTIVE = Theme.ACCENT_CYAN,
+	BG_SORT = Theme.BG_ELEVATED,
+	BG_CLOSE = Theme.DANGER,
+	BG_BANNER = Theme.BG_SURFACE,
+	BG_UNEQUIP = Theme.SECONDARY,
+	BG_EQUIP = Theme.SUCCESS,
+	BG_LOCKED_BTN = Theme.BG_ELEVATED,
+	TEXT_PRIMARY = Theme.TEXT_PRIMARY,
+	TEXT_SECONDARY = Theme.TEXT_MUTED,
+	TEXT_MUTED = Theme.TEXT_MUTED,
+	TEXT_WHITE = Theme.TEXT_PRIMARY,
+	TEXT_LOCKED = Theme.TEXT_MUTED,
+	STROKE_DEFAULT = Theme.BG_ELEVATED,
+	STROKE_BANNER = Theme.BG_ELEVATED,
+	STROKE_CARD = Theme.BG_ELEVATED,
+	STROKE_CARD_LOCKED = Theme.BG_OVERLAY,
 }
 
 local function cloneTitleEntry(source: any): {id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}?
@@ -126,7 +127,7 @@ local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: C
 	local theme = type(configured) == "table" and configured[rarity] or nil
 
 	local result = {
-		textColor = classColor or Color3.fromRGB(80, 85, 100),
+		textColor = classColor or Theme.TEXT_MUTED,
 		frameColor = classColor or COLORS.STROKE_DEFAULT,
 	}
 
@@ -407,7 +408,7 @@ function TitleCollectionUI:createUI()
 	listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 	listFrame.ScrollBarThickness = 6
 	listFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
-	listFrame.ScrollBarImageColor3 = Color3.fromRGB(180, 185, 200)
+	listFrame.ScrollBarImageColor3 = Theme.TEXT_MUTED
 	listFrame.Parent = container
 	self.listFrame = listFrame
 
@@ -745,7 +746,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 					elseif feedbackSource == "filter" then "filter"
 					elseif feedbackSource == "sort" then "sort"
 					else "selection"
-				self:showToast("No titles found for current " .. sourceLabel, Color3.fromRGB(210, 120, 80))
+				self:showToast("No titles found for current " .. sourceLabel, Theme.SECONDARY)
 			end
 		end
 	end
@@ -808,7 +809,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		rarityStrip.Name = "RarityStrip"
 		rarityStrip.Size = UDim2.new(0, 4, 1, 0)
 		rarityStrip.Position = UDim2.new(0, 0, 0, 0)
-		rarityStrip.BackgroundColor3 = if entry.unlocked then rarityColor else Color3.fromRGB(195, 195, 205)
+		rarityStrip.BackgroundColor3 = if entry.unlocked then rarityColor else Theme.BG_ELEVATED
 		rarityStrip.BackgroundTransparency = if entry.unlocked then 0 else 0.4
 		rarityStrip.BorderSizePixel = 0
 		rarityStrip.Parent = card

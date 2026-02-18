@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local TutorialUI = {}
 TutorialUI.__index = TutorialUI
@@ -32,10 +33,10 @@ function TutorialUI:createUI()
 	helpButton.Name = "HelpButton"
 	helpButton.Size = UDim2.new(0, 40, 0, 40)
 	helpButton.Position = UDim2.new(0, 10, 0, 240)
-	helpButton.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+	helpButton.BackgroundColor3 = Theme.BG_BASE
 	helpButton.BackgroundTransparency = 0.2
 	helpButton.Text = "?"
-	helpButton.TextColor3 = Color3.fromRGB(180, 180, 255)
+	helpButton.TextColor3 = Theme.ACCENT_CYAN
 	helpButton.TextSize = 22
 	helpButton.Font = Enum.Font.GothamBold
 	helpButton.AutoButtonColor = false
@@ -44,12 +45,12 @@ function TutorialUI:createUI()
 	self.helpButton = helpButton
 
 	local helpCorner = Instance.new("UICorner")
-	helpCorner.CornerRadius = UDim.new(0, 20)
+	helpCorner.CornerRadius = Theme.CORNER_LG
 	helpCorner.Parent = helpButton
 
 	local helpStroke = Instance.new("UIStroke")
-	helpStroke.Color = Color3.fromRGB(100, 100, 200)
-	helpStroke.Thickness = 2
+	helpStroke.Color = Theme.ACCENT_CYAN
+	helpStroke.Thickness = Theme.STROKE_MED
 	helpStroke.Parent = helpButton
 
 	helpButton.MouseButton1Click:Connect(function()
@@ -61,10 +62,10 @@ function TutorialUI:createUI()
 	hintLabel.Name = "TutorialHint"
 	hintLabel.Size = UDim2.new(0, 130, 0, 28)
 	hintLabel.Position = UDim2.new(0, 58, 0, 246)
-	hintLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+	hintLabel.BackgroundColor3 = Theme.BG_BASE
 	hintLabel.BackgroundTransparency = 0.2
 	hintLabel.Text = "  Tap ? for help!"
-	hintLabel.TextColor3 = Color3.fromRGB(180, 180, 255)
+	hintLabel.TextColor3 = Theme.ACCENT_CYAN
 	hintLabel.TextSize = 13
 	hintLabel.Font = Enum.Font.GothamBold
 	hintLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -74,7 +75,7 @@ function TutorialUI:createUI()
 	self.hintLabel = hintLabel
 
 	local hintCorner = Instance.new("UICorner")
-	hintCorner.CornerRadius = UDim.new(0, 8)
+	hintCorner.CornerRadius = Theme.CORNER_SM
 	hintCorner.Parent = hintLabel
 
 	-- === Main Panel (ซ่อนไว้) ===
@@ -102,7 +103,7 @@ function TutorialUI:createUI()
 	panel.Name = "TutorialPanel"
 	panel.Size = UDim2.new(0, panelWidth, 0, panelHeight)
 	panel.Position = UDim2.new(0.5, -panelWidth / 2, 0.5, -panelHeight / 2)
-	panel.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+	panel.BackgroundColor3 = Theme.BG_BASE
 	panel.BackgroundTransparency = 0
 	panel.BorderSizePixel = 0
 	panel.ZIndex = 11
@@ -110,7 +111,7 @@ function TutorialUI:createUI()
 	self.panel = panel
 
 	local panelCorner = Instance.new("UICorner")
-	panelCorner.CornerRadius = UDim.new(0, 14)
+	panelCorner.CornerRadius = Theme.CORNER_MD
 	panelCorner.Parent = panel
 
 	-- Header
@@ -120,7 +121,7 @@ function TutorialUI:createUI()
 	header.Position = UDim2.new(0, 20, 0, 10)
 	header.BackgroundTransparency = 1
 	header.Text = "Game Guide"
-	header.TextColor3 = Color3.fromRGB(210, 210, 255)
+	header.TextColor3 = Theme.TEXT_PRIMARY
 	header.TextSize = 26
 	header.Font = Enum.Font.GothamBold
 	header.TextXAlignment = Enum.TextXAlignment.Left
@@ -132,9 +133,9 @@ function TutorialUI:createUI()
 	closeButton.Name = "CloseButton"
 	closeButton.Size = UDim2.new(0, 36, 0, 36)
 	closeButton.Position = UDim2.new(1, -48, 0, 14)
-	closeButton.BackgroundColor3 = Color3.fromRGB(60, 40, 40)
+	closeButton.BackgroundColor3 = Theme.BG_SURFACE
 	closeButton.Text = "X"
-	closeButton.TextColor3 = Color3.fromRGB(255, 120, 120)
+	closeButton.TextColor3 = Theme.DANGER
 	closeButton.TextSize = 18
 	closeButton.Font = Enum.Font.GothamBold
 	closeButton.AutoButtonColor = false
@@ -142,7 +143,7 @@ function TutorialUI:createUI()
 	closeButton.Parent = panel
 
 	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0, 10)
+	closeCorner.CornerRadius = Theme.CORNER_SM
 	closeCorner.Parent = closeButton
 
 	closeButton.MouseButton1Click:Connect(function()
@@ -171,10 +172,10 @@ function TutorialUI:createUI()
 		local tabButton = Instance.new("TextButton")
 		tabButton.Name = "Tab_" .. section.id
 		tabButton.Size = UDim2.new(0, tabWidth, 0, 38)
-		tabButton.BackgroundColor3 = if i == 1 then Color3.fromRGB(55, 55, 85) else Color3.fromRGB(32, 32, 45)
+		tabButton.BackgroundColor3 = if i == 1 then Theme.BG_ELEVATED else Theme.BG_BASE
 		tabButton.BackgroundTransparency = 0.1
 		tabButton.Text = (section.icon or "") .. " " .. section.title
-		tabButton.TextColor3 = if i == 1 then Color3.fromRGB(230, 230, 255) else Color3.fromRGB(140, 140, 165)
+		tabButton.TextColor3 = if i == 1 then Theme.TEXT_PRIMARY else Theme.TEXT_MUTED
 		tabButton.TextSize = 13
 		tabButton.Font = Enum.Font.GothamBold
 		tabButton.AutoButtonColor = false
@@ -183,7 +184,7 @@ function TutorialUI:createUI()
 		tabButton.Parent = tabBar
 
 		local tabCorner = Instance.new("UICorner")
-		tabCorner.CornerRadius = UDim.new(0, 8)
+		tabCorner.CornerRadius = Theme.CORNER_SM
 		tabCorner.Parent = tabButton
 
 		tabButton.MouseButton1Click:Connect(function()
@@ -198,14 +199,14 @@ function TutorialUI:createUI()
 	contentFrame.Name = "ContentFrame"
 	contentFrame.Size = UDim2.new(1, -30, 1, -120)
 	contentFrame.Position = UDim2.new(0, 15, 0, 108)
-	contentFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+	contentFrame.BackgroundColor3 = Theme.BG_OVERLAY
 	contentFrame.BackgroundTransparency = 0.05
 	contentFrame.BorderSizePixel = 0
 	contentFrame.ZIndex = 12
 	contentFrame.Parent = panel
 
 	local contentCorner = Instance.new("UICorner")
-	contentCorner.CornerRadius = UDim.new(0, 10)
+	contentCorner.CornerRadius = Theme.CORNER_SM
 	contentCorner.Parent = contentFrame
 
 	-- Content text (font ใหญ่ขึ้น + line height ดีขึ้น)
@@ -215,7 +216,7 @@ function TutorialUI:createUI()
 	contentLabel.Position = UDim2.new(0, 20, 0, 15)
 	contentLabel.BackgroundTransparency = 1
 	contentLabel.Text = sections[1] and sections[1].content or ""
-	contentLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+	contentLabel.TextColor3 = Theme.TEXT_PRIMARY
 	contentLabel.TextSize = 17
 	contentLabel.LineHeight = 1.5
 	contentLabel.RichText = true
@@ -237,11 +238,11 @@ function TutorialUI:selectTab(index: number)
 	-- Update tab button styles
 	for i, button in ipairs(self.tabButtons) do
 		if i == index then
-			button.BackgroundColor3 = Color3.fromRGB(55, 55, 85)
-			button.TextColor3 = Color3.fromRGB(230, 230, 255)
+			button.BackgroundColor3 = Theme.BG_ELEVATED
+			button.TextColor3 = Theme.TEXT_PRIMARY
 		else
-			button.BackgroundColor3 = Color3.fromRGB(32, 32, 45)
-			button.TextColor3 = Color3.fromRGB(140, 140, 165)
+			button.BackgroundColor3 = Theme.BG_BASE
+			button.TextColor3 = Theme.TEXT_MUTED
 		end
 	end
 

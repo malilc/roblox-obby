@@ -5,37 +5,38 @@ local TweenService = game:GetService("TweenService")
 
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local ClassSelectionUI = {}
 ClassSelectionUI.__index = ClassSelectionUI
 
--- Color palette (light kid-friendly theme)
+-- Color palette (dark theme via ThemeConfig)
 local COLORS = {
-	BG_PRIMARY = Color3.fromRGB(245, 245, 250),
-	BG_CARD = Color3.fromRGB(255, 255, 255),
-	BG_CARD_LOCKED = Color3.fromRGB(238, 238, 243),
-	TEXT_PRIMARY = Color3.fromRGB(50, 55, 70),
-	TEXT_SECONDARY = Color3.fromRGB(120, 125, 140),
-	TEXT_ACCENT = Color3.fromRGB(80, 130, 220),
-	STROKE_DEFAULT = Color3.fromRGB(210, 215, 225),
-	BTN_EQUIP = Color3.fromRGB(80, 190, 80),
-	BTN_PURCHASE = Color3.fromRGB(240, 190, 60),
-	BTN_DISABLED = Color3.fromRGB(180, 185, 195),
-	STATUS_EQUIPPED = Color3.fromRGB(60, 180, 90),
-	STATUS_UNLOCKED = Color3.fromRGB(80, 160, 230),
-	STATUS_CAN_BUY = Color3.fromRGB(230, 180, 50),
-	STATUS_LOCKED = Color3.fromRGB(200, 100, 100),
-	BAR_BUFF = Color3.fromRGB(80, 200, 120),
-	BAR_NERF = Color3.fromRGB(220, 100, 100),
-	BAR_NEUTRAL = Color3.fromRGB(180, 185, 195),
-	BAR_BG = Color3.fromRGB(230, 232, 238),
-	MASTERY_BAR = Color3.fromRGB(100, 180, 255),
-	MASTERY_MAX = Color3.fromRGB(255, 200, 80),
-	INDICATOR_BG = Color3.fromRGB(255, 255, 255),
-	INDICATOR_HOVER = Color3.fromRGB(235, 242, 255),
-	TOAST_BG = Color3.fromRGB(255, 255, 255),
+	BG_PRIMARY = Theme.BG_BASE,
+	BG_CARD = Theme.BG_SURFACE,
+	BG_CARD_LOCKED = Theme.BG_BASE,
+	TEXT_PRIMARY = Theme.TEXT_PRIMARY,
+	TEXT_SECONDARY = Theme.TEXT_MUTED,
+	TEXT_ACCENT = Theme.ACCENT_CYAN,
+	STROKE_DEFAULT = Theme.BG_ELEVATED,
+	BTN_EQUIP = Theme.SUCCESS,
+	BTN_PURCHASE = Theme.PRIMARY,
+	BTN_DISABLED = Theme.BG_ELEVATED,
+	STATUS_EQUIPPED = Theme.SUCCESS,
+	STATUS_UNLOCKED = Theme.ACCENT_CYAN,
+	STATUS_CAN_BUY = Theme.WARNING,
+	STATUS_LOCKED = Theme.DANGER,
+	BAR_BUFF = Theme.SUCCESS,
+	BAR_NERF = Theme.DANGER,
+	BAR_NEUTRAL = Theme.TEXT_MUTED,
+	BAR_BG = Theme.BG_ELEVATED,
+	MASTERY_BAR = Theme.INFO,
+	MASTERY_MAX = Theme.PRIMARY,
+	INDICATOR_BG = Theme.BG_SURFACE,
+	INDICATOR_HOVER = Theme.BG_ELEVATED,
+	TOAST_BG = Theme.BG_SURFACE,
 }
 
 -- ── Utility functions (unchanged) ──
@@ -303,12 +304,12 @@ function ClassSelectionUI:createUI()
 	self.container = container
 
 	local containerCorner = Instance.new("UICorner")
-	containerCorner.CornerRadius = UDim.new(0, 16)
+	containerCorner.CornerRadius = Theme.CORNER_MD
 	containerCorner.Parent = container
 
 	local containerStroke = Instance.new("UIStroke")
 	containerStroke.Color = COLORS.STROKE_DEFAULT
-	containerStroke.Thickness = 2
+	containerStroke.Thickness = Theme.STROKE_MED
 	containerStroke.Parent = container
 
 	-- Header row
@@ -341,23 +342,23 @@ function ClassSelectionUI:createUI()
 	currencyLabel.Name = "CurrencyLabel"
 	currencyLabel.Size = UDim2.new(0, 140, 0, 30)
 	currencyLabel.Position = UDim2.new(1, -170, 0, 18)
-	currencyLabel.BackgroundColor3 = Color3.fromRGB(60, 55, 40)
+	currencyLabel.BackgroundColor3 = Theme.BG_ELEVATED
 	currencyLabel.BackgroundTransparency = 0.05
 	currencyLabel.BorderSizePixel = 0
 	currencyLabel.Text = "0"
-	currencyLabel.TextColor3 = Color3.fromRGB(255, 220, 80)
+	currencyLabel.TextColor3 = Theme.PRIMARY
 	currencyLabel.TextSize = 16
 	currencyLabel.Font = Enum.Font.GothamBold
 	currencyLabel.Parent = container
 	self.currencyLabel = currencyLabel
 
 	local currencyCorner = Instance.new("UICorner")
-	currencyCorner.CornerRadius = UDim.new(0, 8)
+	currencyCorner.CornerRadius = Theme.CORNER_SM
 	currencyCorner.Parent = currencyLabel
 
 	local currencyStroke = Instance.new("UIStroke")
-	currencyStroke.Color = Color3.fromRGB(100, 90, 60)
-	currencyStroke.Thickness = 1
+	currencyStroke.Color = Theme.BG_ELEVATED
+	currencyStroke.Thickness = Theme.STROKE_THIN
 	currencyStroke.Parent = currencyLabel
 
 	-- Close button
@@ -365,16 +366,16 @@ function ClassSelectionUI:createUI()
 	closeBtn.Name = "CloseButton"
 	closeBtn.Size = UDim2.new(0, 30, 0, 30)
 	closeBtn.Position = UDim2.new(1, -36, 0, 18)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(240, 100, 100)
+	closeBtn.BackgroundColor3 = Theme.DANGER
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Text = "X"
-	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.TextColor3 = Theme.TEXT_PRIMARY
 	closeBtn.TextSize = 15
 	closeBtn.Font = Enum.Font.GothamBold
 	closeBtn.Parent = container
 
 	local closeBtnCorner = Instance.new("UICorner")
-	closeBtnCorner.CornerRadius = UDim.new(0, 8)
+	closeBtnCorner.CornerRadius = Theme.CORNER_SM
 	closeBtnCorner.Parent = closeBtn
 
 	closeBtn.MouseButton1Click:Connect(function()
@@ -405,18 +406,18 @@ function ClassSelectionUI:createUI()
 	rewardsFrame.Name = "MasteryRewardsPreview"
 	rewardsFrame.Size = UDim2.new(1, -40, 0, 52)
 	rewardsFrame.Position = UDim2.new(0, 20, 0, 362)
-	rewardsFrame.BackgroundColor3 = Color3.fromRGB(240, 245, 255)
+	rewardsFrame.BackgroundColor3 = Theme.BG_SURFACE
 	rewardsFrame.BackgroundTransparency = 0.1
 	rewardsFrame.BorderSizePixel = 0
 	rewardsFrame.Parent = container
 
 	local rewardsCorner = Instance.new("UICorner")
-	rewardsCorner.CornerRadius = UDim.new(0, 10)
+	rewardsCorner.CornerRadius = Theme.CORNER_SM
 	rewardsCorner.Parent = rewardsFrame
 
 	local rewardsStroke = Instance.new("UIStroke")
-	rewardsStroke.Color = Color3.fromRGB(190, 210, 240)
-	rewardsStroke.Thickness = 1
+	rewardsStroke.Color = Theme.BG_ELEVATED
+	rewardsStroke.Thickness = Theme.STROKE_THIN
 	rewardsStroke.Parent = rewardsFrame
 
 	local rewardsTitle = Instance.new("TextLabel")
@@ -454,13 +455,13 @@ function ClassSelectionUI:createUI()
 	viewAllBtn.BackgroundColor3 = COLORS.TEXT_ACCENT
 	viewAllBtn.BorderSizePixel = 0
 	viewAllBtn.Text = "VIEW ALL"
-	viewAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	viewAllBtn.TextColor3 = Theme.TEXT_PRIMARY
 	viewAllBtn.TextSize = 12
 	viewAllBtn.Font = Enum.Font.GothamBold
 	viewAllBtn.Parent = rewardsFrame
 
 	local viewAllCorner = Instance.new("UICorner")
-	viewAllCorner.CornerRadius = UDim.new(0, 6)
+	viewAllCorner.CornerRadius = Theme.CORNER_SM
 	viewAllCorner.Parent = viewAllBtn
 
 	viewAllBtn.MouseButton1Click:Connect(function()
@@ -478,19 +479,19 @@ function ClassSelectionUI:createUI()
 	confirmBtn.BackgroundColor3 = COLORS.BTN_EQUIP
 	confirmBtn.BorderSizePixel = 0
 	confirmBtn.Text = "EQUIP"
-	confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	confirmBtn.TextColor3 = Theme.TEXT_PRIMARY
 	confirmBtn.TextSize = 18
 	confirmBtn.Font = Enum.Font.GothamBold
 	confirmBtn.Parent = container
 	self.confirmButton = confirmBtn
 
 	local confirmCorner = Instance.new("UICorner")
-	confirmCorner.CornerRadius = UDim.new(0, 10)
+	confirmCorner.CornerRadius = Theme.CORNER_SM
 	confirmCorner.Parent = confirmBtn
 
 	local confirmStroke = Instance.new("UIStroke")
-	confirmStroke.Color = Color3.fromRGB(60, 160, 60)
-	confirmStroke.Thickness = 1.5
+	confirmStroke.Color = Theme.SUCCESS
+	confirmStroke.Thickness = Theme.STROKE_THIN
 	confirmStroke.Transparency = 0.5
 	confirmStroke.Parent = confirmBtn
 	self.confirmStroke = confirmStroke
@@ -521,12 +522,12 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 	card.Parent = parent
 
 	local cardCorner = Instance.new("UICorner")
-	cardCorner.CornerRadius = UDim.new(0, 12)
+	cardCorner.CornerRadius = Theme.CORNER_MD
 	cardCorner.Parent = card
 
 	local cardStroke = Instance.new("UIStroke")
 	cardStroke.Color = COLORS.STROKE_DEFAULT
-	cardStroke.Thickness = 2
+	cardStroke.Thickness = Theme.STROKE_MED
 	cardStroke.Parent = card
 
 	-- Icon
@@ -664,7 +665,7 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 	passive.Position = UDim2.new(0, 8, 0, 150)
 	passive.BackgroundTransparency = 1
 	passive.Text = classDef.passiveAbility.name
-	passive.TextColor3 = Color3.fromRGB(160, 120, 40)
+	passive.TextColor3 = Theme.PRIMARY_DARK
 	passive.TextSize = 11
 	passive.Font = Enum.Font.GothamBold
 	passive.TextWrapped = true
@@ -804,7 +805,7 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 			local isAffordable = self:isClassAffordable(classId)
 			local targetColor = COLORS.STROKE_DEFAULT
 			if not isUnlocked then
-				targetColor = if isAffordable then Color3.fromRGB(230, 210, 160) else Color3.fromRGB(220, 180, 180)
+				targetColor = if isAffordable then Theme.WARNING else Theme.DANGER
 			end
 			TweenService:Create(cardStroke, TweenInfo.new(0.12), {
 				Color = targetColor,
@@ -827,12 +828,12 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	self.classIndicator = indicator
 
 	local indicatorCorner = Instance.new("UICorner")
-	indicatorCorner.CornerRadius = UDim.new(0, 10)
+	indicatorCorner.CornerRadius = Theme.CORNER_SM
 	indicatorCorner.Parent = indicator
 
 	local indicatorStroke = Instance.new("UIStroke")
 	indicatorStroke.Color = COLORS.STROKE_DEFAULT
-	indicatorStroke.Thickness = 1.5
+	indicatorStroke.Thickness = Theme.STROKE_THIN
 	indicatorStroke.Parent = indicator
 	self.indicatorStroke = indicatorStroke
 
@@ -863,7 +864,7 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	masteryBadge.Name = "MasteryBadge"
 	masteryBadge.Size = UDim2.new(0, 40, 0, 20)
 	masteryBadge.Position = UDim2.new(0, 106, 0.5, -10)
-	masteryBadge.BackgroundColor3 = Color3.fromRGB(230, 240, 255)
+	masteryBadge.BackgroundColor3 = Theme.BG_SURFACE
 	masteryBadge.BackgroundTransparency = 0.2
 	masteryBadge.BorderSizePixel = 0
 	masteryBadge.Text = "Lv.1"
@@ -874,7 +875,7 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	self.indicatorMasteryBadge = masteryBadge
 
 	local badgeCorner = Instance.new("UICorner")
-	badgeCorner.CornerRadius = UDim.new(0, 6)
+	badgeCorner.CornerRadius = Theme.CORNER_SM
 	badgeCorner.Parent = masteryBadge
 
 	-- Chevron
@@ -944,13 +945,13 @@ function ClassSelectionUI:setConfirmButtonState(text: string, isEnabled: boolean
 
 	if isEnabled then
 		self.confirmButton.BackgroundColor3 = btnColor or COLORS.BTN_EQUIP
-		self.confirmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		self.confirmButton.TextColor3 = Theme.TEXT_PRIMARY
 		if self.confirmStroke then
 			self.confirmStroke.Transparency = 0.5
 		end
 	else
 		self.confirmButton.BackgroundColor3 = COLORS.BTN_DISABLED
-		self.confirmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		self.confirmButton.TextColor3 = Theme.TEXT_PRIMARY
 		if self.confirmStroke then
 			self.confirmStroke.Transparency = 1
 		end
@@ -987,12 +988,12 @@ function ClassSelectionUI:refreshClassStates()
 			buttonData.button.BackgroundColor3 = COLORS.BG_CARD
 			buttonData.button.BackgroundTransparency = 0
 		elseif isAffordable then
-			buttonData.stroke.Color = Color3.fromRGB(230, 210, 160)
+			buttonData.stroke.Color = Theme.WARNING
 			buttonData.stroke.Thickness = 2
 			buttonData.button.BackgroundColor3 = COLORS.BG_CARD_LOCKED
 			buttonData.button.BackgroundTransparency = 0
 		else
-			buttonData.stroke.Color = Color3.fromRGB(220, 180, 180)
+			buttonData.stroke.Color = Theme.DANGER
 			buttonData.stroke.Thickness = 2
 			buttonData.button.BackgroundColor3 = COLORS.BG_CARD_LOCKED
 			buttonData.button.BackgroundTransparency = 0.1
@@ -1018,7 +1019,7 @@ function ClassSelectionUI:refreshClassStates()
 		local masteryXp = masteryInfo and masteryInfo.xp or 0
 		local masteryXpToNext = masteryInfo and masteryInfo.xpToNext or 0
 		local masteryIsMax = masteryInfo and masteryInfo.isMax or false
-		
+
 		-- Check if ultimate is unlocked (level >= 20)
 		local ultimateUnlockLevel = Config.Mastery and Config.Mastery.UltimateUnlockLevel or 20
 		local hasUltimate = masteryLevel >= ultimateUnlockLevel
@@ -1185,12 +1186,12 @@ function ClassSelectionUI:showToast(text: string, color: Color3?)
 	self.activeToast = toast
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = toast
 
 	local toastStroke = Instance.new("UIStroke")
 	toastStroke.Color = COLORS.STROKE_DEFAULT
-	toastStroke.Thickness = 1
+	toastStroke.Thickness = Theme.STROKE_THIN
 	toastStroke.Parent = toast
 
 	TweenService:Create(toast, TweenInfo.new(0.15), {
@@ -1226,7 +1227,7 @@ function ClassSelectionUI:showRewardUnlockToast(className: string, unlockedRewar
 		return
 	end
 
-	self:showToast(string.format("%s reward unlocked: %s", className, table.concat(rewardNames, ", ")), Color3.fromRGB(200, 150, 30))
+	self:showToast(string.format("%s reward unlocked: %s", className, table.concat(rewardNames, ", ")), Theme.PRIMARY)
 end
 
 -- ── Action Handlers ──
@@ -1239,7 +1240,7 @@ function ClassSelectionUI:handleAction(action: {[string]: any})
 
 	if actionType == "purchase" then
 		local cost = tonumber(action.cost) or 0
-		self:showToast(string.format("Purchased %s for %d!", className, cost), Color3.fromRGB(200, 150, 30))
+		self:showToast(string.format("Purchased %s for %d!", className, cost), Theme.PRIMARY)
 		if self.isVisible then
 			self:hide()
 		end
@@ -1259,7 +1260,7 @@ function ClassSelectionUI:handleAction(action: {[string]: any})
 		elseif reason == "ALREADY_UNLOCKED" then
 			self:showToast("Class already unlocked", COLORS.STATUS_CAN_BUY)
 		elseif reason == "NOT_IN_LOBBY" then
-			self:showToast("You can change class only in lobby", Color3.fromRGB(220, 150, 80))
+			self:showToast("You can change class only in lobby", Theme.WARNING)
 		else
 			self:showToast("Class selection failed", COLORS.STATUS_LOCKED)
 		end
@@ -1277,7 +1278,7 @@ function ClassSelectionUI:handleTitleAction(action: {[string]: any})
 				end
 			end
 			if #names > 0 then
-				self:showToast("Unlocked title: " .. table.concat(names, ", "), Color3.fromRGB(200, 150, 30))
+				self:showToast("Unlocked title: " .. table.concat(names, ", "), Theme.PRIMARY)
 			end
 		end
 	elseif actionType == "error" then
@@ -1359,10 +1360,10 @@ function ClassSelectionUI:updateIndicator(classId: string)
 		self.indicatorMasteryBadge.Text = string.format("Lv.%d", level)
 		if isMax then
 			self.indicatorMasteryBadge.TextColor3 = COLORS.MASTERY_MAX
-			self.indicatorMasteryBadge.BackgroundColor3 = Color3.fromRGB(255, 245, 220)
+			self.indicatorMasteryBadge.BackgroundColor3 = Theme.BG_ELEVATED
 		else
 			self.indicatorMasteryBadge.TextColor3 = COLORS.TEXT_ACCENT
-			self.indicatorMasteryBadge.BackgroundColor3 = Color3.fromRGB(230, 240, 255)
+			self.indicatorMasteryBadge.BackgroundColor3 = Theme.BG_SURFACE
 		end
 	end
 end
@@ -1448,7 +1449,7 @@ function ClassSelectionUI:setupRemotes()
 			local classDef = ClassTypes.getClass(data.action.classId)
 			local className = classDef and classDef.name or data.action.classId
 			local level = self.classMastery[data.action.classId] and self.classMastery[data.action.classId].level or tonumber(data.action.newLevel) or 1
-			self:showToast(string.format("%s Mastery Lv.%d!", className, level), Color3.fromRGB(200, 150, 30))
+			self:showToast(string.format("%s Mastery Lv.%d!", className, level), Theme.PRIMARY)
 
 			if type(data.action.unlockedRewards) == "table" and #data.action.unlockedRewards > 0 then
 				task.delay(0.25, function()
