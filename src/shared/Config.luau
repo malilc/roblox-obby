@@ -2,7 +2,7 @@
 local Config = {
 	-- Lobby Settings
 	Lobby = {
-		SpawnPosition = Vector3.new(0, 103, 0),
+		SpawnPosition = Vector3.new(0, 102, -8),
 		TeleporterPosition = Vector3.new(0, 3, 20),
 	},
 

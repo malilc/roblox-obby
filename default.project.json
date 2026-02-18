@@ -140,22 +140,22 @@
           "Anchored": true,
           "CFrame": [
             0,
-            101,
+            100.5,
+            -8,
+            1,
+            0,
+            0,
             0,
             1,
             0,
             0,
             0,
-            -1,
-            0,
-            0,
-            0,
-            -1
+            1
           ],
           "Size": [
-            8,
+            6,
             1,
-            8
+            6
           ],
           "Neutral": true,
           "Color": [
@@ -168,50 +168,122 @@
       },
       "Lobby": {
         "$className": "Folder",
-        "Floor": {
+        "GlassFloor": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [
-              0.3,
-              0.5,
-              0.3
-            ],
-            "Material": "Grass",
-            "Size": [
-              100,
-              2,
-              100
-            ],
-            "Position": [
-              0,
-              99,
-              0
-            ]
+            "Color": [0.9, 0.95, 1.0],
+            "Material": "Glass",
+            "Size": [100, 2, 100],
+            "Position": [0, 99, 0],
+            "Transparency": 0.3
+          }
+        },
+        "GlassCeiling": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.9, 0.95, 1.0],
+            "Material": "Glass",
+            "Size": [100, 1, 100],
+            "Position": [0, 129, 0],
+            "Transparency": 0.5
+          }
+        },
+        "GlassWall_North": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.85, 0.9, 0.98],
+            "Material": "Glass",
+            "Size": [98, 30, 1],
+            "Position": [0, 114, -49],
+            "Transparency": 0.4
+          }
+        },
+        "GlassWall_South": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.85, 0.9, 0.98],
+            "Material": "Glass",
+            "Size": [98, 30, 1],
+            "Position": [0, 114, 49],
+            "Transparency": 0.4
+          }
+        },
+        "GlassWall_East": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.85, 0.9, 0.98],
+            "Material": "Glass",
+            "Size": [1, 30, 98],
+            "Position": [49, 114, 0],
+            "Transparency": 0.4
+          }
+        },
+        "GlassWall_West": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.85, 0.9, 0.98],
+            "Material": "Glass",
+            "Size": [1, 30, 98],
+            "Position": [-49, 114, 0],
+            "Transparency": 0.4
           }
         },
         "SelectionZone": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [
-              0.2,
-              0.6,
-              1.0
-            ],
+            "Color": [0.2, 0.6, 1.0],
             "Material": "Neon",
-            "Size": [
-              20,
-              1,
-              20
-            ],
-            "Position": [
-              0,
-              100,
-              30
-            ],
-            "Transparency": 0.5,
+            "Size": [20, 0.5, 20],
+            "Position": [0, 101, 30],
+            "Transparency": 0.3,
             "CanCollide": false
+          }
+        },
+        "FrameCorner_NE": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.3, 0.3, 0.35],
+            "Material": "Metal",
+            "Size": [2, 32, 2],
+            "Position": [50, 114, -50]
+          }
+        },
+        "FrameCorner_NW": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.3, 0.3, 0.35],
+            "Material": "Metal",
+            "Size": [2, 32, 2],
+            "Position": [-50, 114, -50]
+          }
+        },
+        "FrameCorner_SE": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.3, 0.3, 0.35],
+            "Material": "Metal",
+            "Size": [2, 32, 2],
+            "Position": [50, 114, 50]
+          }
+        },
+        "FrameCorner_SW": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.3, 0.3, 0.35],
+            "Material": "Metal",
+            "Size": [2, 32, 2],
+            "Position": [-50, 114, 50]
           }
         }
       },
