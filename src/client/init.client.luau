@@ -188,6 +188,21 @@ returnToLobbyRemote.OnClientEvent:Connect(function()
 	end
 end)
 
+-- Snap camera on every spawn (handles initial Studio Test and respawn)
+local function onCharacterSpawned()
+	task.wait(0.5) -- รอให้ character โหลดเสร็จ
+	local character = LocalPlayer.Character
+	if character and character:FindFirstChild("HumanoidRootPart") then
+		local hrp = character.HumanoidRootPart
+		snapCamera(CFrame.lookAt(
+			hrp.Position + Vector3.new(0, 5, -12),
+			hrp.Position + Vector3.new(0, 0, 5)
+		))
+	end
+end
+
+LocalPlayer.CharacterAdded:Connect(onCharacterSpawned)
+
 -- Show welcome on first spawn
 LocalPlayer.CharacterAdded:Wait()
 task.wait(1)
