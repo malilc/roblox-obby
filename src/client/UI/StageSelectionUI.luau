@@ -746,6 +746,9 @@ function StageSelectionUI:confirmSelection(isRandom: boolean)
 end
 
 function StageSelectionUI:updateCountdown(data: {number: number, message: string})
+	-- Reset state ก่อนแสดง ป้องกัน stale state จาก round ก่อน
+	self.countdownFrame.BackgroundTransparency = 0.4
+	self.countdownFrame.Size = UDim2.new(0, 350, 0, 250)
 	self.countdownFrame.Visible = true
 	self.countdownNumber.Text = tostring(data.number)
 	self.countdownMessage.Text = data.message

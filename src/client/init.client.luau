@@ -148,6 +148,25 @@ local function showWelcomeMessage()
 	end)
 end
 
+-- Reset camera to face stage direction when countdown ends (GO!)
+local countdownRemote = Remotes:WaitForChild("CountdownUpdate")
+countdownRemote.OnClientEvent:Connect(function(data)
+	if data.number == 1 then
+		task.delay(1.1, function()
+			local camera = workspace.CurrentCamera
+			local character = LocalPlayer.Character
+			if character and character:FindFirstChild("HumanoidRootPart") then
+				local hrp = character.HumanoidRootPart
+				camera.CameraType = Enum.CameraType.Custom
+				camera.CFrame = CFrame.lookAt(
+					hrp.Position + Vector3.new(-10, 5, 0),
+					hrp.Position
+				)
+			end
+		end)
+	end
+end)
+
 -- Show welcome on first spawn
 LocalPlayer.CharacterAdded:Wait()
 task.wait(1)

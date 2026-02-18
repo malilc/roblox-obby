@@ -911,8 +911,9 @@ function GameManager:teleportToLobby(player: Player)
 			humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 			humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
 
-			-- Teleport to Config position
-			humanoidRootPart.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
+			-- Teleport to Config position หันหน้าไปทาง SelectionZone (+Z)
+			local spawnPos = targetPosition + Vector3.new(0, 3, 0)
+			humanoidRootPart.CFrame = CFrame.lookAt(spawnPos, spawnPos + Vector3.new(0, 0, 1))
 			Logger.debug("GameManager", "Teleport successful for", player.Name)
 		else
 			Logger.warn("GameManager", "Could not find HumanoidRootPart for", player.Name)
