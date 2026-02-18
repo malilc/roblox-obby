@@ -118,6 +118,15 @@
         },
         "ReturnToLobby": {
           "$className": "RemoteEvent"
+        },
+        "DailyBonusClaimed": {
+          "$className": "RemoteEvent"
+        },
+        "LeaderboardUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "ResetDailyLogin": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

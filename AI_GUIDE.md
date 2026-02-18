@@ -11,16 +11,18 @@ src/
 │   ├── GameManager.luau         # ควบคุมเกมทั้งหมด
 │   ├── MapManager.luau          # จัดการ map/stages + animations + per-match instancing
 │   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (auto-save ทุก 30วิ)
-│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + Ultimate Skills + DataStore
+│   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + Daily Login + DataStore
 │   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Mario Kart
 │   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race + Stage Voting
 │   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
+│   ├── LeaderboardManager.luau  # 🏆 Global Leaderboard (OrderedDataStore + Physical Board)
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
 │
 ├── client/                      # Client-side code
 │   ├── init.client.luau         # Entry point
 │   ├── FlyController.luau       # ระบบบินทดสอบ (กด F)
 │   ├── ItemEffects.luau         # 🎯 Screen effects (shake, flash, zoom)
+│   ├── SoundManager.luau        # 🔊 BGM + SFX manager (ใส่ rbxassetid ใน SOUNDS table)
 │   ├── UltimateSkillController.luau # ⚡ Ultimate Skills (Sprint, Double Jump, Iron Will)
 │   ├── SpectatorCamera.luau     # 👁️ กล้อง Follow + FreeCam สำหรับ Spectator Mode
 │   └── UI/
@@ -39,6 +41,8 @@ src/
 │       ├── RaceResultsUI.luau   # 🏁 UI ผลการแข่ง
 │       ├── TutorialUI.luau      # ❓ Game Guide popup (ปุ่ม "?" + 5 tabs RichText)
 │       ├── SpectatorUI.luau     # 👁️ Spectator HUD + prompt + rankings
+│       ├── DailyBonusUI.luau    # 🎁 Daily Login 7-day calendar popup + HUD button
+│       ├── LeaderboardUI.luau   # 🏆 Stub เท่านั้น (physical board สร้างโดย LeaderboardManager)
 │       └── MobileInputUI.luau   # 📱 Touch buttons สำหรับมือถือ (Item/Sprint/Jump)
 │
 └── shared/                      # Shared code (server + client)
@@ -66,6 +70,7 @@ Workspace/
 │   ├── GridH_1-4          # เส้น Grid แนวนอน บนพื้น (Neon น้ำเงินจาง)
 │   ├── GridV_1-4          # เส้น Grid แนวตั้ง บนพื้น (Neon น้ำเงินจาง)
 │   └── SelectionZone      # ⭐ Zone เลือกด่าน (Neon Magenta)
+├── GlobalLeaderboard      # 🏆 Part สำหรับ physical leaderboard board (สร้างอัตโนมัติถ้าไม่มี)
 ├── Stages/                # Folder เก็บด่านที่ generate
 └── KillBrick              # พื้นที่ตายเมื่อตก
 ```
@@ -73,6 +78,7 @@ Workspace/
 **สำคัญ**: 
 - `SpawnLocation` ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
 - `SelectionZone` ใช้ loop-based detection (เสถียรกว่า Touched events)
+- `GlobalLeaderboard` ถ้าวาง Part ไว้ใน workspace ก่อน จะใช้ตำแหน่งนั้น (ไม่สร้างใหม่)
 
 ---
 
@@ -435,11 +441,22 @@ local Config = {
 
     KillZoneY = -120,            -- ความสูงที่ตาย
 
+    -- Daily Login (7-day streak)
+    DailyLogin = {
+        CooldownHours = 20,  -- รับได้หลังจาก 20 ชั่วโมง
+        ResetHours    = 48,  -- streak reset ถ้าไม่ได้ login 48 ชั่วโมง
+        Rewards = {          -- coins ต่อวัน (วนซ้ำหลังครบ 7 วัน)
+            [1] = 25, [2] = 50, [3] = 75, [4] = 100,
+            [5] = 150, [6] = 200, [7] = 500,
+        },
+    },
+
     -- Debug / Development Settings
     Debug = {
         Enabled = true,          -- Master toggle: set false for production
         FlyMode = true,          -- Press F to fly (client)
         ItemTesting = true,      -- Press T for item test menu (client + server remotes)
+        MasteryTesting = true,   -- Press M for mastery test menu
     },
 }
 ```
@@ -914,6 +931,117 @@ Match = {
 
 ---
 
+## ⏱️ Match Timer UI
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/client/UI/ScoreUI.luau` - timer frame (top-center, hidden by default)
+- `src/client/UI/MainUI.luau` - wires `RaceUpdate` / `TimeWarning` / `ReturnToLobby`
+
+### การทำงาน:
+- Server ส่ง `RaceUpdate` พร้อม `{ timeRemaining, isRunning }` → ScoreUI:showTimer / updateTimer
+- Server ส่ง `TimeWarning` พร้อม `{ timeLeft, isCritical }` → MainUI:showTimeWarning (popup + tween)
+- เมื่อ `timeRemaining <= 30`: timer เปลี่ยนเป็นสีแดง + pulse
+- `ReturnToLobby` → ScoreUI:hideTimer
+
+---
+
+## 🎁 Daily Login System
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/shared/Config.luau` → `Config.DailyLogin`
+- `src/server/CurrencyManager.luau` → `checkDailyLogin()`
+- `src/client/UI/DailyBonusUI.luau` → HUD button + calendar popup
+
+### การทำงาน:
+```
+Player joins → CurrencyManager:loadPlayerData()
+    ↓
+checkDailyLogin(player):
+  - ถ้า elapsed < CooldownHours: ส่ง { claimed=false, day, rewards } (status only)
+  - ถ้า elapsed >= CooldownHours:
+      - ถ้า elapsed >= ResetHours: streak = 0
+      - streak = (streak % 7) + 1
+      - เพิ่ม currency ตาม rewards[streak]
+      - ส่ง { claimed=true, day=streak, amount, rewards }
+    ↓
+Client รับ DailyBonusClaimed:
+  - claimed=true  → เปิด calendar popup (claim mode)
+  - claimed=false → อัพเดท HUD button badge เท่านั้น
+```
+
+### DataStore Fields (เพิ่มใหม่):
+- `lastLoginTime` (number?) — os.time() ครั้งล่าสุดที่รับ
+- `loginStreak` (number) — วันที่ปัจจุบัน 1–7
+
+### DailyBonusUI:
+- **HUD button** 🎁 มุมล่างซ้าย — แสดง "Day X", สีทอง=ยังไม่รับ, สีเขียว=รับแล้ว
+- **Calendar popup** — 7 day cards แสดงสถานะ (past=✓, today=gold/green, future=dim)
+- **isClaim mode**: ปุ่ม "✨ CLAIM!" → กด → green overlay ✓ ทับ card → ปิดใน 1.2 วิ
+- **view mode**: ปุ่ม "OK", today card แสดง ✓ สีเขียว
+- guard `_calendarOpen`: ป้องกันเปิด popup ซ้อนกัน
+
+### Testing:
+- กด **T** → Item Testing menu → "🎁 Reset Daily Login" → รีเซ็ต streak ทันที (debug only)
+
+---
+
+## 🏆 Global Leaderboard (Physical Board)
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/server/LeaderboardManager.luau` — สร้าง board + OrderedDataStore
+- `src/server/GameManager.luau` — เรียก `updateScore()` เมื่อผู้เล่นจบเกม + `sendToPlayer()` เมื่อ join
+- `src/client/UI/LeaderboardUI.luau` — **stub เท่านั้น** (ลบ screen toggle แล้ว)
+
+### Physical Board:
+```lua
+-- LeaderboardManager สร้าง Part ชื่อ "GlobalLeaderboard" ใน workspace
+-- ถ้ามี Part อยู่แล้วจะใช้ตำแหน่งนั้น (ย้าย Part ใน Studio ได้)
+BOARD_POSITION = Vector3.new(22, 109, 12)  -- ขวาของ stage select, lobby floor Y~102
+BOARD_SIZE     = Vector3.new(10, 14, 0.5)  -- กว้าง × สูง × บาง
+-- หันหน้า -X (มองเห็นจากกลาง lobby)
+-- SurfaceGui: PixelsPerStud=80, Face=Front, Top 10 rows
+```
+
+### Key Functions:
+| Function | Description |
+|----------|-------------|
+| `updateScore(player, score)` | บันทึก high score ลง OrderedDataStore |
+| `fetchTopScores()` | ดึง Top 10 จาก OrderedDataStore |
+| `broadcast()` | fetch → อัพเดท physical board UI + fire LeaderboardUpdate |
+| `sendToPlayer(player)` | ส่ง cached top ให้ผู้เล่นที่เพิ่งเข้า |
+| `startRefreshLoop()` | refresh ทุก 60 วินาที |
+
+---
+
+## 🔊 Sound Manager
+
+### ไฟล์: `src/client/SoundManager.luau`
+
+ต้องใส่ asset IDs ก่อนเกมจะมีเสียง:
+
+```lua
+-- src/client/SoundManager.luau (บรรทัดต้นไฟล์)
+local SOUNDS = {
+    BGM_Lobby         = "",  -- ใส่ rbxassetid://XXXXXXX เพลง lobby loop
+    SFX_Countdown     = "",  -- เสียง countdown beep
+    SFX_GameStart     = "",  -- เสียง GO!
+    SFX_StageComplete = "",  -- เสียง stage clear
+    SFX_ItemPickup    = "",  -- เสียง item pickup
+}
+```
+
+### Key Methods:
+| Method | Description |
+|--------|-------------|
+| `playBGM()` | เล่น BGM (loop) ถ้า SoundId ไม่ว่าง |
+| `stopBGM()` | หยุด BGM |
+| `playSFX(name)` | เล่น SFX ถ้า SoundId ไม่ว่าง |
+| `_setupRemotes()` | ฟัง CountdownUpdate / StageComplete RemoteEvents |
+
+> SoundManager init ใน `init.client.luau` ด้วย `task.spawn` ไม่ block main thread
+
+---
+
 ## 📡 RemoteEvents
 
 ### ไฟล์: `default.project.json` → `ReplicatedStorage.Remotes`
@@ -951,6 +1079,9 @@ Match = {
 | `TutorialSeen` | Client → Server | ❓ ผู้เล่นเปิด Tutorial ครั้งแรก (persist ใน DataStore) |
 | `SpectateMatch` | Client → Server | 👁️ ผู้เล่นเลือก Spectate หลังจบ |
 | `SpectatorLeave` | Client → Server | 👁️ ออกจาก Spectator mode |
+| `DailyBonusClaimed` | Server → Client | 🎁 Daily Login status/claim `{ claimed, day, amount, rewards }` |
+| `LeaderboardUpdate` | Server → Client | 🏆 Top 10 scores `{ top: [{rank,name,score}] }` |
+| `ResetDailyLogin` | Client → Server | 🧪 รีเซ็ต daily login streak (debug mode เท่านั้น) |
 
 **ClassUpdate Payload (สำคัญ):**
 ```lua
@@ -1149,6 +1280,8 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 | `MatchLobbyUI` | กลางจอ | 🏁 Matchmaking lobby + Rankings |
 | `RaceResultsUI` | กลางจอ (popup) | 🏁 ผลการแข่งขัน |
 | `SpectatorUI` | กลางจอ (popup + HUD) | 👁️ Spectate prompt + rankings + camera controls |
+| `DailyBonusUI` | มุมล่างซ้าย (HUD btn) + กลางจอ (popup) | 🎁 Daily Login 7-day calendar + claim/view mode |
+| `LeaderboardUI` | — (stub) | 🏆 ไม่มี UI จริง — ดู Global Leaderboard ที่ป้ายกายภาพใน lobby |
 | `MobileInputUI` | มุมล่าง (มือถือเท่านั้น) | 📱 Touch buttons: Item1/2, Sprint, Jump |
 
 ### StageSelectionUI:
@@ -1344,6 +1477,7 @@ Back to Lobby (State = "Lobby")
 - กด **T** เพื่อเปิด/ปิดเมนูทดสอบ Item
 - เลือก item ที่ต้องการ (แบ่งกลุ่มตาม rarity)
 - กด "Clear All Items" เพื่อล้าง items ทั้งหมด
+- กด **"🎁 Reset Daily Login"** เพื่อรีเซ็ต streak + รับรางวัลวันที่ 1 ทันที (debug only)
 
 ### Item Controls:
 - กด **1** = ใช้ item ช่องซ้าย
@@ -1422,6 +1556,7 @@ end)
 12. **Shared Player Key**: ใช้ key เดียว `Player_<UserId>` และ save ด้วย `UpdateAsync` (atomic, ป้องกัน race condition)
 13. **Class Fields**: ใน profile มี `unlockedClasses` + `equippedClass` ถาวรต่อบัญชี
 14. **Title Field**: ใน profile มี `activeTitle` (string? หรือ nil) สำหรับ title ที่ใส่อยู่
+15. **Daily Login Fields**: ใน profile มี `lastLoginTime` (number?) + `loginStreak` (number 1–7)
 
 ### 🎯 Item System (Mario Kart Style)
 14. **Dual Slots**: ผู้เล่นถือได้ 2 items, กด 1/2 เพื่อใช้
@@ -1505,13 +1640,29 @@ end)
 71. **Heartbeat**: loop อัพเดทสถานะปุ่ม (item icon, cooldown, ultimate visibility)
 72. **Sprint/Jump**: ซ่อนเมื่อไม่มี ultimate ที่ปลดล็อค
 
+### 🎁 Daily Login
+73. **7-Day Streak**: streak reset เมื่อไม่ได้ login 48 ชั่วโมง, วนซ้ำหลัง Day 7
+74. **Popup Guard**: `_calendarOpen` flag ป้องกัน calendar popup ซ้อน
+75. **lastData.claimed**: หลังปิด claim popup จะเซ็ตเป็น `false` เสมอ (ป้องกัน re-claim บน HUD)
+76. **Testing**: ใช้ "🎁 Reset Daily Login" ใน Item Testing menu (T) — ต้อง `Config.Debug.Enabled = true`
+
+### 🏆 Global Leaderboard
+77. **DataStore**: ใช้ `OrderedDataStore` แยกต่างหาก (`ObbyLeaderboard_v1`)
+78. **Physical Board**: Part ชื่อ `GlobalLeaderboard` ใน workspace — วางเองใน Studio ได้ (จะใช้ตำแหน่งนั้น)
+79. **Default Position**: `(22, 109, 12)` หันหน้า -X ขวาของ stage select area
+80. **Refresh**: broadcast ทุก 60 วินาที + เมื่อผู้เล่นจบเกม
+
+### 🔊 Sound Manager
+81. **Asset IDs ว่าง**: SoundManager มีโครงสร้างแต่ทุก ID เป็น `""` — ต้องใส่ rbxassetid ก่อนเกมมีเสียง
+82. **Safe**: ตรวจสอบ SoundId ก่อนเล่น ไม่ error ถ้า ID ว่าง
+
 ### 🔧 Code Quality (Audit Feb 2026)
-73. **Debug Flags**: `Config.Debug.Enabled`, `FlyMode`, `ItemTesting` - ต้อง set `false` ก่อน production
-74. **Logger**: `src/shared/Logger.luau` - ใช้ `Logger.debug/info/warn/error(tag, ...)` แทน `print("[Tag]", ...)`
-75. **os.clock()**: ใช้ `os.clock()` แทน `tick()` ทั้ง project (tick deprecated)
-76. **LinearVelocity/AngularVelocity**: ใช้ constraint-based แทน BodyVelocity/BodyAngularVelocity (deprecated)
-77. **UpdateAsync**: DataStore ใช้ `UpdateAsync` (atomic) ไม่ใช่ `GetAsync`+`SetAsync` (race condition)
-78. **Connection Cleanup**: CharacterAdded/Died connections ถูก track ใน `playerConnections` table และ disconnect เมื่อ player leave
-79. **Input Validation**: `ConfirmStageSelection` remote ผ่าน `validateStageOrder()` ก่อนใช้งาน
-80. **Shared Map Limitation**: Map เป็น global shared ใน workspace - ถ้า 2+ players เล่นพร้อมกันจะมีปัญหา (ต้องทำ instanced map ในอนาคต)
-81. **Race Direction**: Stages progress ตามแกน +X (ไม่ใช่ +Z) - "ahead" check ใช้ `Position.X`
+83. **Debug Flags**: `Config.Debug.Enabled`, `FlyMode`, `ItemTesting`, `MasteryTesting` - ต้อง set `false` ก่อน production
+84. **Logger**: `src/shared/Logger.luau` - ใช้ `Logger.debug/info/warn/error(tag, ...)` แทน `print("[Tag]", ...)`
+85. **os.clock()**: ใช้ `os.clock()` แทน `tick()` ทั้ง project (tick deprecated)
+86. **LinearVelocity/AngularVelocity**: ใช้ constraint-based แทน BodyVelocity/BodyAngularVelocity (deprecated)
+87. **UpdateAsync**: DataStore ใช้ `UpdateAsync` (atomic) ไม่ใช่ `GetAsync`+`SetAsync` (race condition)
+88. **Connection Cleanup**: CharacterAdded/Died connections ถูก track ใน `playerConnections` table และ disconnect เมื่อ player leave
+89. **Input Validation**: `ConfirmStageSelection` remote ผ่าน `validateStageOrder()` ก่อนใช้งาน
+90. **Shared Map Limitation**: Map เป็น global shared ใน workspace - ถ้า 2+ players เล่นพร้อมกันจะมีปัญหา (ต้องทำ instanced map ในอนาคต)
+91. **Race Direction**: Stages progress ตามแกน +X (ไม่ใช่ +Z) - "ahead" check ใช้ `Position.X`

@@ -19,6 +19,10 @@ local mainUI = MainUI.new()
 local ItemEffects = require(script.ItemEffects)
 local itemEffects = ItemEffects.new()
 
+-- Initialize Sound Manager (BGM + SFX)
+local SoundManager = require(script.SoundManager)
+local soundManager = SoundManager.new()
+
 -- Debug/Testing tools (behind Config.Debug flags)
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 

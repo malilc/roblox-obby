@@ -177,6 +177,21 @@ Stages = {
 		CameraSmoothness = 0.1,
 	},
 
+	-- Daily Login (7-day streak)
+	DailyLogin = {
+		CooldownHours = 20,  -- รับได้หลังจาก 20 ชั่วโมง
+		ResetHours    = 48,  -- streak reset ถ้าไม่ได้ login 48 ชั่วโมง
+		Rewards = {          -- รางวัล coins แต่ละวัน (วนซ้ำหลังครบ 7 วัน)
+			[1] = 25,
+			[2] = 50,
+			[3] = 75,
+			[4] = 100,
+			[5] = 150,
+			[6] = 200,
+			[7] = 500,
+		},
+	},
+
 	-- Debug / Development Settings
 	Debug = {
 		Enabled = true,    -- Master toggle: set false for production

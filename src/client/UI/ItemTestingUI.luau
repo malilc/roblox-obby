@@ -231,6 +231,53 @@ function ItemTestingUI:createItemButtons()
 	clearButton.MouseButton1Click:Connect(function()
 		self:clearItems()
 	end)
+
+	-- Daily Login Reset button
+	local dlSeparator = Instance.new("TextLabel")
+	dlSeparator.Name = "DailySeparator"
+	dlSeparator.Size = UDim2.new(1, 0, 0, 25)
+	dlSeparator.BackgroundTransparency = 1
+	dlSeparator.Text = "── Daily Login ──"
+	dlSeparator.TextColor3 = Color3.fromRGB(255, 200, 40)
+	dlSeparator.TextSize = 14
+	dlSeparator.Font = Enum.Font.GothamBold
+	dlSeparator.LayoutOrder = layoutOrder + 101
+	dlSeparator.Parent = self.scrollFrame
+
+	local dailyLoginBtn = Instance.new("TextButton")
+	dailyLoginBtn.Name = "ResetDailyLoginBtn"
+	dailyLoginBtn.Size = UDim2.new(1, 0, 0, 45)
+	dailyLoginBtn.BackgroundColor3 = Color3.fromRGB(35, 22, 65)
+	dailyLoginBtn.Text = "🎁 Reset Daily Login"
+	dailyLoginBtn.TextColor3 = Color3.fromRGB(255, 200, 40)
+	dailyLoginBtn.TextSize = 14
+	dailyLoginBtn.Font = Enum.Font.GothamBold
+	dailyLoginBtn.LayoutOrder = layoutOrder + 102
+	dailyLoginBtn.Parent = self.scrollFrame
+
+	local dlCorner = Instance.new("UICorner")
+	dlCorner.CornerRadius = UDim.new(0, 8)
+	dlCorner.Parent = dailyLoginBtn
+
+	local dlStroke = Instance.new("UIStroke")
+	dlStroke.Color = Color3.fromRGB(255, 200, 40)
+	dlStroke.Thickness = 1.5
+	dlStroke.Parent = dailyLoginBtn
+
+	dailyLoginBtn.MouseButton1Click:Connect(function()
+		local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		if remotes then
+			local resetRemote = remotes:FindFirstChild("ResetDailyLogin")
+			if resetRemote then
+				resetRemote:FireServer()
+				self:playClickEffect(dailyLoginBtn)
+				dailyLoginBtn.Text = "🎁 Resetting..."
+				task.delay(2.5, function()
+					dailyLoginBtn.Text = "🎁 Reset Daily Login"
+				end)
+			end
+		end
+	end)
 end
 
 function ItemTestingUI:createItemButton(itemDef, layoutOrder: number): TextButton

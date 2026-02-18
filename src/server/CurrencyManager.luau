@@ -68,6 +68,8 @@ export type PlayerCurrencyData = {
 	masteryRewards: {[string]: {[string]: boolean}},
 	activeTitle: string?,
 	hasSeenTutorial: boolean,
+	lastLoginTime: number?,
+	loginStreak: number,
 }
 
 local function getDefaultClassId(): string
@@ -395,6 +397,7 @@ function CurrencyManager.new()
 	self.masteryUpdateRemote = ReplicatedStorage.Remotes:WaitForChild("MasteryUpdate")
 	self.titleUpdateRemote = ReplicatedStorage.Remotes:WaitForChild("TitleUpdate")
 	self.setActiveTitleRemote = ReplicatedStorage.Remotes:WaitForChild("SetActiveTitle")
+	self.dailyBonusRemote = ReplicatedStorage.Remotes:WaitForChild("DailyBonusClaimed")
 
 	self:setupRemotes()
 
@@ -429,6 +432,23 @@ function CurrencyManager:setupRemotes()
 				self:handleSetMasteryLevelRequest(player, data)
 			end)
 			Logger.info("CurrencyManager", "SetMasteryLevel remote initialized for testing")
+		end
+	end
+
+	-- Reset daily login for testing
+	if Config.Debug and Config.Debug.Enabled then
+		local resetDailyRemote = ReplicatedStorage.Remotes:FindFirstChild("ResetDailyLogin")
+		if resetDailyRemote then
+			resetDailyRemote.OnServerEvent:Connect(function(player)
+				local playerData = self.playerData[player]
+				if not playerData then return end
+				playerData.lastLoginTime = nil
+				playerData.loginStreak   = 0
+				self.pendingSaves[player] = true
+				self:checkDailyLogin(player)
+				Logger.info("CurrencyManager", "Daily login reset (test) for", player.Name)
+			end)
+			Logger.info("CurrencyManager", "ResetDailyLogin remote initialized for testing")
 		end
 	end
 end
@@ -470,6 +490,8 @@ function CurrencyManager:initPlayer(player: Player)
 		masteryRewards = buildMasteryRewardUnlocks(nil, defaultMasteryData),
 		activeTitle = nil,
 		hasSeenTutorial = false,
+		lastLoginTime = nil,
+		loginStreak = 0,
 	}
 
 	-- Load from DataStore
@@ -480,6 +502,7 @@ end
 function CurrencyManager:loadPlayerData(player: Player)
 	if not self.dataStore then
 		-- Send update even if no DataStore
+		self:checkDailyLogin(player)
 		self:sendCurrencyUpdate(player)
 		self:sendMasteryUpdate(player)
 		self:sendTitleUpdate(player)
@@ -501,17 +524,92 @@ function CurrencyManager:loadPlayerData(player: Player)
 		playerData.masteryRewards = buildMasteryRewardUnlocks(data.masteryRewards, playerData.classMastery)
 		playerData.activeTitle = sanitizeActiveTitle(data.activeTitle, playerData.masteryRewards)
 		playerData.hasSeenTutorial = data.hasSeenTutorial == true
+		playerData.lastLoginTime = tonumber(data.lastLoginTime) or nil
+		playerData.loginStreak = tonumber(data.loginStreak) or 0
 
 		Logger.debug("CurrencyManager", "Loaded profile for", player.Name, "- Currency:", playerData.currency, "- Equipped:", playerData.equippedClass)
 	else
 		Logger.debug("CurrencyManager", "No saved currency for", player.Name, "- Using starting amount")
 	end
 
+	-- Check and give daily login reward
+	self:checkDailyLogin(player)
+
 	-- Update client
 	self:sendCurrencyUpdate(player)
 	self:sendMasteryUpdate(player)
 	self:sendTitleUpdate(player)
 	self:applyActiveTitleToCharacter(player)
+end
+
+-- Check if daily login reward is available and grant it
+function CurrencyManager:checkDailyLogin(player: Player)
+	local playerData = self.playerData[player]
+	if not playerData then return end
+
+	local cfg = Config.DailyLogin
+	if not cfg then return end
+
+	local now = os.time()
+	local cooldownSecs = (cfg.CooldownHours or 20) * 3600
+	local resetSecs    = (cfg.ResetHours    or 48) * 3600
+	local lastLogin    = playerData.lastLoginTime or 0
+	local elapsed      = now - lastLogin
+
+	if elapsed < cooldownSecs then
+		-- Already claimed today — send status so HUD button is up to date
+		local allRewards = {}
+		local cfgRewards = cfg.Rewards or {}
+		for day = 1, 7 do allRewards[day] = cfgRewards[day] or 25 end
+		task.delay(2, function()
+			if player.Parent then
+				self.dailyBonusRemote:FireClient(player, {
+					claimed = false,
+					day     = playerData.loginStreak or 1,
+					amount  = 0,
+					rewards = allRewards,
+				})
+			end
+		end)
+		return
+	end
+
+	-- Reset streak if player missed too many days
+	local streak = playerData.loginStreak or 0
+	if elapsed >= resetSecs then
+		streak = 0
+	end
+
+	-- Advance streak day 1-7, then cycle back to 1
+	streak = (streak % 7) + 1
+
+	local rewards = cfg.Rewards or {}
+	local amount = rewards[streak] or 25
+
+	playerData.currency   = playerData.currency + amount
+	playerData.lastLoginTime = now
+	playerData.loginStreak   = streak
+	self.pendingSaves[player] = true
+
+	Logger.info("CurrencyManager", player.Name, "claimed login day", streak, "reward:", amount)
+
+	-- Build full rewards table for UI
+	local allRewards = {}
+	for day = 1, 7 do
+		allRewards[day] = rewards[day] or 25
+	end
+
+	-- Notify client (small delay so UI is ready)
+	task.delay(2, function()
+		if player.Parent then
+			self.dailyBonusRemote:FireClient(player, {
+				claimed = true,
+				day     = streak,
+				amount  = amount,
+				rewards = allRewards,
+			})
+		end
+	end)
 end
 
 -- Save player currency to DataStore
@@ -533,6 +631,8 @@ function CurrencyManager:savePlayerData(player: Player)
 			existingData.masteryRewards = self:getUnlockedMasteryRewards(player)
 			existingData.activeTitle = playerData.activeTitle
 			existingData.hasSeenTutorial = playerData.hasSeenTutorial
+			existingData.lastLoginTime  = playerData.lastLoginTime
+			existingData.loginStreak    = playerData.loginStreak
 			return existingData
 		end)
 	end)
@@ -668,6 +768,14 @@ function CurrencyManager:setEquippedClass(player: Player, classId: string): bool
 
 	playerData.equippedClass = classId
 	self.pendingSaves[player] = true
+
+	-- Re-apply trail for new class
+	task.delay(0.15, function()
+		local character = player.Character
+		if character then
+			self:applyActiveTrailToCharacter(player, character)
+		end
+	end)
 	return true
 end
 

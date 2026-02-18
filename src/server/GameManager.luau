@@ -9,6 +9,7 @@ local ItemManager = require(script.Parent.ItemManager)
 local CurrencyManager = require(script.Parent.CurrencyManager)
 local MatchManager = require(script.Parent.MatchManager)
 local ClassManager = require(script.Parent.ClassManager)
+local LeaderboardManager = require(script.Parent.LeaderboardManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
@@ -25,6 +26,7 @@ function GameManager.new()
 	self.currencyManager = CurrencyManager.new()
 	self.scoreManager = ScoreManager.new(self.currencyManager) -- Pass CurrencyManager to ScoreManager
 	self.matchManager = MatchManager.new(self) -- Pass GameManager to MatchManager (create before ItemManager)
+	self.leaderboardManager = LeaderboardManager.new()
 	self.classManager = ClassManager.new(self.currencyManager, function(player: Player)
 		return self:canPlayerChangeClass(player)
 	end) -- Character class system
@@ -148,6 +150,13 @@ function GameManager:onPlayerAdded(player: Player)
 	self.currencyManager:initPlayer(player)
 	self.itemManager:initPlayer(player)
 	self.classManager:initPlayer(player)
+
+	-- Send cached leaderboard to new player
+	task.delay(3, function()
+		if player.Parent then
+			self.leaderboardManager:sendToPlayer(player)
+		end
+	end)
 
 	-- Wait for character (store connection for cleanup)
 	local charConn = player.CharacterAdded:Connect(function(character)
@@ -446,6 +455,12 @@ function GameManager:onPlayerFinished(player: Player)
 			canSpectate = canSpectate, -- Can spectate other racers
 		},
 	})
+
+	-- Update global leaderboard
+	local totalScore = self.scoreManager:getTotalScore(player)
+	if totalScore and totalScore > 0 then
+		self.leaderboardManager:updateScore(player, totalScore)
+	end
 
 	Logger.debug("GameManager", player.Name, "FINISHED THE OBBY!")
 

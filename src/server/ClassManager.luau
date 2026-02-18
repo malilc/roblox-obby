@@ -284,9 +284,13 @@ function ClassManager:applyClassStats(player: Player, character: Model)
 	character:SetAttribute("BaseJumpPower", jumpPower)
 	character:SetAttribute("PlayerClass", data.classId)
 	
-	-- Apply mastery trail if unlocked
+	-- Apply mastery trail if unlocked (small delay ensures character is fully loaded)
 	if self.currencyManager and self.currencyManager.applyActiveTrailToCharacter then
-		self.currencyManager:applyActiveTrailToCharacter(player, character)
+		task.delay(0.15, function()
+			if character and character.Parent then
+				self.currencyManager:applyActiveTrailToCharacter(player, character)
+			end
+		end)
 	end
 
 	Logger.debug("ClassManager", "Applied", data.classId, "stats to", player.Name)

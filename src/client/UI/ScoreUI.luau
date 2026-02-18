@@ -277,6 +277,51 @@ function ScoreUI:createUI()
 	stageLabel.TextXAlignment = Enum.TextXAlignment.Center
 	stageLabel.Parent = stageFrame
 	self.stageLabel = stageLabel
+
+	-- === MATCH TIMER (บนกลางหน้าจอ) ===
+	local timerFrame = Instance.new("Frame")
+	timerFrame.Name = "TimerFrame"
+	timerFrame.Size = UDim2.new(0, 120, 0, 40)
+	timerFrame.Position = UDim2.new(0.5, -60, 0, 10)
+	timerFrame.BackgroundColor3 = Theme.BG_BASE
+	timerFrame.BackgroundTransparency = 0.3
+	timerFrame.BorderSizePixel = 0
+	timerFrame.Visible = false
+	timerFrame.Parent = self.parent
+	self.timerFrame = timerFrame
+
+	local timerCorner = Instance.new("UICorner")
+	timerCorner.CornerRadius = Theme.CORNER_MD
+	timerCorner.Parent = timerFrame
+
+	local timerStroke = Instance.new("UIStroke")
+	timerStroke.Color = Theme.ACCENT_CYAN
+	timerStroke.Thickness = Theme.STROKE_THIN
+	timerStroke.Transparency = 0.4
+	timerStroke.Parent = timerFrame
+	self.timerStroke = timerStroke
+
+	local timerIcon = Instance.new("TextLabel")
+	timerIcon.Name = "TimerIcon"
+	timerIcon.Size = UDim2.new(0, 24, 1, 0)
+	timerIcon.Position = UDim2.new(0, 4, 0, 0)
+	timerIcon.BackgroundTransparency = 1
+	timerIcon.Text = "⏱"
+	timerIcon.TextSize = 18
+	timerIcon.Parent = timerFrame
+
+	local timerLabel = Instance.new("TextLabel")
+	timerLabel.Name = "TimerLabel"
+	timerLabel.Size = UDim2.new(1, -32, 1, 0)
+	timerLabel.Position = UDim2.new(0, 28, 0, 0)
+	timerLabel.BackgroundTransparency = 1
+	timerLabel.Text = "15:00"
+	timerLabel.TextColor3 = Theme.TEXT_PRIMARY
+	timerLabel.TextSize = 20
+	timerLabel.Font = Enum.Font.GothamBold
+	timerLabel.TextXAlignment = Enum.TextXAlignment.Center
+	timerLabel.Parent = timerFrame
+	self.timerLabel = timerLabel
 end
 
 function ScoreUI:updateScore(data: {[string]: any})
@@ -529,6 +574,58 @@ function ScoreUI:hideStageProgress()
 	fadeOut.Completed:Connect(function()
 		self.stageFrame.Visible = false
 	end)
+end
+
+function ScoreUI:showTimer()
+	self.timerFrame.Visible = true
+	self.timerFrame.BackgroundTransparency = 1
+	self.timerLabel.TextTransparency = 1
+	local fadeIn = TweenService:Create(self.timerFrame, TweenInfo.new(0.3), {
+		BackgroundTransparency = 0.3
+	})
+	fadeIn:Play()
+	TweenService:Create(self.timerLabel, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+end
+
+function ScoreUI:hideTimer()
+	local fadeOut = TweenService:Create(self.timerFrame, TweenInfo.new(0.4), {
+		BackgroundTransparency = 1
+	})
+	fadeOut:Play()
+	TweenService:Create(self.timerLabel, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+	fadeOut.Completed:Connect(function()
+		self.timerFrame.Visible = false
+	end)
+end
+
+function ScoreUI:updateTimer(seconds: number)
+	if not self.timerFrame.Visible then
+		self:showTimer()
+	end
+
+	local totalSecs = math.max(0, math.floor(seconds))
+	local mins = math.floor(totalSecs / 60)
+	local secs = totalSecs % 60
+	self.timerLabel.Text = string.format("%d:%02d", mins, secs)
+
+	-- Pulse red when ≤ 30 seconds
+	if totalSecs <= 30 then
+		self.timerLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+		self.timerStroke.Color = Color3.fromRGB(255, 80, 80)
+		if totalSecs <= 10 then
+			-- Fast pulse
+			local pulse = TweenService:Create(self.timerLabel, TweenInfo.new(0.2), {
+				TextSize = 24
+			})
+			pulse:Play()
+			pulse.Completed:Connect(function()
+				TweenService:Create(self.timerLabel, TweenInfo.new(0.2), { TextSize = 20 }):Play()
+			end)
+		end
+	else
+		self.timerLabel.TextColor3 = Theme.TEXT_PRIMARY
+		self.timerStroke.Color = Theme.ACCENT_CYAN
+	end
 end
 
 return ScoreUI

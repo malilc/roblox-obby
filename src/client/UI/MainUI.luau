@@ -16,6 +16,8 @@ local TitleHUDUI = require(script.Parent.TitleHUDUI)
 local TitleCollectionUI = require(script.Parent.TitleCollectionUI)
 local TutorialUI = require(script.Parent.TutorialUI)
 local SpectatorUI = require(script.Parent.SpectatorUI)
+local DailyBonusUI = require(script.Parent.DailyBonusUI)
+local LeaderboardUI = require(script.Parent.LeaderboardUI)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -56,6 +58,8 @@ function MainUI.new()
 		end,
 	})
 	self.spectatorUI = SpectatorUI.new(screenGui)
+	self.dailyBonusUI = DailyBonusUI.new(screenGui)
+	self.leaderboardUI = LeaderboardUI.new(screenGui)
 
 	-- ClassSelectionUI with cross-navigation callback
 	self.classSelectionUI = ClassSelectionUI.new(screenGui, {
@@ -137,6 +141,26 @@ function MainUI:setupRemotes()
 	updateCurrency.OnClientEvent:Connect(function(data)
 		self:onCurrencyUpdate(data)
 	end)
+
+	-- Match timer (RaceUpdate fires every second during a race)
+	local raceUpdate = remotes:WaitForChild("RaceUpdate")
+	raceUpdate.OnClientEvent:Connect(function(data)
+		if data.timeRemaining then
+			self.scoreUI:updateTimer(data.timeRemaining)
+		end
+	end)
+
+	-- Time warning notification
+	local timeWarning = remotes:WaitForChild("TimeWarning")
+	timeWarning.OnClientEvent:Connect(function(data)
+		self:showTimeWarning(data.message, data.isCritical)
+	end)
+
+	-- Hide timer when returning to lobby
+	local returnToLobby = remotes:WaitForChild("ReturnToLobby")
+	returnToLobby.OnClientEvent:Connect(function()
+		self.scoreUI:hideTimer()
+	end)
 end
 
 function MainUI:onScoreUpdate(data: {[string]: any})
@@ -197,6 +221,36 @@ end
 function MainUI:onCurrencyUpdate(data: {[string]: any})
 	-- Update currency UI
 	self.currencyUI:updateCurrency(data)
+end
+
+function MainUI:showTimeWarning(message: string, isCritical: boolean?)
+	local TweenService = game:GetService("TweenService")
+	local notification = Instance.new("TextLabel")
+	notification.Name = "TimeWarning"
+	notification.Size = UDim2.new(0, 260, 0, 36)
+	notification.Position = UDim2.new(0.5, -130, 0, 60)
+	notification.BackgroundColor3 = if isCritical then Color3.fromRGB(180, 30, 30) else Color3.fromRGB(160, 80, 0)
+	notification.BackgroundTransparency = 0.2
+	notification.BorderSizePixel = 0
+	notification.Text = "⏰  " .. message
+	notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+	notification.TextSize = 16
+	notification.Font = Enum.Font.GothamBold
+	notification.TextTransparency = 1
+	notification.Parent = self.screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = notification
+
+	TweenService:Create(notification, TweenInfo.new(0.25), { TextTransparency = 0, BackgroundTransparency = 0.2 }):Play()
+	task.delay(2.5, function()
+		if notification.Parent then
+			local fade = TweenService:Create(notification, TweenInfo.new(0.3), { TextTransparency = 1, BackgroundTransparency = 1 })
+			fade:Play()
+			fade.Completed:Connect(function() notification:Destroy() end)
+		end
+	end)
 end
 
 function MainUI:showDeathNotification()
