@@ -1,5 +1,6 @@
 -- DailyBonusUI: HUD button + 7-day login calendar popup
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -125,6 +126,15 @@ function DailyBonusUI:showCalendar(data)
 	local isClaim     = data.claimed == true
 	local rewards     = data.rewards or {25, 50, 75, 100, 150, 200, 500}
 
+	-- === MODAL SCREENGUI (own layer so it covers all HUD elements) ===
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local modalGui = Instance.new("ScreenGui")
+	modalGui.Name = "DailyLoginModalGui"
+	modalGui.ResetOnSpawn = false
+	modalGui.IgnoreGuiInset = true
+	modalGui.DisplayOrder = 100
+	modalGui.Parent = playerGui
+
 	-- === OVERLAY ===
 	local overlay = Instance.new("Frame")
 	overlay.Name = "DailyLoginOverlay"
@@ -132,8 +142,8 @@ function DailyBonusUI:showCalendar(data)
 	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
 	overlay.BackgroundTransparency = 1
 	overlay.BorderSizePixel = 0
-	overlay.ZIndex = 60
-	overlay.Parent = self.parent
+	overlay.ZIndex = 1
+	overlay.Parent = modalGui
 
 	-- === MAIN PANEL ===
 	local panel = Instance.new("Frame")
@@ -142,9 +152,9 @@ function DailyBonusUI:showCalendar(data)
 	panel.Position = UDim2.new(0.5, -250, 0.5, -80)
 	panel.BackgroundColor3 = DARK
 	panel.BorderSizePixel = 0
-	panel.ZIndex = 61
+	panel.ZIndex = 2
 	panel.BackgroundTransparency = 1
-	panel.Parent = self.parent
+	panel.Parent = modalGui
 	makeCorner(16, panel)
 
 	local panelStroke = Instance.new("UIStroke")
@@ -330,8 +340,7 @@ function DailyBonusUI:showCalendar(data)
 		})
 		out:Play()
 		out.Completed:Connect(function()
-			overlay:Destroy()
-			panel:Destroy()
+			modalGui:Destroy()
 		end)
 	end
 
@@ -394,7 +403,7 @@ function DailyBonusUI:showCalendar(data)
 	-- Auto-close after 10s (only for claim popups, not view mode)
 	if isClaim then
 		task.delay(10, function()
-			if panel.Parent then close() end
+			if modalGui and modalGui.Parent then close() end
 		end)
 	end
 end

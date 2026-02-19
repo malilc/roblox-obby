@@ -979,6 +979,7 @@ Client รับ DailyBonusClaimed:
 - **isClaim mode**: ปุ่ม "✨ CLAIM!" → กด → green overlay ✓ ทับ card → ปิดใน 1.2 วิ
 - **view mode**: ปุ่ม "OK", today card แสดง ✓ สีเขียว
 - guard `_calendarOpen`: ป้องกันเปิด popup ซ้อนกัน
+- **Modal ScreenGui**: popup เปิดใน ScreenGui แยก (`DailyLoginModalGui`, `DisplayOrder=100`, `IgnoreGuiInset=true`) — overlay ครอบคลุมเหนือ HUD elements ทุกตัว — ปิดแล้ว `modalGui:Destroy()` ล้างทุกอย่างพร้อมกัน
 
 ### Testing:
 - กด **T** → Item Testing menu → "🎁 Reset Daily Login" → รีเซ็ต streak ทันที (debug only)
@@ -1646,8 +1647,9 @@ end)
 ### 🎁 Daily Login
 73. **7-Day Streak**: streak reset เมื่อไม่ได้ login 48 ชั่วโมง, วนซ้ำหลัง Day 7
 74. **Popup Guard**: `_calendarOpen` flag ป้องกัน calendar popup ซ้อน
-75. **lastData.claimed**: หลังปิด claim popup จะเซ็ตเป็น `false` เสมอ (ป้องกัน re-claim บน HUD)
-76. **Testing**: ใช้ "🎁 Reset Daily Login" ใน Item Testing menu (T) — ต้อง `Config.Debug.Enabled = true`
+75. **Modal ScreenGui**: popup สร้างใน ScreenGui แยก `DisplayOrder=100` เพื่อ overlay ครอบเหนือ HUD ทั้งหมด — `IgnoreGuiInset=true` ครอบทั้งหน้าจอ
+77. **lastData.claimed**: หลังปิด claim popup จะเซ็ตเป็น `false` เสมอ (ป้องกัน re-claim บน HUD)
+78. **Testing**: ใช้ "🎁 Reset Daily Login" ใน Item Testing menu (T) — ต้อง `Config.Debug.Enabled = true`
 
 ### 🏆 Global Leaderboard
 77. **DataStore**: ใช้ `OrderedDataStore` แยกต่างหาก (`ObbyLeaderboard_v1`)
