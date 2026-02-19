@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Logger = require(ReplicatedStorage.Shared.Logger)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local LeaderboardManager = {}
 LeaderboardManager.__index = LeaderboardManager
@@ -16,16 +17,16 @@ local REFRESH_INTERVAL = 60 -- วินาที
 -- Physical board config — วางข้างๆ stage select (ขวามือของผู้เล่นที่หันหน้าไป +Z)
 local BOARD_POSITION  = Vector3.new(22, 109, 12)  -- lobby floor ~Y102, right side
 local BOARD_SIZE      = Vector3.new(10, 14, 0.5)  -- width × height × thickness
-local BOARD_COLOR     = Color3.fromRGB(20, 12, 45)
+local BOARD_COLOR     = Theme.BG_BASE
 local PIXELS_PER_STUD = 80
 
-local GOLD   = Color3.fromRGB(255, 200, 40)
-local WHITE  = Color3.fromRGB(230, 220, 255)
-local SILVER = Color3.fromRGB(200, 200, 220)
-local BRONZE = Color3.fromRGB(210, 130, 60)
-local MUTED  = Color3.fromRGB(160, 140, 200)
-local GREEN  = Color3.fromRGB(80, 220, 140)
-local DARK   = Color3.fromRGB(15, 8, 32)
+local GOLD   = Theme.PRIMARY
+local WHITE  = Theme.TEXT_PRIMARY
+local SILVER = Color3.fromRGB(200, 200, 220)  -- medal standard
+local BRONZE = Color3.fromRGB(210, 130, 60)   -- medal standard
+local MUTED  = Theme.TEXT_MUTED
+local GREEN  = Theme.SUCCESS
+local DARK   = Theme.BG_OVERLAY
 
 local RANK_MEDAL = { "🥇", "🥈", "🥉" }
 local RANK_COLOR = { GOLD, SILVER, BRONZE }
@@ -62,8 +63,8 @@ function LeaderboardManager:_createPhysicalBoard()
 		part = Instance.new("Part")
 		part.Name        = "GlobalLeaderboard"
 		part.Size        = BOARD_SIZE
-		-- หันหน้าของ Part ไปทาง -X (ให้ SurfaceGui มองเห็นจากกลาง lobby)
-		part.CFrame      = CFrame.new(BOARD_POSITION, BOARD_POSITION + Vector3.new(-1, 0, 0))
+		-- หันเฉียงไปทาง SpawnLocation (0, y, -8) ~42° จาก west → southwest
+		part.CFrame      = CFrame.new(BOARD_POSITION, Vector3.new(0, BOARD_POSITION.Y, -8))
 		part.Anchored    = true
 		part.CanCollide  = false
 		part.CastShadow  = false
@@ -100,11 +101,17 @@ function LeaderboardManager:_createPhysicalBoard()
 
 	local bgGrad = Instance.new("UIGradient")
 	bgGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 16, 60)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 6, 25)),
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_OVERLAY),
 	})
 	bgGrad.Rotation = 135
 	bgGrad.Parent   = bg
+
+	local bgStroke = Instance.new("UIStroke")
+	bgStroke.Color             = Theme.PRIMARY
+	bgStroke.Thickness         = 4
+	bgStroke.ApplyStrokeMode   = Enum.ApplyStrokeMode.Border
+	bgStroke.Parent            = bg
 
 	-- Title bar
 	local TITLE_H = 130
@@ -117,8 +124,8 @@ function LeaderboardManager:_createPhysicalBoard()
 
 	local titleGrad = Instance.new("UIGradient")
 	titleGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 60)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 140, 10)),
+		ColorSequenceKeypoint.new(0, Theme.PRIMARY),
+		ColorSequenceKeypoint.new(1, Theme.PRIMARY_DARK),
 	})
 	titleGrad.Rotation = 90
 	titleGrad.Parent   = titleBar
@@ -150,7 +157,7 @@ function LeaderboardManager:_createPhysicalBoard()
 	subLabel.Position           = UDim2.new(0, 110, 0.55, 0)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Text               = "TOP 10 PLAYERS"
-	subLabel.TextColor3         = Color3.fromRGB(60, 40, 10)
+	subLabel.TextColor3         = Theme.BG_OVERLAY
 	subLabel.TextSize           = 30
 	subLabel.Font               = Enum.Font.GothamBold
 	subLabel.TextXAlignment     = Enum.TextXAlignment.Left
@@ -169,8 +176,8 @@ function LeaderboardManager:_createPhysicalBoard()
 		local row = Instance.new("Frame")
 		row.Size              = UDim2.new(1, -PAD * 2, 0, ROW_H - 4)
 		row.Position          = UDim2.new(0, PAD, 0, rowY + 2)
-		row.BackgroundColor3  = isEven and Color3.fromRGB(22, 14, 48) or Color3.fromRGB(28, 18, 58)
-		row.BackgroundTransparency = 0.25
+		row.BackgroundColor3  = isEven and Theme.BG_OVERLAY or Theme.BG_BASE
+		row.BackgroundTransparency = 0.1
 		row.BorderSizePixel   = 0
 		row.ZIndex            = 2
 		row.Parent            = sg

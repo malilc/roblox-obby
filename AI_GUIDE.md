@@ -998,8 +998,11 @@ Client รับ DailyBonusClaimed:
 -- ถ้ามี Part อยู่แล้วจะใช้ตำแหน่งนั้น (ย้าย Part ใน Studio ได้)
 BOARD_POSITION = Vector3.new(22, 109, 12)  -- ขวาของ stage select, lobby floor Y~102
 BOARD_SIZE     = Vector3.new(10, 14, 0.5)  -- กว้าง × สูง × บาง
--- หันหน้า -X (มองเห็นจากกลาง lobby)
+-- หันเฉียงไปทาง SpawnLocation (0, y, -8) ~42° จาก west → southwest
+-- CFrame.new(BOARD_POSITION, Vector3.new(0, BOARD_POSITION.Y, -8))
 -- SurfaceGui: PixelsPerStud=80, Face=Front, Top 10 rows
+-- Colors: ใช้ ThemeConfig tokens (PRIMARY, BG_SURFACE, BG_OVERLAY, etc.)
+-- UIStroke border: สีเหลือง Theme.PRIMARY, Thickness=4
 ```
 
 ### Key Functions:
