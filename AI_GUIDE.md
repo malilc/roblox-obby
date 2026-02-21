@@ -1373,16 +1373,22 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 
 ### SummaryUI (Game Complete):
 - **แสดงเมื่อ**: จบเกม (finish)
-- **Stages Played**: แสดงด่านที่เล่น + รางวัลแต่ละด่าน
+- **Overlay**: dark semi-transparent overlay ด้านหลัง popup (ZIndex 49, ทำตาม DailyBonusUI pattern)
+- **Header Section** (100px, แยกออกมาชัดเจน):
+  - Trophy emoji 🏆 (TextSize 36) + "GAME COMPLETE!" (GothamBlack, MEDAL_GOLD)
+  - Gold divider line ใต้ header
+  - Top-rounded corners เท่านั้น (fill-rect trick)
+- **STAGES PLAYED**: badge แต่ละด่านที่เล่น + รางวัล
 - **STATS**: Score + Time
 - **CURRENCY EARNED** (breakdown):
-  - Coins (X x 1) = +X
-  - Stage Clear (X x 5) = +X
+  - Coins (X × 1) = +X
+  - Stage Clear (X × 5) = +X
   - Stage Rewards = +X
   - Finish Bonus = +25
-  - **TOTAL EARNED** = รวมทั้งหมด
-- **OK Button**: ปิด popup
+  - **TOTAL EARNED** = รวมทั้งหมด (highlight frame + gold border stroke)
+- **OK Button**: ✅ OK (กว้าง 180px, centered, ปิด popup)
 - **Auto teleport**: กลับ Lobby หลัง 5 วินาที
+- **Popup size**: 400 × 560 (เพิ่มจาก 380×510)
 
 ---
 

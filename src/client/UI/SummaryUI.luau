@@ -31,14 +31,26 @@ local function formatTime(seconds: number): string
 end
 
 function SummaryUI:createUI()
+	-- Background overlay (dark dim behind popup)
+	local overlay = Instance.new("Frame")
+	overlay.Name = "SummaryOverlay"
+	overlay.Size = UDim2.new(1, 0, 1, 0)
+	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	overlay.BackgroundTransparency = 1
+	overlay.BorderSizePixel = 0
+	overlay.ZIndex = 49
+	overlay.Visible = false
+	overlay.Parent = self.parent
+	self.overlay = overlay
+
 	-- Main Frame (centered popup)
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "SummaryFrame"
-	mainFrame.Size = UDim2.new(0, 380, 0, 510)
+	mainFrame.Size = UDim2.new(0, 400, 0, 560)
 	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	mainFrame.BackgroundColor3 = Theme.BG_BASE
-	mainFrame.BackgroundTransparency = 0.1
+	mainFrame.BackgroundTransparency = 0.05
 	mainFrame.BorderSizePixel = 0
 	mainFrame.Visible = false
 	mainFrame.ZIndex = 50
@@ -58,7 +70,7 @@ function SummaryUI:createUI()
 	gradient.Rotation = 135
 	gradient.Parent = mainFrame
 
-	-- Border glow
+	-- Border glow (gold)
 	local borderStroke = Instance.new("UIStroke")
 	borderStroke.Color = Theme.PRIMARY
 	borderStroke.Thickness = Theme.STROKE_BOLD
@@ -69,42 +81,97 @@ function SummaryUI:createUI()
 	-- Drop shadow
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(1, 6, 1, 6)
-	shadow.Position = UDim2.new(0, -3, 0, 4)
+	shadow.Size = UDim2.new(1, 8, 1, 8)
+	shadow.Position = UDim2.new(0, -4, 0, 4)
 	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	shadow.BackgroundTransparency = 0.6
+	shadow.BackgroundTransparency = 0.55
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = mainFrame.ZIndex - 1
 	shadow.Parent = mainFrame
 	Theme.applyCorner(shadow, "lg")
 
+	-- ==================== HEADER SECTION ====================
+	local headerFrame = Instance.new("Frame")
+	headerFrame.Name = "HeaderFrame"
+	headerFrame.Size = UDim2.new(1, 0, 0, 100)
+	headerFrame.Position = UDim2.new(0, 0, 0, 0)
+	headerFrame.BackgroundColor3 = Theme.BG_SURFACE
+	headerFrame.BorderSizePixel = 0
+	headerFrame.ZIndex = 51
+	headerFrame.Parent = mainFrame
+	Theme.applyCorner(headerFrame, "lg")
+
+	-- Bottom fill (covers bottom corners to make top-only rounded)
+	local headerFill = Instance.new("Frame")
+	headerFill.Name = "HeaderFill"
+	headerFill.Size = UDim2.new(1, 0, 0, 20)
+	headerFill.Position = UDim2.new(0, 0, 1, -20)
+	headerFill.BackgroundColor3 = Theme.BG_SURFACE
+	headerFill.BorderSizePixel = 0
+	headerFill.ZIndex = 51
+	headerFill.Parent = headerFrame
+
+	-- Header gradient (lighter purple at top)
+	local headerGrad = Instance.new("UIGradient")
+	headerGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_ELEVATED),
+		ColorSequenceKeypoint.new(1, Theme.BG_SURFACE),
+	})
+	headerGrad.Rotation = 90
+	headerGrad.Parent = headerFrame
+
+	-- Apply same gradient to fill rect
+	local fillGrad = Instance.new("UIGradient")
+	fillGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_SURFACE),
+	})
+	fillGrad.Parent = headerFill
+
+	-- Trophy icon
+	local trophyLabel = Instance.new("TextLabel")
+	trophyLabel.Name = "Trophy"
+	trophyLabel.Size = UDim2.new(1, 0, 0, 44)
+	trophyLabel.Position = UDim2.new(0, 0, 0, 6)
+	trophyLabel.BackgroundTransparency = 1
+	trophyLabel.Text = "\u{1F3C6}"
+	trophyLabel.TextSize = 36
+	trophyLabel.Font = Enum.Font.GothamBold
+	trophyLabel.ZIndex = 52
+	trophyLabel.Parent = headerFrame
+
 	-- Title
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "Title"
-	titleLabel.Size = UDim2.new(1, -40, 0, 36)
-	titleLabel.Position = UDim2.new(0, 20, 0, 8)
+	titleLabel.Size = UDim2.new(1, 0, 0, 32)
+	titleLabel.Position = UDim2.new(0, 0, 0, 48)
 	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "🏆 GAME COMPLETE!"
+	titleLabel.Text = "GAME COMPLETE!"
 	titleLabel.TextColor3 = Theme.MEDAL_GOLD
-	titleLabel.TextSize = 22
+	titleLabel.TextSize = 24
 	titleLabel.Font = Enum.Font.GothamBlack
 	titleLabel.TextStrokeColor3 = Color3.fromRGB(100, 70, 0)
 	titleLabel.TextStrokeTransparency = 0.5
-	titleLabel.ZIndex = 51
-	titleLabel.Parent = mainFrame
+	titleLabel.ZIndex = 52
+	titleLabel.Parent = headerFrame
 	self.titleLabel = titleLabel
 
-	local titleUIStroke = Instance.new("UIStroke")
-	titleUIStroke.Color = Theme.HUD_SCORE_END
-	titleUIStroke.Thickness = 1.5
-	titleUIStroke.Transparency = 0.4
-	titleUIStroke.Parent = titleLabel
+	-- Gold divider line at bottom of header
+	local headerDivider = Instance.new("Frame")
+	headerDivider.Name = "HeaderDivider"
+	headerDivider.Size = UDim2.new(1, -30, 0, 2)
+	headerDivider.Position = UDim2.new(0, 15, 0, 88)
+	headerDivider.BackgroundColor3 = Theme.PRIMARY
+	headerDivider.BackgroundTransparency = 0.3
+	headerDivider.BorderSizePixel = 0
+	headerDivider.ZIndex = 52
+	headerDivider.Parent = headerFrame
 
-	-- Stages Container (แสดง Stage ที่เล่น)
+	-- ==================== STAGES SECTION ====================
 	local stagesContainer = Instance.new("Frame")
 	stagesContainer.Name = "StagesContainer"
 	stagesContainer.Size = UDim2.new(1, -40, 0, 60)
-	stagesContainer.Position = UDim2.new(0, 20, 0, 46)
+	stagesContainer.Position = UDim2.new(0, 20, 0, 108)
 	stagesContainer.BackgroundColor3 = Theme.BG_SURFACE
 	stagesContainer.BackgroundTransparency = 0.5
 	stagesContainer.BorderSizePixel = 0
@@ -130,7 +197,7 @@ function SummaryUI:createUI()
 	stagesHeader.Size = UDim2.new(1, 0, 0, 18)
 	stagesHeader.Position = UDim2.new(0, 0, 0, 4)
 	stagesHeader.BackgroundTransparency = 1
-	stagesHeader.Text = "📋 Stages Played"
+	stagesHeader.Text = "\u{1F4CB} STAGES PLAYED"
 	stagesHeader.TextColor3 = Theme.TEXT_MUTED
 	stagesHeader.TextSize = 12
 	stagesHeader.Font = Enum.Font.GothamBold
@@ -157,7 +224,7 @@ function SummaryUI:createUI()
 	local statsContainer = Instance.new("Frame")
 	statsContainer.Name = "StatsContainer"
 	statsContainer.Size = UDim2.new(1, -40, 0, 70)
-	statsContainer.Position = UDim2.new(0, 20, 0, 112)
+	statsContainer.Position = UDim2.new(0, 20, 0, 178)
 	statsContainer.BackgroundColor3 = Theme.BG_SURFACE
 	statsContainer.BackgroundTransparency = 0.5
 	statsContainer.BorderSizePixel = 0
@@ -182,7 +249,7 @@ function SummaryUI:createUI()
 	statsHeader.Size = UDim2.new(1, 0, 0, 20)
 	statsHeader.Position = UDim2.new(0, 0, 0, 4)
 	statsHeader.BackgroundTransparency = 1
-	statsHeader.Text = "📊 STATS"
+	statsHeader.Text = "\u{1F4CA} STATS"
 	statsHeader.TextColor3 = Theme.ACCENT_CYAN
 	statsHeader.TextSize = 12
 	statsHeader.Font = Enum.Font.GothamBold
@@ -192,8 +259,8 @@ function SummaryUI:createUI()
 	-- Stats rows
 	self.statsRows = {}
 	local statsConfig = {
-		{name = "Score", icon = "⭐", key = "scoreEarned", color = Theme.ACCENT_CYAN},
-		{name = "Time", icon = "⏱️", key = "timeSpent", color = Theme.TEXT_MUTED, isTime = true},
+		{name = "Score", icon = "\u{2B50}", key = "scoreEarned", color = Theme.ACCENT_CYAN},
+		{name = "Time", icon = "\u{23F1}\u{FE0F}", key = "timeSpent", color = Theme.TEXT_MUTED, isTime = true},
 	}
 
 	for i, config in ipairs(statsConfig) do
@@ -204,8 +271,8 @@ function SummaryUI:createUI()
 	-- ==================== CURRENCY SECTION ====================
 	local currencyContainer = Instance.new("Frame")
 	currencyContainer.Name = "CurrencyContainer"
-	currencyContainer.Size = UDim2.new(1, -40, 0, 205)
-	currencyContainer.Position = UDim2.new(0, 20, 0, 188)
+	currencyContainer.Size = UDim2.new(1, -40, 0, 215)
+	currencyContainer.Position = UDim2.new(0, 20, 0, 258)
 	currencyContainer.BackgroundColor3 = Theme.BG_SURFACE
 	currencyContainer.BackgroundTransparency = 0.5
 	currencyContainer.BorderSizePixel = 0
@@ -230,30 +297,30 @@ function SummaryUI:createUI()
 	currencyHeader.Size = UDim2.new(1, 0, 0, 22)
 	currencyHeader.Position = UDim2.new(0, 0, 0, 4)
 	currencyHeader.BackgroundTransparency = 1
-	currencyHeader.Text = "💰 CURRENCY EARNED"
+	currencyHeader.Text = "\u{1FA99} CURRENCY EARNED"
 	currencyHeader.TextColor3 = Theme.MEDAL_GOLD
 	currencyHeader.TextSize = 13
 	currencyHeader.Font = Enum.Font.GothamBold
 	currencyHeader.ZIndex = 52
 	currencyHeader.Parent = currencyContainer
 
-	-- Currency rows (will be created dynamically with breakdown)
+	-- Currency rows
 	self.currencyRows = {}
 
 	-- Coins row
-	local coinsRow = self:createCurrencyRow("coins", "💰 Coins", 1, currencyContainer, 28)
+	local coinsRow = self:createCurrencyRow("coins", "\u{1FA99} Coins", 1, currencyContainer, 28)
 	self.currencyRows.coins = coinsRow
 
 	-- Stage Clear row
-	local stageRow = self:createCurrencyRow("stage", "🏁 Stage Clear", 2, currencyContainer, 28)
+	local stageRow = self:createCurrencyRow("stage", "\u{1F3C1} Stage Clear", 2, currencyContainer, 28)
 	self.currencyRows.stage = stageRow
 
-	-- Stage Rewards row (NEW)
-	local rewardsRow = self:createCurrencyRow("rewards", "🎯 Stage Rewards", 3, currencyContainer, 28)
+	-- Stage Rewards row
+	local rewardsRow = self:createCurrencyRow("rewards", "\u{1F3AF} Stage Rewards", 3, currencyContainer, 28)
 	self.currencyRows.rewards = rewardsRow
 
 	-- Finish Bonus row
-	local finishRow = self:createCurrencyRow("finish", "🎁 Finish Bonus", 4, currencyContainer, 28)
+	local finishRow = self:createCurrencyRow("finish", "\u{1F381} Finish Bonus", 4, currencyContainer, 28)
 	self.currencyRows.finish = finishRow
 
 	-- Divider
@@ -267,49 +334,54 @@ function SummaryUI:createUI()
 	divider.ZIndex = 52
 	divider.Parent = currencyContainer
 
-	-- Total row
-	local totalRow = Instance.new("Frame")
-	totalRow.Name = "TotalRow"
-	totalRow.Size = UDim2.new(1, -20, 0, 38)
-	totalRow.Position = UDim2.new(0, 10, 0, 162)
-	totalRow.BackgroundTransparency = 1
-	totalRow.ZIndex = 52
-	totalRow.Parent = currencyContainer
+	-- Total row with highlight frame
+	local totalHighlight = Instance.new("Frame")
+	totalHighlight.Name = "TotalHighlight"
+	totalHighlight.Size = UDim2.new(1, -10, 0, 42)
+	totalHighlight.Position = UDim2.new(0, 5, 0, 164)
+	totalHighlight.BackgroundColor3 = Theme.BG_ELEVATED
+	totalHighlight.BackgroundTransparency = 0.5
+	totalHighlight.BorderSizePixel = 0
+	totalHighlight.ZIndex = 52
+	totalHighlight.Parent = currencyContainer
+	Theme.applyCorner(totalHighlight, "sm")
+	Theme.applyStroke(totalHighlight, Theme.MEDAL_GOLD, "thin", 0.3)
 
 	local totalLabel = Instance.new("TextLabel")
-	totalLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	totalLabel.Position = UDim2.new(0, 0, 0, 0)
+	totalLabel.Size = UDim2.new(0.55, 0, 1, 0)
+	totalLabel.Position = UDim2.new(0, 10, 0, 0)
 	totalLabel.BackgroundTransparency = 1
-	totalLabel.Text = "✨ TOTAL EARNED"
+	totalLabel.Text = "\u{2728} TOTAL EARNED"
 	totalLabel.TextColor3 = Theme.MEDAL_GOLD
 	totalLabel.TextSize = 15
 	totalLabel.Font = Enum.Font.GothamBlack
 	totalLabel.TextXAlignment = Enum.TextXAlignment.Left
-	totalLabel.ZIndex = 52
-	totalLabel.Parent = totalRow
+	totalLabel.ZIndex = 53
+	totalLabel.Parent = totalHighlight
 
 	local totalValue = Instance.new("TextLabel")
 	totalValue.Name = "Value"
-	totalValue.Size = UDim2.new(0.5, 0, 1, 0)
-	totalValue.Position = UDim2.new(0.5, 0, 0, 0)
+	totalValue.Size = UDim2.new(0.4, 0, 1, 0)
+	totalValue.Position = UDim2.new(0.55, 0, 0, 0)
 	totalValue.BackgroundTransparency = 1
 	totalValue.Text = "+0"
 	totalValue.TextColor3 = Theme.MEDAL_GOLD
 	totalValue.TextSize = 20
 	totalValue.Font = Enum.Font.GothamBlack
 	totalValue.TextXAlignment = Enum.TextXAlignment.Right
-	totalValue.ZIndex = 52
-	totalValue.Parent = totalRow
+	totalValue.ZIndex = 53
+	totalValue.Parent = totalHighlight
 	self.totalValueLabel = totalValue
 
-	-- OK Button
+	-- ==================== OK BUTTON ====================
 	local okButton = Instance.new("TextButton")
 	okButton.Name = "OKButton"
-	okButton.Size = UDim2.new(0, 120, 0, 42)
-	okButton.Position = UDim2.new(0.5, -60, 0, 455)
+	okButton.Size = UDim2.new(0, 180, 0, 44)
+	okButton.Position = UDim2.new(0.5, 0, 0, 505)
+	okButton.AnchorPoint = Vector2.new(0.5, 0)
 	okButton.BackgroundColor3 = Theme.SUCCESS
 	okButton.BorderSizePixel = 0
-	okButton.Text = "OK"
+	okButton.Text = "\u{2705} OK"
 	okButton.TextColor3 = Theme.TEXT_PRIMARY
 	okButton.TextSize = 18
 	okButton.Font = Enum.Font.GothamBold
@@ -345,13 +417,13 @@ function SummaryUI:createUI()
 	-- Hover effects
 	okButton.MouseEnter:Connect(function()
 		TweenService:Create(okButton, TweenInfo.new(0.2), {
-			Size = UDim2.new(0, 130, 0, 46)
+			Size = UDim2.new(0, 195, 0, 48)
 		}):Play()
 	end)
 
 	okButton.MouseLeave:Connect(function()
 		TweenService:Create(okButton, TweenInfo.new(0.2), {
-			Size = UDim2.new(0, 120, 0, 42)
+			Size = UDim2.new(0, 180, 0, 44)
 		}):Play()
 	end)
 end
@@ -502,7 +574,7 @@ function SummaryUI:createStageTag(stageNum: number, index: number): Frame
 	coinLabel.Size = UDim2.new(1, 0, 0, 14)
 	coinLabel.Position = UDim2.new(0, 0, 0, 17)
 	coinLabel.BackgroundTransparency = 1
-	coinLabel.Text = "💰+" .. stageReward
+	coinLabel.Text = "\u{1FA99}+" .. stageReward
 	coinLabel.TextColor3 = Theme.MEDAL_GOLD
 	coinLabel.TextSize = 10
 	coinLabel.Font = Enum.Font.GothamBold
@@ -535,13 +607,20 @@ function SummaryUI:show(data: {scoreEarned: number, timeSpent: number, coinsColl
 		tag.Parent = self.stagesList
 	end
 
+	-- Show and animate overlay
+	self.overlay.BackgroundTransparency = 1
+	self.overlay.Visible = true
+	TweenService:Create(self.overlay, TweenInfo.new(0.25), {
+		BackgroundTransparency = 0.55
+	}):Play()
+
 	-- Reset and show frame
 	self.mainFrame.Size = UDim2.new(0, 0, 0, 0)
 	self.mainFrame.Visible = true
 
 	-- Scale in animation
 	local scaleIn = TweenService:Create(self.mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-		Size = UDim2.new(0, 380, 0, 510)
+		Size = UDim2.new(0, 400, 0, 560)
 	})
 	scaleIn:Play()
 
@@ -662,7 +741,7 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 		local value = row:FindFirstChild("Value")
 
 		if breakdown and value then
-			breakdown.Text = "(" .. coinsCollected .. " x " .. coinValue .. ")"
+			breakdown.Text = "(" .. coinsCollected .. " \u{00D7} " .. coinValue .. ")"
 			value.Text = "+" .. coinsTotal
 
 			value.TextSize = 11
@@ -679,7 +758,7 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 		local value = row:FindFirstChild("Value")
 
 		if breakdown and value then
-			breakdown.Text = "(" .. stagesCleared .. " x " .. stageValue .. ")"
+			breakdown.Text = "(" .. stagesCleared .. " \u{00D7} " .. stageValue .. ")"
 			value.Text = "+" .. stageTotal
 
 			value.TextSize = 11
@@ -743,6 +822,11 @@ function SummaryUI:hide()
 	if not self.isVisible then return end
 	self.isVisible = false
 
+	-- Fade overlay
+	TweenService:Create(self.overlay, TweenInfo.new(0.25), {
+		BackgroundTransparency = 1
+	}):Play()
+
 	-- Scale out animation
 	local scaleOut = TweenService:Create(self.mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 		Size = UDim2.new(0, 0, 0, 0)
@@ -751,6 +835,7 @@ function SummaryUI:hide()
 
 	scaleOut.Completed:Connect(function()
 		self.mainFrame.Visible = false
+		self.overlay.Visible = false
 	end)
 end
 
