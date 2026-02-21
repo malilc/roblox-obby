@@ -434,8 +434,8 @@ function StageSelectionUI:createUI()
 	randomButton.ZIndex = 10
 	randomButton.Parent = mainFrame
 
-	-- สร้าง gradient โดยใช้ UIGradient ตรงๆ บน button
-	local randomGradient = createGradient(randomButton, Theme.ACCENT_PINK, Theme.ACCENT_CYAN)
+	-- Subtle same-hue gradient (pink → darker pink)
+	local randomGradient = createGradient(randomButton, Theme.ACCENT_PINK, Color3.fromRGB(200, 60, 140))
 	self.randomGradient = randomGradient
 
 	local randomCorner = Instance.new("UICorner")
@@ -470,8 +470,8 @@ function StageSelectionUI:createUI()
 	startButton.Parent = mainFrame
 	self.startButton = startButton
 
-	-- สร้าง gradient โดยใช้ UIGradient ตรงๆ บน button
-	local startGradient = createGradient(startButton, Theme.SUCCESS, Theme.BG_ELEVATED)
+	-- Subtle same-hue gradient (green → darker green)
+	local startGradient = createGradient(startButton, Theme.SUCCESS, Color3.fromRGB(40, 170, 70))
 	self.startGradient = startGradient
 
 	local startCorner = Instance.new("UICorner")
