@@ -4,6 +4,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 
+local RemoteRegistry = require(ReplicatedStorage.Shared.RemoteRegistry)
+
 local ScoreUI = require(script.Parent.ScoreUI)
 local ItemUI = require(script.Parent.ItemUI)
 local StageSelectionUI = require(script.Parent.StageSelectionUI)
@@ -107,58 +109,47 @@ function MainUI:toggleTitleCollection()
 end
 
 function MainUI:setupRemotes()
-	local remotes = ReplicatedStorage:WaitForChild("Remotes")
-
 	-- Update score
-	local updateScore = remotes:WaitForChild("UpdateScore")
-	updateScore.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("UpdateScore").OnClientEvent:Connect(function(data)
 		self:onScoreUpdate(data)
 	end)
 
 	-- Stage complete
-	local stageComplete = remotes:WaitForChild("StageComplete")
-	stageComplete.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("StageComplete").OnClientEvent:Connect(function(data)
 		self:onStageComplete(data)
 	end)
 
 	-- Player died
-	local playerDied = remotes:WaitForChild("PlayerDied")
-	playerDied.OnClientEvent:Connect(function()
+	RemoteRegistry.get("PlayerDied").OnClientEvent:Connect(function()
 		self:onPlayerDied()
 	end)
 
 	-- Countdown update (Game Start)
-	local countdownUpdate = remotes:WaitForChild("CountdownUpdate")
-	countdownUpdate.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("CountdownUpdate").OnClientEvent:Connect(function(data)
 		if data.totalStages then
-			-- Show stage UI when game starts
 			self.scoreUI:showStageProgress(data.totalStages)
 		end
 	end)
 
 	-- Update currency
-	local updateCurrency = remotes:WaitForChild("UpdateCurrency")
-	updateCurrency.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("UpdateCurrency").OnClientEvent:Connect(function(data)
 		self:onCurrencyUpdate(data)
 	end)
 
 	-- Match timer (RaceUpdate fires every second during a race)
-	local raceUpdate = remotes:WaitForChild("RaceUpdate")
-	raceUpdate.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("RaceUpdate").OnClientEvent:Connect(function(data)
 		if data.timeRemaining then
 			self.scoreUI:updateTimer(data.timeRemaining)
 		end
 	end)
 
 	-- Time warning notification
-	local timeWarning = remotes:WaitForChild("TimeWarning")
-	timeWarning.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("TimeWarning").OnClientEvent:Connect(function(data)
 		self:showTimeWarning(data.message, data.isCritical)
 	end)
 
 	-- Hide timer when returning to lobby
-	local returnToLobby = remotes:WaitForChild("ReturnToLobby")
-	returnToLobby.OnClientEvent:Connect(function()
+	RemoteRegistry.get("ReturnToLobby").OnClientEvent:Connect(function()
 		self.scoreUI:hideTimer()
 	end)
 end

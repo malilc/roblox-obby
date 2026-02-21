@@ -97,16 +97,16 @@ function SpectatorCamera:updateFollowCamera(camera: Camera, dt: number)
 	local character = self.followTarget.Character
 	if not character then return end
 
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 
 	local spectConfig = Config.Spectator or {}
 	local followDist = spectConfig.FollowDistance or 15
 	local followHeight = spectConfig.FollowHeight or 8
 	local smoothness = spectConfig.CameraSmoothness or 0.1
 
-	local targetPos = hrp.Position
-	local lookDir = hrp.CFrame.LookVector
+	local targetPos = humanoidRootPart.Position
+	local lookDir = humanoidRootPart.CFrame.LookVector
 
 	-- Camera behind and above the target
 	local cameraPos = targetPos - lookDir * followDist + Vector3.new(0, followHeight, 0)
@@ -162,8 +162,8 @@ function SpectatorCamera:isFollowTargetValid(): boolean
 	if not self.followTarget then return false end
 	if not self.followTarget.Parent then return false end
 	if not self.followTarget.Character then return false end
-	local hrp = self.followTarget.Character:FindFirstChild("HumanoidRootPart")
-	return hrp ~= nil
+	local humanoidRootPart = self.followTarget.Character:FindFirstChild("HumanoidRootPart")
+	return humanoidRootPart ~= nil
 end
 
 return SpectatorCamera

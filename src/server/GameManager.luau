@@ -10,6 +10,8 @@ local CurrencyManager = require(script.Parent.CurrencyManager)
 local MatchManager = require(script.Parent.MatchManager)
 local ClassManager = require(script.Parent.ClassManager)
 local LeaderboardManager = require(script.Parent.LeaderboardManager)
+local SpectatorManager = require(script.Parent.SpectatorManager)
+local SelectionZoneManager = require(script.Parent.SelectionZoneManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
@@ -56,8 +58,23 @@ function GameManager.new()
 	self.countdownUpdateRemote = ReplicatedStorage.Remotes.CountdownUpdate
 	self.returnToLobbyRemote = ReplicatedStorage.Remotes.ReturnToLobby
 	
-	-- Selection zone tracking
-	self.playersInSelectionZone = {} :: {[Player]: boolean}
+	-- Spectator Manager
+	self.spectatorManager = SpectatorManager.new({
+		getPlayerState = function(player) return self.playerStates[player] end,
+		setPlayerState = function(player, state) self.playerStates[player] = state end,
+		teleportToLobby = function(player) self:teleportToLobby(player) end,
+		setTeleportingFlag = function(player, value) self.teleportingToLobby[player] = value end,
+		getTeleportFlagClearDelay = function() return Config.Timing.TeleportFlagClearDelay end,
+	})
+
+	-- Selection Zone Manager
+	self.selectionZoneManager = SelectionZoneManager.new({
+		getPlayerState = function(player) return self.playerStates[player] end,
+		mapManager = self.mapManager,
+		showStageSelectionRemote = self.showStageSelectionRemote,
+		hideStageSelectionRemote = self.hideStageSelectionRemote,
+		startGameWithOrder = function(player, stageOrder) self:startGameWithOrder(player, stageOrder) end,
+	})
 
 	-- Player event connections (for cleanup on leave)
 	self.playerConnections = {} :: {[Player]: {RBXScriptConnection}}
@@ -71,7 +88,7 @@ function GameManager.new()
 	self:setupRemotes()
 	self:setupPlayerEvents()
 	self:setupLobby()
-	self:setupSelectionZone()
+	self.selectionZoneManager:setup()
 	
 	-- ไม่สร้าง map ตอนเริ่ม - จะสร้างเมื่อผู้เล่นเลือกด่าน
 	-- self:generateNewMap()
@@ -102,23 +119,23 @@ function GameManager:setupRemotes()
 		self:startGameForPlayer(player)
 	end)
 	
-	-- Confirm stage selection
+	-- Confirm stage selection (delegated to SelectionZoneManager)
 	self.confirmStageSelectionRemote.OnServerEvent:Connect(function(player, data)
-		self:onStageSelectionConfirmed(player, data)
+		self.selectionZoneManager:onStageSelectionConfirmed(player, data)
 	end)
 
-	-- Spectator system
+	-- Spectator system (delegated to SpectatorManager)
 	local spectateRemote = ReplicatedStorage.Remotes:FindFirstChild("SpectateMatch")
 	if spectateRemote then
 		spectateRemote.OnServerEvent:Connect(function(player)
-			self:onPlayerSpectate(player)
+			self.spectatorManager:onPlayerSpectate(player)
 		end)
 	end
 
 	local spectatorLeaveRemote = ReplicatedStorage.Remotes:FindFirstChild("SpectatorLeave")
 	if spectatorLeaveRemote then
 		spectatorLeaveRemote.OnServerEvent:Connect(function(player)
-			self:onSpectatorLeave(player)
+			self.spectatorManager:onSpectatorLeave(player)
 		end)
 	end
 end
@@ -152,7 +169,7 @@ function GameManager:onPlayerAdded(player: Player)
 	self.classManager:initPlayer(player)
 
 	-- Send cached leaderboard to new player
-	task.delay(3, function()
+	task.delay(Config.Timing.LeaderboardSendDelay, function()
 		if player.Parent then
 			self.leaderboardManager:sendToPlayer(player)
 		end
@@ -187,7 +204,7 @@ function GameManager:onPlayerRemoving(player: Player)
 
 	self.playerStates[player] = nil
 	self.playerCheckpoints[player] = nil
-	self.playersInSelectionZone[player] = nil
+	self.selectionZoneManager:removePlayer(player)
 	self.teleportingToLobby[player] = nil
 	self.playerRoundStats[player] = nil
 
@@ -215,7 +232,7 @@ function GameManager:onCharacterAdded(player: Player, character: Model)
 	end)
 	
 	-- Setup touch events for character
-	task.wait(0.5) -- Wait for character to fully load
+	task.wait(Config.Timing.CharacterSetupDelay) -- Wait for character to fully load
 	
 	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 	if humanoidRootPart then
@@ -233,7 +250,7 @@ function GameManager:setupCharacterTouchEvents(player: Player, rootPart: Part)
 	task.spawn(function()
 		while player.Character and player.Character:FindFirstChild("HumanoidRootPart") do
 			self:checkPlayerPosition(player)
-			task.wait(0.5)
+			task.wait(Config.Timing.PositionCheckInterval)
 		end
 	end)
 end
@@ -313,8 +330,8 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 	local matchId = self:getMatchIdForPlayer(player)
 	local stageOrder = if matchId 
 		then self.mapManager:getStageOrderForMatch(matchId) 
-		else self.mapManager.stageOrder
-	
+		else self.mapManager.globalMap.stageOrder
+
 	-- Give currency for completing stage (except stage 1 start)
 	if stageIndex > 1 then
 		-- Stage Clear bonus (คงที่)
@@ -390,8 +407,8 @@ function GameManager:onPlayerFinished(player: Player)
 	local matchId = self:getMatchIdForPlayer(player)
 	local stageOrder = if matchId 
 		then self.mapManager:getStageOrderForMatch(matchId) 
-		else self.mapManager.stageOrder
-	
+		else self.mapManager.globalMap.stageOrder
+
 	-- Get dynamic total stages
 	local totalStages = #stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.Count end
@@ -469,80 +486,16 @@ function GameManager:onPlayerFinished(player: Player)
 		Logger.debug("GameManager", player.Name, "can spectate - waiting for client decision")
 	else
 		-- Solo or match already finished: auto-teleport after 5 seconds
-		task.delay(5, function()
+		task.delay(Config.Timing.AutoTeleportDelay, function()
 			if not player.Parent then return end -- Player left the game
 			if self.playerStates[player] == "Finished" then
 				self:teleportToLobby(player)
-				task.delay(0.5, function()
+				task.delay(Config.Timing.TeleportFlagClearDelay, function()
 					self.teleportingToLobby[player] = nil
 				end)
 			end
 		end)
 	end
-end
-
--- ============================================
--- SPECTATOR SYSTEM
--- ============================================
-
-function GameManager:onPlayerSpectate(player: Player)
-	local state = self.playerStates[player]
-	if state ~= "Finished" then return end
-
-	self.playerStates[player] = "Spectating"
-
-	-- Hide player's character
-	local character = player.Character
-	if character then
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			hrp.Anchored = true
-		end
-		for _, part in ipairs(character:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.Transparency = 1
-				part.CanCollide = false
-			elseif part:IsA("Decal") or part:IsA("Texture") then
-				part.Transparency = 1
-			end
-		end
-	end
-
-	Logger.debug("GameManager", player.Name, "started spectating")
-end
-
-function GameManager:onSpectatorLeave(player: Player)
-	local state = self.playerStates[player]
-	if state ~= "Spectating" and state ~= "Finished" then return end
-
-	-- Restore character visibility
-	local character = player.Character
-	if character then
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			hrp.Anchored = false
-		end
-		for _, part in ipairs(character:GetDescendants()) do
-			if part:IsA("BasePart") then
-				if part.Name == "HumanoidRootPart" then
-					part.Transparency = 1 -- HRP is normally transparent
-				else
-					part.Transparency = 0
-				end
-				part.CanCollide = true
-			elseif part:IsA("Decal") or part:IsA("Texture") then
-				part.Transparency = 0
-			end
-		end
-	end
-
-	-- Teleport to lobby
-	self:teleportToLobby(player)
-	task.delay(0.5, function()
-		self.teleportingToLobby[player] = nil
-	end)
-
-	Logger.debug("GameManager", player.Name, "left spectator mode")
 end
 
 -- Teleport กลับจุดเริ่มต้น (Stage 1)
@@ -645,150 +598,6 @@ function GameManager:setupLobby()
 	end
 end
 
--- Setup selection zone
-function GameManager:setupSelectionZone()
-	local lobby = workspace:FindFirstChild("Lobby")
-	if not lobby then return end
-	
-	local selectionZone = lobby:FindFirstChild("SelectionZone")
-	if not selectionZone then return end
-	
-	-- ใช้ loop ตรวจสอบตำแหน่งผู้เล่นแทน Touched events (เสถียรกว่า)
-	
-	-- Add "Select Stage" Label
-	if not selectionZone:FindFirstChild("StageLabelBillboard") then
-		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "StageLabelBillboard"
-		billboard.Size = UDim2.new(0, 200, 0, 50)
-		billboard.StudsOffset = Vector3.new(0, 5, 0)
-		billboard.AlwaysOnTop = true
-		billboard.Parent = selectionZone
-		
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(1, 0, 1, 0)
-		label.BackgroundTransparency = 1
-		label.Text = "SELECT STAGE"
-		label.TextColor3 = Color3.fromRGB(100, 200, 255)
-		label.TextStrokeTransparency = 0
-		label.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-		label.TextSize = 24
-		label.Font = Enum.Font.GothamBold
-		label.Parent = billboard
-	end
-	
-	task.spawn(function()
-		while true do
-			task.wait(0.2) -- ตรวจสอบทุก 0.2 วินาที
-			
-			for _, player in ipairs(Players:GetPlayers()) do
-				local isInZone = self:isPlayerInSelectionZone(player, selectionZone)
-				local wasInZone = self.playersInSelectionZone[player]
-				
-				if isInZone and not wasInZone then
-					-- เพิ่งเข้า zone
-					if self.playerStates[player] == "Lobby" then
-						self.playersInSelectionZone[player] = true
-						self:onPlayerEnterSelectionZone(player)
-					end
-				elseif not isInZone and wasInZone then
-					-- เพิ่งออกจาก zone
-					self.playersInSelectionZone[player] = nil
-					self:onPlayerLeaveSelectionZone(player)
-				end
-			end
-		end
-	end)
-end
-
--- ตรวจสอบว่าผู้เล่นอยู่ใน selection zone หรือไม่
-function GameManager:isPlayerInSelectionZone(player: Player, zone: Part): boolean
-	local character = player.Character
-	if not character then return false end
-	
-	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-	if not humanoidRootPart then return false end
-	
-	local playerPos = humanoidRootPart.Position
-	local zonePos = zone.Position
-	local zoneSize = zone.Size
-	
-	-- ตรวจสอบว่าอยู่ใน bounding box ของ zone
-	local halfSize = zoneSize / 2
-	local minBound = zonePos - halfSize
-	local maxBound = zonePos + halfSize
-	
-	return playerPos.X >= minBound.X and playerPos.X <= maxBound.X
-		and playerPos.Y >= minBound.Y - 5 and playerPos.Y <= maxBound.Y + 10 -- เผื่อความสูง
-		and playerPos.Z >= minBound.Z and playerPos.Z <= maxBound.Z
-end
-
--- Player entered selection zone
-function GameManager:onPlayerEnterSelectionZone(player: Player)
-	-- Show stage selection UI
-	self.showStageSelectionRemote:FireClient(player)
-	Logger.debug("GameManager", player.Name, "entered selection zone")
-end
-
--- Player left selection zone
-function GameManager:onPlayerLeaveSelectionZone(player: Player)
-	-- Hide stage selection UI
-	self.hideStageSelectionRemote:FireClient(player)
-	Logger.debug("GameManager", player.Name, "left selection zone")
-end
-
--- Validate stage order from client input
-function GameManager:validateStageOrder(stageOrder: any): {number}?
-	if type(stageOrder) ~= "table" then return nil end
-	if #stageOrder == 0 or #stageOrder > Config.Stages.Count then return nil end
-
-	local seen = {}
-	for _, stageNum in ipairs(stageOrder) do
-		if type(stageNum) ~= "number" then return nil end
-		stageNum = math.floor(stageNum)
-		if stageNum < 1 or stageNum > Config.Stages.Count then return nil end
-		if seen[stageNum] then return nil end -- duplicate
-		seen[stageNum] = true
-	end
-
-	return stageOrder
-end
-
--- Stage selection confirmed
-function GameManager:onStageSelectionConfirmed(player: Player, data: any)
-	local state = self.playerStates[player]
-	if state ~= "Lobby" then return end
-
-	-- Validate client input
-	if type(data) ~= "table" then
-		Logger.warn("GameManager", "Invalid data from", player.Name)
-		return
-	end
-
-	local stageOrder: {number}
-
-	if data.isRandom == true then
-		-- Random order
-		stageOrder = self.mapManager:shuffleStages()
-	elseif data.stageOrder then
-		-- Custom order - validate
-		local validated = self:validateStageOrder(data.stageOrder)
-		if not validated then
-			Logger.warn("GameManager", "Invalid stageOrder from", player.Name)
-			return
-		end
-		stageOrder = validated
-	else
-		-- Default: use current map order
-		stageOrder = self.mapManager.stageOrder
-	end
-	
-	-- Hide UI
-	self.hideStageSelectionRemote:FireClient(player)
-	
-	-- Start countdown and game
-	self:startGameWithOrder(player, stageOrder)
-end
-
 -- Start game with specific stage order
 -- Uses per-match instanced maps for multiplayer support
 function GameManager:startGameWithOrder(player: Player, stageOrder: {number})
@@ -833,7 +642,7 @@ end
 -- Start countdown (with stageOrder parameter for total stages)
 function GameManager:startCountdown(player: Player, seconds: number, stageOrder: {number}?)
 	-- Get dynamic total stages
-	local totalStages = stageOrder and #stageOrder or #self.mapManager.stageOrder
+	local totalStages = stageOrder and #stageOrder or #self.mapManager.globalMap.stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.Count end
 	
 	for i = seconds, 1, -1 do
@@ -959,7 +768,7 @@ function GameManager:generateNewMap()
 	self.itemManager:setupItemPickups(pickups)
 	
 	Logger.info("GameManager", "New map generated!")
-	Logger.info("GameManager", "Stage order:", table.concat(self.mapManager.stageOrder, ", "))
+	Logger.info("GameManager", "Stage order:", table.concat(self.mapManager.globalMap.stageOrder, ", "))
 end
 
 -- Disconnect all map touch connections (called before map regenerate)
@@ -987,7 +796,7 @@ function GameManager:setupFinishLine()
 	if not finishPos then return end
 	
 	-- หา EndPart ของ stage สุดท้าย
-	local lastStage = self.mapManager.currentStages[#self.mapManager.currentStages]
+	local lastStage = self.mapManager.globalMap.stages[#self.mapManager.globalMap.stages]
 	if lastStage then
 		local endPart = lastStage:FindFirstChild("EndPart")
 		if endPart then

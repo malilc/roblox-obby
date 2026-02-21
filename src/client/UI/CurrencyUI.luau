@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local UIFactory = require(script.Parent.UIFactory)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -25,27 +26,18 @@ end
 
 function CurrencyUI:createUI()
 	-- === CURRENCY DISPLAY (มุมบนซ้าย - ใต้ StageFrame) ===
-	local currencyFrame = Instance.new("Frame")
-	currencyFrame.Name = "CurrencyFrame"
-	currencyFrame.Size = UDim2.new(0, 140, 0, 44)
-	currencyFrame.Position = UDim2.new(0, 10, 0, 92)
-	currencyFrame.BackgroundColor3 = Theme.BG_BASE
-	currencyFrame.BackgroundTransparency = 0.3
-	currencyFrame.BorderSizePixel = 0
-	currencyFrame.Parent = self.parent
+	local currencyFrame = UIFactory.createPanel(self.parent, {
+		name = "CurrencyFrame",
+		size = UDim2.new(0, 140, 0, 44),
+		position = UDim2.new(0, 10, 0, 92),
+		bgColor = Theme.BG_BASE,
+		bgTransparency = 0.3,
+		cornerSize = "lg",
+		strokeColor = Theme.PRIMARY,
+		strokeTransparency = 0.5,
+	})
 	self.currencyFrame = currencyFrame
-
-	local currencyCorner = Instance.new("UICorner")
-	currencyCorner.CornerRadius = Theme.CORNER_LG
-	currencyCorner.Parent = currencyFrame
-
-	-- Frame Stroke (glow effect)
-	local frameStroke = Instance.new("UIStroke")
-	frameStroke.Color = Theme.PRIMARY
-	frameStroke.Thickness = Theme.STROKE_THIN
-	frameStroke.Transparency = 0.5
-	frameStroke.Parent = currencyFrame
-	self.frameStroke = frameStroke
+	self.frameStroke = currencyFrame:FindFirstChildOfClass("UIStroke")
 
 	-- Gradient background
 	local gradient = Instance.new("UIGradient")
@@ -144,17 +136,16 @@ function CurrencyUI:createUI()
 	shineGradient.Parent = shine
 
 	-- Currency Number
-	local currencyLabel = Instance.new("TextLabel")
-	currencyLabel.Name = "CurrencyLabel"
-	currencyLabel.Size = UDim2.new(1, -50, 1, 0)
-	currencyLabel.Position = UDim2.new(0, 44, 0, 0)
-	currencyLabel.BackgroundTransparency = 1
-	currencyLabel.Text = "0"
-	currencyLabel.TextColor3 = Theme.PRIMARY
-	currencyLabel.TextSize = 22
-	currencyLabel.Font = Enum.Font.GothamBlack
-	currencyLabel.TextXAlignment = Enum.TextXAlignment.Left
-	currencyLabel.Parent = currencyFrame
+	local currencyLabel = UIFactory.createLabel(currencyFrame, {
+		name = "CurrencyLabel",
+		size = UDim2.new(1, -50, 1, 0),
+		position = UDim2.new(0, 44, 0, 0),
+		text = "0",
+		textColor = Theme.PRIMARY,
+		textSize = 22,
+		font = Enum.Font.GothamBlack,
+		textXAlignment = Enum.TextXAlignment.Left,
+	})
 	self.currencyLabel = currencyLabel
 
 	-- Text stroke for better visibility

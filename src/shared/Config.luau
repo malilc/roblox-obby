@@ -192,6 +192,26 @@ Stages = {
 		},
 	},
 
+	-- Timing Settings (extracted magic numbers)
+	Timing = {
+		LeaderboardSendDelay = 3,       -- วินาทีก่อนส่ง leaderboard ให้ player ใหม่
+		CharacterSetupDelay = 0.5,      -- วินาทีรอ character โหลด
+		PositionCheckInterval = 0.5,    -- วินาทีระหว่างตรวจ player position
+		SelectionZoneInterval = 0.2,    -- วินาทีระหว่างตรวจ selection zone
+		AutoTeleportDelay = 5,          -- วินาทีก่อน auto-teleport กลับ lobby
+		TeleportFlagClearDelay = 0.5,   -- วินาทีก่อน clear teleporting flag
+		AutoSaveInterval = 30,          -- วินาทีระหว่าง auto-save
+		LeaderstatsLoadDelay = 1,       -- วินาทีรอ leaderstats โหลด
+	},
+
+	-- Map Physics Settings
+	Map = {
+		StageGapStuds = 10,             -- ระยะห่างระหว่าง stage (studs)
+		FinishLineRadius = 20,          -- ระยะตรวจจับ finish line (studs)
+		PlatformServoForce = 1000000,   -- แรง servo ของ moving platform
+		PlatformServoSpeed = 50,        -- ความเร็ว servo ของ moving platform
+	},
+
 	-- Debug / Development Settings
 	Debug = {
 		Enabled = true,    -- Master toggle: set false for production

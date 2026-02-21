@@ -632,7 +632,7 @@ end
 -- Calculate final stage order from votes (weighted random)
 function MatchManager:calculateFinalStageOrder(room: MatchRoom): {number}
 	-- If no votes, shuffle all stages
-	if #table.clear({}) == 0 and next(room.stageVotes) == nil then
+	if next(room.stageVotes) == nil then
 		return self:shuffleAllStages()
 	end
 	

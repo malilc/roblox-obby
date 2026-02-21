@@ -1,11 +1,11 @@
 -- ScoreManager: จัดการคะแนนรอบและคะแนนถาวร
 
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Logger = require(ReplicatedStorage.Shared.Logger)
+local DataStoreHelper = require(script.Parent.DataStoreHelper)
 
 local ScoreManager = {}
 ScoreManager.__index = ScoreManager
@@ -24,10 +24,8 @@ function ScoreManager.new(currencyManager: any?)
 	self.pendingSaves = {} :: {[Player]: boolean} -- Track players needing save
 	self.currencyManager = currencyManager -- Reference to CurrencyManager
 	
-	-- DataStore
-	pcall(function()
-		self.dataStore = DataStoreService:GetDataStore(Config.DataStore.Name)
-	end)
+	-- DataStore (via centralized helper)
+	self.storeName = Config.DataStore.Name
 	
 	-- Remotes
 	self.updateScoreRemote = ReplicatedStorage.Remotes.UpdateScore
@@ -51,14 +49,11 @@ function ScoreManager:initPlayer(player: Player)
 	self:loadPlayerData(player)
 end
 
--- Load player data from DataStore
+-- Load player data from DataStore (with retry via DataStoreHelper)
 function ScoreManager:loadPlayerData(player: Player)
-	if not self.dataStore then return end
-	
-	local success, data = pcall(function()
-		return self.dataStore:GetAsync("Player_" .. player.UserId)
-	end)
-	
+	local key = DataStoreHelper.playerKey(player)
+	local success, data = DataStoreHelper.loadAsync(self.storeName, key)
+
 	if success and data then
 		local playerData = self.playerData[player]
 		if playerData then
@@ -69,33 +64,27 @@ function ScoreManager:loadPlayerData(player: Player)
 	else
 		Logger.debug("ScoreManager", "No saved data for", player.Name)
 	end
-	
+
 	-- Update client
 	self:sendScoreUpdate(player)
 end
 
--- Save player data to DataStore
+-- Save player data to DataStore (with retry via DataStoreHelper)
 function ScoreManager:savePlayerData(player: Player)
-	if not self.dataStore then return end
-	
 	local playerData = self.playerData[player]
 	if not playerData then return end
-	
-	local success, err = pcall(function()
-		self.dataStore:UpdateAsync("Player_" .. player.UserId, function(existingData)
-			if type(existingData) ~= "table" then
-				existingData = {}
-			end
-			existingData.totalScore = playerData.totalScore
-			existingData.highScore = playerData.highScore
-			return existingData
-		end)
+
+	local key = DataStoreHelper.playerKey(player)
+	local success = DataStoreHelper.saveAsync(self.storeName, key, function(existingData)
+		existingData.totalScore = playerData.totalScore
+		existingData.highScore = playerData.highScore
+		return existingData
 	end)
-	
+
 	if success then
 		Logger.debug("ScoreManager", "Saved data for", player.Name)
 	else
-		Logger.warn("ScoreManager", "Failed to save data for", player.Name, ":", err)
+		Logger.warn("ScoreManager", "Failed to save data for", player.Name)
 	end
 end
 
@@ -150,7 +139,7 @@ end
 function ScoreManager:startAutoSave()
 	task.spawn(function()
 		while true do
-			task.wait(30) -- Save every 30 seconds
+			task.wait(Config.Timing.AutoSaveInterval) -- Save periodically
 			self:saveAllPending()
 		end
 	end)
@@ -248,7 +237,7 @@ function ScoreManager:setupLeaderstats(player: Player)
 	
 	-- Update when player data loads
 	task.spawn(function()
-		task.wait(1)
+		task.wait(Config.Timing.LeaderstatsLoadDelay)
 		local playerData = self.playerData[player]
 		if playerData then
 			highScore.Value = playerData.highScore

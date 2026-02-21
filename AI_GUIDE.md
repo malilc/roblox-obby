@@ -8,14 +8,17 @@
 src/
 ├── server/                      # Server-side code
 │   ├── init.server.luau         # Entry point - สร้าง GameManager
-│   ├── GameManager.luau         # ควบคุมเกมทั้งหมด
+│   ├── GameManager.luau         # ควบคุมเกมทั้งหมด (orchestrator)
 │   ├── MapManager.luau          # จัดการ map/stages + animations + per-match instancing
-│   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (auto-save ทุก 30วิ)
+│   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (ผ่าน DataStoreHelper)
 │   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + Daily Login + DataStore
 │   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Mario Kart
 │   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race + Stage Voting
 │   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
 │   ├── LeaderboardManager.luau  # 🏆 Global Leaderboard (OrderedDataStore + Physical Board)
+│   ├── SpectatorManager.luau    # 👁️ ระบบ Spectator Mode (แยกจาก GameManager)
+│   ├── SelectionZoneManager.luau # ⭐ ระบบ SelectionZone detection + stage confirm (แยกจาก GameManager)
+│   ├── DataStoreHelper.luau     # 💾 Centralized DataStore utilities + retry logic + schema versioning
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
 │
 ├── client/                      # Client-side code
@@ -23,10 +26,12 @@ src/
 │   ├── FlyController.luau       # ระบบบินทดสอบ (กด F)
 │   ├── ItemEffects.luau         # 🎯 Screen effects (shake, flash, zoom)
 │   ├── SoundManager.luau        # 🔊 BGM + SFX manager (ใส่ rbxassetid ใน SOUNDS table)
+│   ├── TweenHelper.luau         # 🎨 Reusable tween/animation utilities (pop, fadeIn, slideIn, etc.)
 │   ├── UltimateSkillController.luau # ⚡ Ultimate Skills (Sprint, Double Jump, Iron Will)
 │   ├── SpectatorCamera.luau     # 👁️ กล้อง Follow + FreeCam สำหรับ Spectator Mode
 │   └── UI/
 │       ├── MainUI.luau          # Controller หลัก (popup mutual exclusion)
+│       ├── UIFactory.luau       # 🏗️ Reusable UI component factory (createPanel/Button/Label/Modal)
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # 🎯 แสดง Item (2 slots) + Tooltip
@@ -46,9 +51,10 @@ src/
 │       └── MobileInputUI.luau   # 📱 Touch buttons สำหรับมือถือ (Item/Sprint/Jump)
 │
 └── shared/                      # Shared code (server + client)
-    ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags + Ultimate Skills)
+    ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags + Ultimate Skills + Timing + Map)
     ├── Types.luau               # Type definitions
     ├── Logger.luau              # 🔧 Centralized logging (configurable levels)
+    ├── RemoteRegistry.luau      # 📡 Centralized RemoteEvent access with caching + WaitForChild fallback
     ├── ItemTypes.luau           # 🎯 นิยาม Items ทั้งหมด
     └── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด (+ ultimateSkill field)
 ```
@@ -117,12 +123,13 @@ Teleport ไปด่าน 1
 ### Zone Detection (Loop-based):
 
 ```lua
--- ตรวจสอบทุก 0.2 วินาที (เสถียรกว่า Touched events)
+-- ตรวจสอบทุก Config.Timing.SelectionZoneInterval (0.2 วินาที) — เสถียรกว่า Touched events
+-- จัดการโดย SelectionZoneManager.luau (แยกออกจาก GameManager)
 task.spawn(function()
     while true do
-        task.wait(0.2)
+        task.wait(Config.Timing.SelectionZoneInterval)
         for _, player in ipairs(Players:GetPlayers()) do
-            local isInZone = self:isPlayerInSelectionZone(player, selectionZone)
+            local isInZone = self:isPlayerInZone(player)
             -- เปรียบเทียบกับสถานะก่อนหน้า แล้ว show/hide UI
         end
     end
@@ -305,26 +312,21 @@ end
 ```lua
 -- สุ่มลำดับ (Fisher-Yates shuffle)
 function MapManager:shuffleStages(): {number}
-    local stages = {}
-    for i = 1, Config.Stages.Count do
-        table.insert(stages, i)
-    end
-    
-    for i = #stages, 2, -1 do
-        local j = math.random(1, i)
-        stages[i], stages[j] = stages[j], stages[i]
-    end
-    
-    return stages
+
+-- สร้าง Map ด้วยลำดับที่กำหนด (global map)
+function MapManager:generateMapWithOrder(stageOrder: {number})
+    -- ผลลัพธ์เก็บใน self.globalMap.stageOrder, self.globalMap.stages
 end
 
--- สร้าง Map ด้วยลำดับที่กำหนด
-function MapManager:generateMapWithOrder(stageOrder: {number})
-    self:clearMap()
-    self.stageOrder = stageOrder
-    -- สร้างด่านตามลำดับ...
+-- สร้าง Map สำหรับ match เฉพาะ
+function MapManager:generateMapForMatch(matchId: string, stageOrder: {number})
+    -- ผลลัพธ์เก็บใน self.matchMaps[matchId]
 end
 ```
+
+**⚠️ ข้อสำคัญ (หลัง refactor):**
+- Global map state: `self.globalMap.stageOrder`, `self.globalMap.stages` (ไม่ใช่ `self.stageOrder`, `self.currentStages` แล้ว)
+- Internal helpers `_xxxInternal()` ถูก share ระหว่าง global และ per-match — ห้ามเรียกตรงๆ จากนอก MapManager
 
 **Output ใน Console**: `[MapManager] Stage order: 3, 1, 5, 2, 4`
 
@@ -449,6 +451,26 @@ local Config = {
             [1] = 25, [2] = 50, [3] = 75, [4] = 100,
             [5] = 150, [6] = 200, [7] = 500,
         },
+    },
+
+    -- Timing Settings (previously hardcoded magic numbers)
+    Timing = {
+        LeaderboardSendDelay = 3,       -- delay ก่อนส่งผล leaderboard
+        CharacterSetupDelay = 0.5,      -- รอ character โหลด
+        PositionCheckInterval = 0.5,    -- loop ตรวจสอบตำแหน่ง
+        SelectionZoneInterval = 0.2,    -- loop ตรวจสอบ selection zone
+        AutoTeleportDelay = 5,          -- delay ก่อน auto-teleport หลังจบ
+        TeleportFlagClearDelay = 0.5,   -- delay ล้าง teleport flag
+        AutoSaveInterval = 30,          -- auto-save interval (วินาที)
+        LeaderstatsLoadDelay = 1,       -- delay ก่อน update leaderstats หลัง load
+    },
+
+    -- Map Settings (previously hardcoded magic numbers)
+    Map = {
+        StageGapStuds = 10,             -- ระยะห่างระหว่าง stages (studs)
+        FinishLineRadius = 20,          -- รัศมีตรวจจับ finish line
+        PlatformServoForce = 1000000,   -- ServoMaxForce สำหรับ moving platform
+        PlatformServoSpeed = 50,        -- ServoMaxVelocity สำหรับ moving platform
     },
 
     -- Debug / Development Settings
@@ -1531,9 +1553,13 @@ end)
 | `Config.Lobby.SpawnPosition` | (0, 103, 0) | Config.luau |
 | `Config.KillZoneY` | -120 | Config.luau |
 | `Friction` | 2.0 | StageTemplates.luau |
-| `checkPlayerPosition interval` | 0.5 วินาที | GameManager.luau |
-| `selectionZone interval` | 0.2 วินาที | GameManager.luau |
-| `Finish Line delay` | 2 วินาที | GameManager.luau |
+| `Config.Timing.PositionCheckInterval` | 0.5 วินาที | Config.luau |
+| `Config.Timing.SelectionZoneInterval` | 0.2 วินาที | Config.luau |
+| `Config.Timing.AutoTeleportDelay` | 5 วินาที | Config.luau |
+| `Config.Timing.AutoSaveInterval` | 30 วินาที | Config.luau |
+| `Config.Map.StageGapStuds` | 10 studs | Config.luau |
+| `Config.Map.FinishLineRadius` | 20 studs | Config.luau |
+| `Config.Map.PlatformServoForce` | 1000000 | Config.luau |
 
 ---
 
@@ -1666,3 +1692,13 @@ end)
 89. **Input Validation**: `ConfirmStageSelection` remote ผ่าน `validateStageOrder()` ก่อนใช้งาน
 90. **Shared Map Limitation**: Map เป็น global shared ใน workspace - ถ้า 2+ players เล่นพร้อมกันจะมีปัญหา (ต้องทำ instanced map ในอนาคต)
 91. **Race Direction**: Stages progress ตามแกน +X (ไม่ใช่ +Z) - "ahead" check ใช้ `Position.X`
+
+### 🏗️ Architecture (Refactored Feb 2026)
+92. **GameManager split**: SpectatorManager + SelectionZoneManager แยกออกจาก GameManager ใช้ dependency injection pattern
+93. **DataStoreHelper**: DataStore ทุก module ควรใช้ `DataStoreHelper.loadAsync()` + `DataStoreHelper.saveAsync()` (retry 3 ครั้ง, exponential backoff, schema versioning)
+94. **RemoteRegistry**: ใช้ `RemoteRegistry.get("EventName")` แทนการ WaitForChild ตรงๆ (cached, safe fallback)
+95. **TweenHelper**: Animation ซ้ำๆ ให้ใช้ `src/client/TweenHelper.luau` (pop, fadeIn, fadeOut, slideIn, glowStroke, colorFlash)
+96. **UIFactory**: UI ใหม่ให้ใช้ `src/client/UI/UIFactory.luau` สำหรับ createPanel/createButton/createLabel แทนการสร้าง Instance ตรงๆ
+97. **humanoidRootPart**: ใช้ชื่อเต็มเสมอ (ไม่ใช่ `hrp`) ทั้ง project
+98. **MapManager internal**: ฟังก์ชัน `_xxxInternal()` เป็น internal helpers สำหรับ global/per-match deduplication — ห้ามเรียกจากนอก MapManager
+99. **Config.Timing / Config.Map**: Magic numbers เวลาและ map ทั้งหมดอยู่ใน Config แล้ว — ไม่ hardcode ค่าใหม่

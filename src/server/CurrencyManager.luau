@@ -1044,11 +1044,11 @@ function CurrencyManager:applyActiveTrailToCharacter(player: Player, character: 
 	local targetCharacter = character or player.Character
 	if not targetCharacter then return end
 
-	local hrp = targetCharacter:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 
 	-- Remove existing trail (attachments + trail instance on HRP)
-	for _, child in ipairs(hrp:GetChildren()) do
+	for _, child in ipairs(humanoidRootPart:GetChildren()) do
 		if child.Name == "TrailTop" or child.Name == "TrailBottom" or child.Name == "MasteryTrailEffect" then
 			child:Destroy()
 		end
@@ -1079,12 +1079,12 @@ function CurrencyManager:applyActiveTrailToCharacter(player: Player, character: 
 	local topAttach = Instance.new("Attachment")
 	topAttach.Name = "TrailTop"
 	topAttach.Position = Vector3.new(0, 0.5, 0)
-	topAttach.Parent = hrp
+	topAttach.Parent = humanoidRootPart
 
 	local bottomAttach = Instance.new("Attachment")
 	bottomAttach.Name = "TrailBottom"
 	bottomAttach.Position = Vector3.new(0, -0.5, 0)
-	bottomAttach.Parent = hrp
+	bottomAttach.Parent = humanoidRootPart
 
 	-- Create trail on HRP
 	local trailColor = TRAIL_COLORS[equippedClass] or Color3.fromRGB(220, 220, 220)
@@ -1107,7 +1107,7 @@ function CurrencyManager:applyActiveTrailToCharacter(player: Player, character: 
 		NumberSequenceKeypoint.new(0, 0.5),
 		NumberSequenceKeypoint.new(1, 0),
 	})
-	trail.Parent = hrp
+	trail.Parent = humanoidRootPart
 end
 
 function CurrencyManager:sendTitleUpdate(player: Player, action: {[string]: any}?)

@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local UIFactory = require(script.Parent.UIFactory)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -28,27 +29,18 @@ end
 
 function ScoreUI:createUI()
 	-- === SCORE FRAME (มุมบนซ้าย) - Modern Design ===
-	local scoreFrame = Instance.new("Frame")
-	scoreFrame.Name = "ScoreFrame"
-	scoreFrame.Size = UDim2.new(0, 120, 0, 44)
-	scoreFrame.Position = UDim2.new(0, 10, 0, 10)
-	scoreFrame.BackgroundColor3 = Theme.BG_BASE
-	scoreFrame.BackgroundTransparency = 0.3
-	scoreFrame.BorderSizePixel = 0
-	scoreFrame.Parent = self.parent
+	local scoreFrame = UIFactory.createPanel(self.parent, {
+		name = "ScoreFrame",
+		size = UDim2.new(0, 120, 0, 44),
+		position = UDim2.new(0, 10, 0, 10),
+		bgColor = Theme.BG_BASE,
+		bgTransparency = 0.3,
+		cornerSize = "lg",
+		strokeColor = Theme.ACCENT_CYAN,
+		strokeTransparency = 0.5,
+	})
 	self.scoreFrame = scoreFrame
-
-	local scoreCorner = Instance.new("UICorner")
-	scoreCorner.CornerRadius = Theme.CORNER_LG
-	scoreCorner.Parent = scoreFrame
-
-	-- Frame Stroke (glow effect)
-	local frameStroke = Instance.new("UIStroke")
-	frameStroke.Color = Theme.ACCENT_CYAN
-	frameStroke.Thickness = Theme.STROKE_THIN
-	frameStroke.Transparency = 0.5
-	frameStroke.Parent = scoreFrame
-	self.frameStroke = frameStroke
+	self.frameStroke = scoreFrame:FindFirstChildOfClass("UIStroke")
 
 	-- Gradient background
 	local gradient = Instance.new("UIGradient")

@@ -158,22 +158,12 @@ function UltimateSkillController:setupClassUltimate()
 end
 
 function UltimateSkillController:setupInputHandling()
-	-- Sprint (Shift key)
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
-		
-		-- Shift for Sprint
+
 		if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
 			self:tryActivateSprint()
-		end
-	end)
-	
-	-- Double Jump (Space)
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
-		
-		-- Space for Jump
-		if input.KeyCode == Enum.KeyCode.Space then
+		elseif input.KeyCode == Enum.KeyCode.Space then
 			self:tryDoubleJump()
 		end
 	end)
