@@ -568,6 +568,8 @@ function CurrencyManager:checkDailyLogin(player: Player)
 					day     = playerData.loginStreak or 1,
 					amount  = 0,
 					rewards = allRewards,
+					lastLoginTime = playerData.lastLoginTime,
+					cooldownHours = cfg.CooldownHours or 20,
 				})
 			end
 		end)
@@ -607,6 +609,8 @@ function CurrencyManager:checkDailyLogin(player: Player)
 				day     = streak,
 				amount  = amount,
 				rewards = allRewards,
+				lastLoginTime = now,
+				cooldownHours = cfg.CooldownHours or 20,
 			})
 		end
 	end)

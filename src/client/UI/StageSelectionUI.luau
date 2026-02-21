@@ -336,13 +336,65 @@ function StageSelectionUI:createUI()
 			self:toggleStage(i)
 		end)
 
+		-- Selection order badge (green circle with number, top-right)
+		local orderBadge = Instance.new("TextLabel")
+		orderBadge.Name = "OrderBadge"
+		orderBadge.Size = UDim2.new(0, 24, 0, 24)
+		orderBadge.Position = UDim2.new(1, -14, 0, -6)
+		orderBadge.AnchorPoint = Vector2.new(0.5, 0.5)
+		orderBadge.BackgroundColor3 = Theme.SUCCESS
+		orderBadge.BackgroundTransparency = 0
+		orderBadge.Text = ""
+		orderBadge.TextColor3 = Theme.TEXT_PRIMARY
+		orderBadge.TextSize = 13
+		orderBadge.Font = Enum.Font.GothamBold
+		orderBadge.ZIndex = button.ZIndex + 2
+		orderBadge.Visible = false
+		orderBadge.Parent = button
+		Theme.applyCorner(orderBadge, "full")
+
 		self.stageButtons[i] = {
 			button = button,
 			container = buttonContainer,
 			indicator = selectedIndicator,
 			stroke = buttonStroke,
 			difficulty = stageData.difficulty,
+			orderBadge = orderBadge,
 		}
+	end
+
+	-- Empty slot placeholders (5 positions)
+	self.emptySlots = {}
+	for slotIdx = 1, Config.Stages.SelectionCount do
+		local placeholder = Instance.new("Frame")
+		placeholder.Name = "EmptySlot" .. slotIdx
+		placeholder.Size = UDim2.new(0, 100, 0, 105)
+		placeholder.Position = UDim2.new(0, 0, 0, 0)
+		placeholder.BackgroundColor3 = Theme.BG_OVERLAY
+		placeholder.BackgroundTransparency = 0.5
+		placeholder.BorderSizePixel = 0
+		placeholder.Visible = false
+		placeholder.Parent = buttonsContainer
+		Theme.applyCorner(placeholder, "sm")
+
+		local slotStroke = Instance.new("UIStroke")
+		slotStroke.Color = Theme.TEXT_MUTED
+		slotStroke.Thickness = Theme.STROKE_THIN
+		slotStroke.Transparency = 0.7
+		slotStroke.Parent = placeholder
+
+		local plusLabel = Instance.new("TextLabel")
+		plusLabel.Name = "PlusIcon"
+		plusLabel.Size = UDim2.new(1, 0, 1, 0)
+		plusLabel.BackgroundTransparency = 1
+		plusLabel.Text = "+"
+		plusLabel.TextColor3 = Theme.TEXT_MUTED
+		plusLabel.TextSize = 28
+		plusLabel.TextTransparency = 0.3
+		plusLabel.Font = Enum.Font.GothamBold
+		plusLabel.Parent = placeholder
+
+		self.emptySlots[slotIdx] = placeholder
 	end
 
 	-- Selected Order Display with modern design
@@ -661,6 +713,26 @@ function StageSelectionUI:toggleStage(stageNum: number)
 
 	self:updateSelectedLabel()
 	self:updateTabCounts()
+	self:updateOrderBadges()
+end
+
+function StageSelectionUI:updateOrderBadges()
+	-- Clear all badges
+	for _, btnData in pairs(self.stageButtons) do
+		if btnData.orderBadge then
+			btnData.orderBadge.Visible = false
+			btnData.orderBadge.Text = ""
+		end
+	end
+
+	-- Show badges for selected stages with position number
+	for order, stageNum in ipairs(self.selectedStages) do
+		local btnData = self.stageButtons[stageNum]
+		if btnData and btnData.orderBadge then
+			btnData.orderBadge.Text = tostring(order)
+			btnData.orderBadge.Visible = true
+		end
+	end
 end
 
 function StageSelectionUI:updateButtonState(stageNum: number, isSelected: boolean)
@@ -684,6 +756,9 @@ function StageSelectionUI:updateButtonState(stageNum: number, isSelected: boolea
 		buttonData.indicator.Visible = false
 		buttonData.stroke.Thickness = 2
 		buttonData.stroke.Transparency = 0.6
+		if buttonData.orderBadge then
+			buttonData.orderBadge.Visible = false
+		end
 	end
 
 	-- อัพเดทสถานะปุ่ม Start
@@ -763,6 +838,7 @@ function StageSelectionUI:clearSelection()
 
 	self:updateSelectedLabel()
 	self:updateTabCounts()
+	self:updateOrderBadges()
 end
 
 -- Switch active difficulty tab
@@ -803,6 +879,8 @@ end
 
 -- Show/hide and reposition buttons for active tab
 function StageSelectionUI:refreshStageButtons()
+	local selectionCount = Config.Stages.SelectionCount -- 5
+
 	-- Collect visible stages for active tab
 	local visibleStages = {}
 	for i = 1, StageInfo.getTotalStageCount() do
@@ -812,20 +890,37 @@ function StageSelectionUI:refreshStageButtons()
 		end
 	end
 
-	-- Hide all buttons first
+	-- Hide all stage buttons
 	for _, btnData in pairs(self.stageButtons) do
 		btnData.container.Visible = false
 	end
 
-	-- Show and position visible buttons (centered)
-	local columns = 4
-	local count = #visibleStages
-	local rowOffset = math.max(0, (columns - count) * 120 / 2)
+	-- Hide all empty slots
+	for _, slot in ipairs(self.emptySlots) do
+		slot.Visible = false
+	end
 
+	-- Calculate centered positioning for 5 slots (108px stride = 100px card + 8px gap)
+	local stride = 108
+	local totalWidth = selectionCount * stride - 8
+	local containerWidth = 540 -- buttonsContainer is (1, -40) inside 580px frame
+	local startX = math.max(0, (containerWidth - totalWidth) / 2)
+
+	-- Position stage cards first
 	for idx, stageId in ipairs(visibleStages) do
 		local btnData = self.stageButtons[stageId]
-		btnData.container.Position = UDim2.new(0, rowOffset + (idx - 1) * 120, 0, 0)
+		btnData.container.Position = UDim2.new(0, startX + (idx - 1) * stride, 0, 0)
 		btnData.container.Visible = true
+	end
+
+	-- Fill remaining positions with empty placeholders
+	local emptyIdx = 0
+	for pos = #visibleStages + 1, selectionCount do
+		emptyIdx = emptyIdx + 1
+		if self.emptySlots[emptyIdx] then
+			self.emptySlots[emptyIdx].Position = UDim2.new(0, startX + (pos - 1) * stride, 0, 0)
+			self.emptySlots[emptyIdx].Visible = true
+		end
 	end
 end
 

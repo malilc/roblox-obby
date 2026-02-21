@@ -15,6 +15,7 @@ local COLORS = {
 	SUBTITLE    = Color3.fromRGB(80, 55, 10),
 	FUTURE_TEXT = Theme.TEXT_MUTED,
 	CARD_BADGE  = Color3.fromRGB(80, 180, 110),
+	DAY7_SPECIAL = Color3.fromRGB(120, 80, 180),
 }
 
 local DailyBonusUI = {}
@@ -159,8 +160,8 @@ function DailyBonusUI:showCalendar(data)
 	-- === MAIN PANEL ===
 	local panel = Instance.new("Frame")
 	panel.Name = "DailyLoginPanel"
-	panel.Size = UDim2.new(0, 500, 0, 290)
-	panel.Position = UDim2.new(0.5, -250, 0.5, -80)
+	panel.Size = UDim2.new(0, 500, 0, 360)
+	panel.Position = UDim2.new(0.5, -250, 0.5, -110)
 	panel.BackgroundColor3 = Theme.BG_BASE
 	panel.BorderSizePixel = 0
 	panel.ZIndex = 2
@@ -282,6 +283,8 @@ function DailyBonusUI:showCalendar(data)
 			card.BackgroundColor3 = COLORS.GOLD
 		elseif isPast then
 			card.BackgroundColor3 = COLORS.PAST_CARD
+		elseif day == 7 then
+			card.BackgroundColor3 = COLORS.DAY7_SPECIAL
 		else
 			card.BackgroundColor3 = COLORS.DIM
 		end
@@ -308,13 +311,26 @@ function DailyBonusUI:showCalendar(data)
 		dayLbl.ZIndex = 63
 		dayLbl.Parent = card
 
-		-- Reward icon / checkmark
-		-- view mode: today = already claimed → show ✓ like past days
+		-- Reward icon per state
 		local showCheck = isPast or (isToday and not isClaim)
+		local iconText, iconSize
+		if showCheck then
+			iconText = "\u{2705}" -- ✅
+			iconSize = 22
+		elseif isToday and isClaim then
+			iconText = "\u{1FA99}" -- 🪙
+			iconSize = 22
+		elseif day == 7 then
+			iconText = "\u{1F451}" -- 👑
+			iconSize = 24
+		else
+			iconText = "\u{1F381}" -- 🎁
+			iconSize = 22
+		end
 		local iconLbl = Instance.new("TextLabel")
 		iconLbl.BackgroundTransparency = 1
-		iconLbl.Text = showCheck and "\u{2713}" or "\u{1FA99}"
-		iconLbl.TextSize = showCheck and 26 or 22
+		iconLbl.Text = iconText
+		iconLbl.TextSize = iconSize
 		iconLbl.Font = Enum.Font.GothamBold
 		iconLbl.TextColor3 = showCheck and COLORS.GREEN or (isToday and Theme.TEXT_DARK or COLORS.FUTURE_TEXT)
 		iconLbl.TextXAlignment = Enum.TextXAlignment.Center
@@ -361,6 +377,106 @@ function DailyBonusUI:showCalendar(data)
 		end
 	end
 
+	-- === PROGRESS BAR ===
+	local progressY = cardsY + cardH + 10
+	local progressContainer = Instance.new("Frame")
+	progressContainer.Name = "ProgressBarContainer"
+	progressContainer.Size = UDim2.new(1, -40, 0, 20)
+	progressContainer.Position = UDim2.new(0, 20, 0, progressY)
+	progressContainer.BackgroundTransparency = 1
+	progressContainer.ZIndex = 62
+	progressContainer.Parent = panel
+
+	-- Background track
+	local track = Instance.new("Frame")
+	track.Name = "Track"
+	track.Size = UDim2.new(1, 0, 0, 6)
+	track.Position = UDim2.new(0, 0, 0.5, -3)
+	track.BackgroundColor3 = Theme.BG_ELEVATED
+	track.BackgroundTransparency = 0.3
+	track.BorderSizePixel = 0
+	track.ZIndex = 62
+	track.Parent = progressContainer
+	Theme.applyCorner(track, "full")
+
+	-- Fill bar (green)
+	local fillDay = claimedDay
+	if isClaim then fillDay = claimedDay - 1 end
+	local fillWidth = math.clamp(fillDay / 7, 0, 1)
+
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.new(fillWidth, 0, 1, 0)
+	fill.BackgroundColor3 = Theme.SUCCESS
+	fill.BorderSizePixel = 0
+	fill.ZIndex = 63
+	fill.Parent = track
+	Theme.applyCorner(fill, "full")
+
+	-- 7 dot markers
+	for dotDay = 1, 7 do
+		local dotX = (dotDay - 0.5) / 7
+		local dotSize = 10
+
+		local dot = Instance.new("Frame")
+		dot.Name = "Dot" .. dotDay
+		dot.Size = UDim2.new(0, dotSize, 0, dotSize)
+		dot.Position = UDim2.new(dotX, -dotSize / 2, 0.5, -dotSize / 2)
+		dot.BorderSizePixel = 0
+		dot.ZIndex = 64
+		dot.Parent = progressContainer
+		Theme.applyCorner(dot, "full")
+
+		local isDotClaimed = dotDay < claimedDay or (dotDay == claimedDay and not isClaim)
+		if isDotClaimed then
+			dot.BackgroundColor3 = Theme.SUCCESS
+		else
+			dot.BackgroundColor3 = Theme.BG_ELEVATED
+			dot.BackgroundTransparency = 0.3
+		end
+	end
+
+	-- === COUNTDOWN TIMER ===
+	local timerY = progressY + 24
+	local timerLabel = Instance.new("TextLabel")
+	timerLabel.Name = "CountdownTimer"
+	timerLabel.Size = UDim2.new(1, -40, 0, 18)
+	timerLabel.Position = UDim2.new(0, 20, 0, timerY)
+	timerLabel.BackgroundTransparency = 1
+	timerLabel.TextSize = 12
+	timerLabel.Font = Enum.Font.Gotham
+	timerLabel.ZIndex = 63
+	timerLabel.Parent = panel
+
+	if isClaim then
+		timerLabel.Text = "Claim today's reward!"
+		timerLabel.TextColor3 = COLORS.GOLD
+	else
+		timerLabel.TextColor3 = Theme.TEXT_MUTED
+		local lastLogin = data.lastLoginTime or os.time()
+		local cooldownSecs = (data.cooldownHours or 20) * 3600
+		local nextClaimTime = lastLogin + cooldownSecs
+
+		task.spawn(function()
+			while timerLabel and timerLabel.Parent do
+				local remaining = nextClaimTime - os.time()
+				if remaining <= 0 then
+					timerLabel.Text = "Reward available! Re-open to claim!"
+					timerLabel.TextColor3 = COLORS.GOLD
+					break
+				end
+				local hours = math.floor(remaining / 3600)
+				local mins = math.floor((remaining % 3600) / 60)
+				local secs = remaining % 60
+				timerLabel.Text = string.format(
+					"Next reward in %02d:%02d:%02d \u{2014} come back tomorrow! \u{1F319}",
+					hours, mins, secs
+				)
+				task.wait(1)
+			end
+		end)
+	end
+
 	-- === ACTION BUTTON ===
 	local actionBtn = Instance.new("TextButton")
 	actionBtn.Name            = "ActionButton"
@@ -398,7 +514,7 @@ function DailyBonusUI:showCalendar(data)
 	TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.55 }):Play()
 	TweenService:Create(panel, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0.05,
-		Position = UDim2.new(0.5, -250, 0.5, -145),
+		Position = UDim2.new(0.5, -250, 0.5, -180),
 	}):Play()
 	TweenService:Create(panelStroke, TweenInfo.new(0.35), { Transparency = 0.2 }):Play()
 
@@ -413,7 +529,7 @@ function DailyBonusUI:showCalendar(data)
 		TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play()
 		local out = TweenService:Create(panel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			BackgroundTransparency = 1,
-			Position = UDim2.new(0.5, -250, 0.5, -80),
+			Position = UDim2.new(0.5, -250, 0.5, -110),
 		})
 		out:Play()
 		out.Completed:Connect(function()
