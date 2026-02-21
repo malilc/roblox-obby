@@ -4,6 +4,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 
+local RemoteRegistry = require(ReplicatedStorage.Shared.RemoteRegistry)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+
 local ScoreUI = require(script.Parent.ScoreUI)
 local ItemUI = require(script.Parent.ItemUI)
 local StageSelectionUI = require(script.Parent.StageSelectionUI)
@@ -107,58 +110,47 @@ function MainUI:toggleTitleCollection()
 end
 
 function MainUI:setupRemotes()
-	local remotes = ReplicatedStorage:WaitForChild("Remotes")
-
 	-- Update score
-	local updateScore = remotes:WaitForChild("UpdateScore")
-	updateScore.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("UpdateScore").OnClientEvent:Connect(function(data)
 		self:onScoreUpdate(data)
 	end)
 
 	-- Stage complete
-	local stageComplete = remotes:WaitForChild("StageComplete")
-	stageComplete.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("StageComplete").OnClientEvent:Connect(function(data)
 		self:onStageComplete(data)
 	end)
 
 	-- Player died
-	local playerDied = remotes:WaitForChild("PlayerDied")
-	playerDied.OnClientEvent:Connect(function()
+	RemoteRegistry.get("PlayerDied").OnClientEvent:Connect(function()
 		self:onPlayerDied()
 	end)
 
 	-- Countdown update (Game Start)
-	local countdownUpdate = remotes:WaitForChild("CountdownUpdate")
-	countdownUpdate.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("CountdownUpdate").OnClientEvent:Connect(function(data)
 		if data.totalStages then
-			-- Show stage UI when game starts
 			self.scoreUI:showStageProgress(data.totalStages)
 		end
 	end)
 
 	-- Update currency
-	local updateCurrency = remotes:WaitForChild("UpdateCurrency")
-	updateCurrency.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("UpdateCurrency").OnClientEvent:Connect(function(data)
 		self:onCurrencyUpdate(data)
 	end)
 
 	-- Match timer (RaceUpdate fires every second during a race)
-	local raceUpdate = remotes:WaitForChild("RaceUpdate")
-	raceUpdate.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("RaceUpdate").OnClientEvent:Connect(function(data)
 		if data.timeRemaining then
 			self.scoreUI:updateTimer(data.timeRemaining)
 		end
 	end)
 
 	-- Time warning notification
-	local timeWarning = remotes:WaitForChild("TimeWarning")
-	timeWarning.OnClientEvent:Connect(function(data)
+	RemoteRegistry.get("TimeWarning").OnClientEvent:Connect(function(data)
 		self:showTimeWarning(data.message, data.isCritical)
 	end)
 
 	-- Hide timer when returning to lobby
-	local returnToLobby = remotes:WaitForChild("ReturnToLobby")
-	returnToLobby.OnClientEvent:Connect(function()
+	RemoteRegistry.get("ReturnToLobby").OnClientEvent:Connect(function()
 		self.scoreUI:hideTimer()
 	end)
 end
@@ -229,18 +221,18 @@ function MainUI:showTimeWarning(message: string, isCritical: boolean?)
 	notification.Name = "TimeWarning"
 	notification.Size = UDim2.new(0, 260, 0, 36)
 	notification.Position = UDim2.new(0.5, -130, 0, 60)
-	notification.BackgroundColor3 = if isCritical then Color3.fromRGB(180, 30, 30) else Color3.fromRGB(160, 80, 0)
+	notification.BackgroundColor3 = if isCritical then Theme.DANGER else Theme.WARNING
 	notification.BackgroundTransparency = 0.2
 	notification.BorderSizePixel = 0
-	notification.Text = "⏰  " .. message
-	notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+	notification.Text = "\u{23F0}  " .. message
+	notification.TextColor3 = Theme.TEXT_PRIMARY
 	notification.TextSize = 16
 	notification.Font = Enum.Font.GothamBold
 	notification.TextTransparency = 1
 	notification.Parent = self.screenGui
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = notification
 
 	TweenService:Create(notification, TweenInfo.new(0.25), { TextTransparency = 0, BackgroundTransparency = 0.2 }):Play()
@@ -262,18 +254,18 @@ function MainUI:showDeathNotification()
 	notification.Size = UDim2.new(0, 120, 0, 30)
 	notification.Position = UDim2.new(0.5, -60, 0, 90)
 	notification.AnchorPoint = Vector2.new(0, 0)
-	notification.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	notification.BackgroundColor3 = Theme.BG_OVERLAY
 	notification.BackgroundTransparency = 0.5
 	notification.BorderSizePixel = 0
 	notification.Text = "Respawn"
-	notification.TextColor3 = Color3.fromRGB(255, 100, 100)
+	notification.TextColor3 = Theme.DANGER
 	notification.TextSize = 14
 	notification.Font = Enum.Font.GothamBold
 	notification.TextTransparency = 0
 	notification.Parent = self.screenGui
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
+	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = notification
 
 	-- Fade in

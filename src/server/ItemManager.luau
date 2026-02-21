@@ -137,8 +137,8 @@ function ItemManager:spawnTestDummy(player: Player)
 	local character = player.Character
 	if not character then return end
 	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 	
 	-- Get or create dummies folder
 	local dummiesFolder = workspace:FindFirstChild("TestDummies")
@@ -154,8 +154,8 @@ function ItemManager:spawnTestDummy(player: Player)
 	dummy.Name = "TestDummy_" .. dummyCount
 	
 	-- Spawn position (in front of player)
-	local spawnOffset = hrp.CFrame.LookVector * 15
-	local spawnPos = hrp.Position + spawnOffset + Vector3.new(0, 3, 0)
+	local spawnOffset = humanoidRootPart.CFrame.LookVector * 15
+	local spawnPos = humanoidRootPart.Position + spawnOffset + Vector3.new(0, 3, 0)
 	
 	-- Create body parts
 	local torso = Instance.new("Part")
@@ -524,13 +524,13 @@ function ItemManager:findMissileTarget(player: Player, myPos: Vector3, lookDirec
 		if otherPlayer ~= player then
 			local character = otherPlayer.Character
 			if character then
-				local hrp = character:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					local distance = (hrp.Position - myPos).Magnitude
+				local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+				if humanoidRootPart then
+					local distance = (humanoidRootPart.Position - myPos).Magnitude
 					-- Check if within range and view cone
-					if distance < closestDistance and self:isInViewCone(myPos, lookDirection, hrp.Position, maxAngle) then
+					if distance < closestDistance and self:isInViewCone(myPos, lookDirection, humanoidRootPart.Position, maxAngle) then
 						closestDistance = distance
-						closestHRP = hrp
+						closestHRP = humanoidRootPart
 						closestModel = character
 					end
 				end
@@ -542,13 +542,13 @@ function ItemManager:findMissileTarget(player: Player, myPos: Vector3, lookDirec
 	local dummiesFolder = workspace:FindFirstChild("TestDummies")
 	if dummiesFolder then
 		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
-			local hrp = dummy:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				local distance = (hrp.Position - myPos).Magnitude
+			local humanoidRootPart = dummy:FindFirstChild("HumanoidRootPart")
+			if humanoidRootPart then
+				local distance = (humanoidRootPart.Position - myPos).Magnitude
 				-- Check if within range and view cone
-				if distance < closestDistance and self:isInViewCone(myPos, lookDirection, hrp.Position, maxAngle) then
+				if distance < closestDistance and self:isInViewCone(myPos, lookDirection, humanoidRootPart.Position, maxAngle) then
 					closestDistance = distance
-					closestHRP = hrp
+					closestHRP = humanoidRootPart
 					closestModel = dummy
 				end
 			end
@@ -726,9 +726,9 @@ function ItemManager:checkMissileHit(owner: Player, missile: Part): (Player | Mo
 		if player ~= owner then
 			local character = player.Character
 			if character then
-				local hrp = character:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					local distance = (hrp.Position - missilePos).Magnitude
+				local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+				if humanoidRootPart then
+					local distance = (humanoidRootPart.Position - missilePos).Magnitude
 					if distance < 4 then
 						-- Check if player has shield
 						local data = self.playerItems[player]
@@ -751,9 +751,9 @@ function ItemManager:checkMissileHit(owner: Player, missile: Part): (Player | Mo
 	local dummiesFolder = workspace:FindFirstChild("TestDummies")
 	if dummiesFolder then
 		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
-			local hrp = dummy:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				local distance = (hrp.Position - missilePos).Magnitude
+			local humanoidRootPart = dummy:FindFirstChild("HumanoidRootPart")
+			if humanoidRootPart then
+				local distance = (humanoidRootPart.Position - missilePos).Magnitude
 				if distance < 4 then
 					-- Check if dummy has shield
 					local data = self.playerItems[dummy]
@@ -921,8 +921,8 @@ function ItemManager:applySlip(player: Player, itemDef)
 	local character = player.Character
 	if not character then return end
 	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 	
 	local humanoid = character:FindFirstChild("Humanoid")
 	if not humanoid then return end
@@ -953,10 +953,10 @@ function ItemManager:applySlip(player: Player, itemDef)
 			humanoid.Jump = false
 			
 			-- Cap upward velocity only (prevent jumping)
-			if hrp and hrp.Parent then
-				local vel = hrp.AssemblyLinearVelocity
+			if humanoidRootPart and humanoidRootPart.Parent then
+				local vel = humanoidRootPart.AssemblyLinearVelocity
 				if vel.Y > 3 then
-					hrp.AssemblyLinearVelocity = Vector3.new(vel.X, 3, vel.Z)
+					humanoidRootPart.AssemblyLinearVelocity = Vector3.new(vel.X, 3, vel.Z)
 				end
 			end
 			
@@ -969,7 +969,7 @@ function ItemManager:applySlip(player: Player, itemDef)
 	slipSound.SoundId = "rbxassetid://129432532096499" -- Banana slip sound
 	slipSound.Volume = 0.8
 	slipSound.PlayOnRemove = false
-	slipSound.Parent = hrp
+	slipSound.Parent = humanoidRootPart
 	slipSound:Play()
 	task.delay(3, function()
 		if slipSound.Parent then slipSound:Destroy() end
@@ -981,7 +981,7 @@ function ItemManager:applySlip(player: Player, itemDef)
 	starsGui.Size = UDim2.new(0, 60, 0, 60)
 	starsGui.StudsOffset = Vector3.new(0, 3, 0)
 	starsGui.AlwaysOnTop = true
-	starsGui.Parent = hrp
+	starsGui.Parent = humanoidRootPart
 	
 	local starsLabel = Instance.new("TextLabel")
 	starsLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -1013,16 +1013,16 @@ function ItemManager:applySlip(player: Player, itemDef)
 	slipParticles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 50))
 	slipParticles.LightEmission = 0.5
 	slipParticles.SpreadAngle = Vector2.new(180, 180)
-	slipParticles.Parent = hrp
+	slipParticles.Parent = humanoidRootPart
 	
 	task.delay(slipDuration, function()
 		if slipParticles.Parent then slipParticles:Destroy() end
 	end)
 	
 	-- Slip effect: slide forward with lift + fall animation
-	local slideDirection = hrp.CFrame.LookVector
+	local slideDirection = humanoidRootPart.CFrame.LookVector
 	local forceAttach = Instance.new("Attachment")
-	forceAttach.Parent = hrp
+	forceAttach.Parent = humanoidRootPart
 	local slideForce = Instance.new("LinearVelocity")
 	slideForce.VectorVelocity = Vector3.new(
 		slideDirection.X * 20,
@@ -1032,7 +1032,7 @@ function ItemManager:applySlip(player: Player, itemDef)
 	slideForce.MaxForce = math.huge
 	slideForce.RelativeTo = Enum.ActuatorRelativeTo.World
 	slideForce.Attachment0 = forceAttach
-	slideForce.Parent = hrp
+	slideForce.Parent = humanoidRootPart
 
 	-- Add tumble rotation (fall backwards)
 	local tumble = Instance.new("AngularVelocity")
@@ -1044,7 +1044,7 @@ function ItemManager:applySlip(player: Player, itemDef)
 	tumble.MaxTorque = math.huge
 	tumble.RelativeTo = Enum.ActuatorRelativeTo.World
 	tumble.Attachment0 = forceAttach
-	tumble.Parent = hrp
+	tumble.Parent = humanoidRootPart
 	
 	-- Make character ragdoll/fall state
 	humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
@@ -1094,12 +1094,12 @@ function ItemManager:useShield(player: Player, itemDef): boolean
 	-- Activation sound
 	local character = player.Character
 	if character then
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if hrp then
+		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+		if humanoidRootPart then
 			local activateSound = Instance.new("Sound")
 			activateSound.SoundId = "rbxassetid://105300932320033" -- Shield activate
 			activateSound.Volume = 0.5
-			activateSound.Parent = hrp
+			activateSound.Parent = humanoidRootPart
 			activateSound:Play()
 			task.delay(2, function()
 				if activateSound.Parent then activateSound:Destroy() end
@@ -1116,17 +1116,17 @@ function ItemManager:createShieldVisual(player: Player)
 	local character = player.Character
 	if not character then return end
 	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 	
 	-- Remove existing shield
-	local existing = hrp:FindFirstChild("ShieldVisual")
+	local existing = humanoidRootPart:FindFirstChild("ShieldVisual")
 	if existing then existing:Destroy() end
 	
 	-- Create shield container
 	local shieldContainer = Instance.new("Model")
 	shieldContainer.Name = "ShieldVisual"
-	shieldContainer.Parent = hrp
+	shieldContainer.Parent = humanoidRootPart
 	
 	-- Main shield bubble
 	local shield = Instance.new("Part")
@@ -1143,7 +1143,7 @@ function ItemManager:createShieldVisual(player: Player)
 	
 	-- Weld to character
 	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = hrp
+	weld.Part0 = humanoidRootPart
 	weld.Part1 = shield
 	weld.Parent = shield
 	
@@ -1197,7 +1197,7 @@ function ItemManager:createShieldVisual(player: Player)
 	})
 	auraUp.EmissionDirection = Enum.NormalId.Top
 	auraUp.SpreadAngle = Vector2.new(30, 30)
-	auraUp.Parent = hrp
+	auraUp.Parent = humanoidRootPart
 	
 	-- Swirling aura particles (around character)
 	local auraSwirl = Instance.new("ParticleEmitter")
@@ -1223,7 +1223,7 @@ function ItemManager:createShieldVisual(player: Player)
 		NumberSequenceKeypoint.new(1, 1)
 	})
 	auraSwirl.SpreadAngle = Vector2.new(180, 180)
-	auraSwirl.Parent = hrp
+	auraSwirl.Parent = humanoidRootPart
 	
 	-- Ground aura ring particles
 	local auraGround = Instance.new("ParticleEmitter")
@@ -1244,7 +1244,7 @@ function ItemManager:createShieldVisual(player: Player)
 	})
 	auraGround.EmissionDirection = Enum.NormalId.Bottom
 	auraGround.SpreadAngle = Vector2.new(80, 80)
-	auraGround.Parent = hrp
+	auraGround.Parent = humanoidRootPart
 	
 	-- Shield glow (enhanced)
 	local glow = Instance.new("PointLight")
@@ -1272,18 +1272,18 @@ function ItemManager:removeShieldVisual(player: Player)
 	local character = player.Character
 	if not character then return end
 	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if hrp then
-		local shieldContainer = hrp:FindFirstChild("ShieldVisual")
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart then
+		local shieldContainer = humanoidRootPart:FindFirstChild("ShieldVisual")
 		if shieldContainer then
 			-- Create break effect before destroying
-			self:createShieldBreakEffect(hrp.Position)
+			self:createShieldBreakEffect(humanoidRootPart.Position)
 			
 			-- Shield break sound
 			local breakSound = Instance.new("Sound")
 			breakSound.SoundId = "rbxassetid://122218831341898" -- Shield break
 			breakSound.Volume = 0.6
-			breakSound.Parent = hrp
+			breakSound.Parent = humanoidRootPart
 			breakSound:Play()
 			task.delay(2, function()
 				if breakSound.Parent then breakSound:Destroy() end
@@ -1292,14 +1292,14 @@ function ItemManager:removeShieldVisual(player: Player)
 			shieldContainer:Destroy()
 		end
 		
-		-- Remove aura particles from hrp
-		local auraUp = hrp:FindFirstChild("ShieldAuraUp")
+		-- Remove aura particles from humanoidRootPart
+		local auraUp = humanoidRootPart:FindFirstChild("ShieldAuraUp")
 		if auraUp then auraUp:Destroy() end
 		
-		local auraSwirl = hrp:FindFirstChild("ShieldAuraSwirl")
+		local auraSwirl = humanoidRootPart:FindFirstChild("ShieldAuraSwirl")
 		if auraSwirl then auraSwirl:Destroy() end
 		
-		local auraGround = hrp:FindFirstChild("ShieldAuraGround")
+		local auraGround = humanoidRootPart:FindFirstChild("ShieldAuraGround")
 		if auraGround then auraGround:Destroy() end
 	end
 end
@@ -1382,12 +1382,12 @@ function ItemManager:useSpeedBoost(player: Player, itemDef): boolean
 	data.boostExpiry = os.clock() + (itemDef.duration or 3)
 	
 	-- Speed boost sound
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if hrp then
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart then
 		local boostSound = Instance.new("Sound")
 		boostSound.SoundId = "rbxassetid://105300932320033" -- Speed boost activate
 		boostSound.Volume = 0.7
-		boostSound.Parent = hrp
+		boostSound.Parent = humanoidRootPart
 		boostSound:Play()
 		task.delay(3, function()
 			if boostSound.Parent then boostSound:Destroy() end
@@ -1410,13 +1410,13 @@ function ItemManager:createBoostVisual(player: Player)
 	local character = player.Character
 	if not character then return end
 	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 	
 	-- Create container for all boost effects
 	local boostContainer = Instance.new("Model")
 	boostContainer.Name = "BoostEffects"
-	boostContainer.Parent = hrp
+	boostContainer.Parent = humanoidRootPart
 	
 	-- Speed lines particle (motion blur style)
 	local speedLines = Instance.new("ParticleEmitter")
@@ -1442,7 +1442,7 @@ function ItemManager:createBoostVisual(player: Player)
 		NumberSequenceKeypoint.new(1, 1)
 	})
 	speedLines.EmissionDirection = Enum.NormalId.Back
-	speedLines.Parent = hrp
+	speedLines.Parent = humanoidRootPart
 	
 	-- Aura glow particles
 	local auraParticles = Instance.new("ParticleEmitter")
@@ -1465,7 +1465,7 @@ function ItemManager:createBoostVisual(player: Player)
 		NumberSequenceKeypoint.new(1, 1)
 	})
 	auraParticles.SpreadAngle = Vector2.new(180, 180)
-	auraParticles.Parent = hrp
+	auraParticles.Parent = humanoidRootPart
 	
 	-- Golden glow light
 	local auraGlow = Instance.new("PointLight")
@@ -1473,7 +1473,7 @@ function ItemManager:createBoostVisual(player: Player)
 	auraGlow.Color = Color3.fromRGB(255, 200, 50)
 	auraGlow.Brightness = 1.5
 	auraGlow.Range = 10
-	auraGlow.Parent = hrp
+	auraGlow.Parent = humanoidRootPart
 	
 	-- Create trail on legs/torso if available
 	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
@@ -1529,19 +1529,19 @@ function ItemManager:removeBoostEffect(player: Player)
 			humanoid.JumpPower = data.originalJumpPower or 50
 		end
 		
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if hrp then
+		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+		if humanoidRootPart then
 			-- Remove all boost effects
-			local speedLines = hrp:FindFirstChild("SpeedLines")
+			local speedLines = humanoidRootPart:FindFirstChild("SpeedLines")
 			if speedLines then speedLines:Destroy() end
 			
-			local auraParticles = hrp:FindFirstChild("BoostAura")
+			local auraParticles = humanoidRootPart:FindFirstChild("BoostAura")
 			if auraParticles then auraParticles:Destroy() end
 			
-			local auraGlow = hrp:FindFirstChild("BoostGlow")
+			local auraGlow = humanoidRootPart:FindFirstChild("BoostGlow")
 			if auraGlow then auraGlow:Destroy() end
 			
-			local boostContainer = hrp:FindFirstChild("BoostEffects")
+			local boostContainer = humanoidRootPart:FindFirstChild("BoostEffects")
 			if boostContainer then boostContainer:Destroy() end
 		end
 		
@@ -1623,18 +1623,18 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 	local dummiesFolder = workspace:FindFirstChild("TestDummies")
 	if dummiesFolder then
 		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
-			local hrp = dummy:FindFirstChild("HumanoidRootPart")
-			if hrp then
+			local humanoidRootPart = dummy:FindFirstChild("HumanoidRootPart")
+			if humanoidRootPart then
 				-- Dummies use X position to determine "ahead" (stages progress along +X)
-				local isAhead = hrp.Position.X > myPos.X
+				local isAhead = humanoidRootPart.Position.X > myPos.X
 				
 				if isAhead then
-					local distance = (hrp.Position - myPos).Magnitude
+					local distance = (humanoidRootPart.Position - myPos).Magnitude
 					if distance < closestDistance then
 						closestDistance = distance
 						targetPlayer = nil -- It's a dummy, not a player
 						targetChar = dummy
-						targetHRP = hrp
+						targetHRP = humanoidRootPart
 					end
 				end
 			end
@@ -1718,9 +1718,9 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 					-- Create lightning strike on each player
 					local character = otherPlayer.Character
 					if character then
-						local hrp = character:FindFirstChild("HumanoidRootPart")
-						if hrp then
-							self:createLightningStrike(hrp.Position)
+						local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+						if humanoidRootPart then
+							self:createLightningStrike(humanoidRootPart.Position)
 						end
 					end
 				end
@@ -1732,9 +1732,9 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 	local dummiesFolder = workspace:FindFirstChild("TestDummies")
 	if dummiesFolder then
 		for _, dummy in ipairs(dummiesFolder:GetChildren()) do
-			local hrp = dummy:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				self:createLightningStrike(hrp.Position)
+			local humanoidRootPart = dummy:FindFirstChild("HumanoidRootPart")
+			if humanoidRootPart then
+				self:createLightningStrike(humanoidRootPart.Position)
 				-- Apply stun to dummy
 				self:applyDummyStun(dummy, itemDef.slowDuration or 3)
 			end
@@ -1772,8 +1772,8 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 	data.slowExpiry = os.clock() + (itemDef.duration or 3)
 	
 	-- Electric shock visual
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if hrp then
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart then
 		-- Main spark particles
 		local spark = Instance.new("ParticleEmitter")
 		spark.Name = "LightningSpark"
@@ -1791,7 +1791,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		})
 		spark.LightEmission = 1
 		spark.SpreadAngle = Vector2.new(180, 180)
-		spark.Parent = hrp
+		spark.Parent = humanoidRootPart
 		
 		-- Electric glow
 		local electricGlow = Instance.new("PointLight")
@@ -1799,7 +1799,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		electricGlow.Color = Color3.fromRGB(255, 255, 150)
 		electricGlow.Brightness = 1
 		electricGlow.Range = 8
-		electricGlow.Parent = hrp
+		electricGlow.Parent = humanoidRootPart
 		
 		-- Flickering effect
 		task.spawn(function()
@@ -1816,7 +1816,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
 		zapSound.Volume = 0.4
 		zapSound.PlaybackSpeed = 1.5
-		zapSound.Parent = hrp
+		zapSound.Parent = humanoidRootPart
 		zapSound:Play()
 		task.delay(1, function()
 			if zapSound.Parent then zapSound:Destroy() end
@@ -1828,8 +1828,8 @@ end
 
 -- Apply stun to test dummy
 function ItemManager:applyDummyStun(dummy: Model, duration: number)
-	local hrp = dummy:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = dummy:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 	
 	local humanoid = dummy:FindFirstChild("Humanoid")
 	if humanoid then
@@ -1854,13 +1854,13 @@ function ItemManager:applyDummyStun(dummy: Model, duration: number)
 	})
 	spark.LightEmission = 1
 	spark.SpreadAngle = Vector2.new(180, 180)
-	spark.Parent = hrp
+	spark.Parent = humanoidRootPart
 	
 	-- Zap sound
 	local zapSound = Instance.new("Sound")
 	zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
 	zapSound.Volume = 0.4
-	zapSound.Parent = hrp
+	zapSound.Parent = humanoidRootPart
 	zapSound:Play()
 	
 	-- Clean up after duration
@@ -1878,8 +1878,8 @@ end
 
 -- Apply slip effect to dummy (similar to player slip)
 function ItemManager:applyDummySlip(dummy: Model, itemDef)
-	local hrp = dummy:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = dummy:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 	
 	local humanoid = dummy:FindFirstChild("Humanoid")
 	if not humanoid then return end
@@ -1899,7 +1899,7 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	local slipSound = Instance.new("Sound")
 	slipSound.SoundId = "rbxassetid://129432532096499"
 	slipSound.Volume = 0.8
-	slipSound.Parent = hrp
+	slipSound.Parent = humanoidRootPart
 	slipSound:Play()
 	task.delay(3, function()
 		if slipSound.Parent then slipSound:Destroy() end
@@ -1911,7 +1911,7 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	starsGui.Size = UDim2.new(0, 60, 0, 60)
 	starsGui.StudsOffset = Vector3.new(0, 3, 0)
 	starsGui.AlwaysOnTop = true
-	starsGui.Parent = hrp
+	starsGui.Parent = humanoidRootPart
 	
 	local starsLabel = Instance.new("TextLabel")
 	starsLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -1943,29 +1943,29 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	slipParticles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 50))
 	slipParticles.LightEmission = 0.5
 	slipParticles.SpreadAngle = Vector2.new(180, 180)
-	slipParticles.Parent = hrp
+	slipParticles.Parent = humanoidRootPart
 	
 	task.delay(slipDuration, function()
 		if slipParticles.Parent then slipParticles:Destroy() end
 	end)
 	
 	-- Slide + fall effect
-	local slideDirection = hrp.CFrame.LookVector
+	local slideDirection = humanoidRootPart.CFrame.LookVector
 	local forceAttach = Instance.new("Attachment")
-	forceAttach.Parent = hrp
+	forceAttach.Parent = humanoidRootPart
 	local slideForce = Instance.new("LinearVelocity")
 	slideForce.VectorVelocity = Vector3.new(slideDirection.X * 20, 15, slideDirection.Z * 20)
 	slideForce.MaxForce = math.huge
 	slideForce.RelativeTo = Enum.ActuatorRelativeTo.World
 	slideForce.Attachment0 = forceAttach
-	slideForce.Parent = hrp
+	slideForce.Parent = humanoidRootPart
 
 	local tumble = Instance.new("AngularVelocity")
 	tumble.AngularVelocity = Vector3.new(-8, 0, 0)
 	tumble.MaxTorque = math.huge
 	tumble.RelativeTo = Enum.ActuatorRelativeTo.World
 	tumble.Attachment0 = forceAttach
-	tumble.Parent = hrp
+	tumble.Parent = humanoidRootPart
 	
 	humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
 	
@@ -2015,8 +2015,8 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	
 	if not character then return end
 	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return end
 	
 	local humanoid = character:FindFirstChild("Humanoid")
 	if not humanoid then return end
@@ -2044,10 +2044,10 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 				humanoid.JumpPower = 0
 				humanoid.JumpHeight = 0
 				humanoid.Jump = false
-				if hrp and hrp.Parent then
-					local vel = hrp.AssemblyLinearVelocity
+				if humanoidRootPart and humanoidRootPart.Parent then
+					local vel = humanoidRootPart.AssemblyLinearVelocity
 					if vel.Y > 3 then
-						hrp.AssemblyLinearVelocity = Vector3.new(vel.X, 3, vel.Z)
+						humanoidRootPart.AssemblyLinearVelocity = Vector3.new(vel.X, 3, vel.Z)
 					end
 				end
 				task.wait()
@@ -2061,7 +2061,7 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	starsGui.Size = UDim2.new(0, 70, 0, 70)
 	starsGui.StudsOffset = Vector3.new(0, 3, 0)
 	starsGui.AlwaysOnTop = true
-	starsGui.Parent = hrp
+	starsGui.Parent = humanoidRootPart
 	
 	local starsLabel = Instance.new("TextLabel")
 	starsLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -2097,16 +2097,16 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	})
 	stunParticles.LightEmission = 0.3
 	stunParticles.SpreadAngle = Vector2.new(180, 180)
-	stunParticles.Parent = hrp
+	stunParticles.Parent = humanoidRootPart
 	
 	task.delay(duration, function()
 		if stunParticles.Parent then stunParticles:Destroy() end
 	end)
 	
 	-- Knockback + fall effect (thrown by explosion)
-	local knockbackDir = hrp.CFrame.LookVector * -1 -- Thrown backwards
+	local knockbackDir = humanoidRootPart.CFrame.LookVector * -1 -- Thrown backwards
 	local forceAttach = Instance.new("Attachment")
-	forceAttach.Parent = hrp
+	forceAttach.Parent = humanoidRootPart
 	local knockbackForce = Instance.new("LinearVelocity")
 	knockbackForce.VectorVelocity = Vector3.new(
 		knockbackDir.X * 25,
@@ -2116,7 +2116,7 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	knockbackForce.MaxForce = math.huge
 	knockbackForce.RelativeTo = Enum.ActuatorRelativeTo.World
 	knockbackForce.Attachment0 = forceAttach
-	knockbackForce.Parent = hrp
+	knockbackForce.Parent = humanoidRootPart
 
 	-- Tumble rotation
 	local tumble = Instance.new("AngularVelocity")
@@ -2124,7 +2124,7 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 	tumble.MaxTorque = math.huge
 	tumble.RelativeTo = Enum.ActuatorRelativeTo.World
 	tumble.Attachment0 = forceAttach
-	tumble.Parent = hrp
+	tumble.Parent = humanoidRootPart
 	
 	-- Fall state
 	humanoid:ChangeState(Enum.HumanoidStateType.FallingDown)
@@ -2176,12 +2176,12 @@ function ItemManager:removeSlowEffect(player: Player)
 			humanoid.JumpPower = data.originalSlowJumpPower or 50
 		end
 		
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			local spark = hrp:FindFirstChild("LightningSpark")
+		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+		if humanoidRootPart then
+			local spark = humanoidRootPart:FindFirstChild("LightningSpark")
 			if spark then spark:Destroy() end
 			
-			local electricGlow = hrp:FindFirstChild("ElectricGlow")
+			local electricGlow = humanoidRootPart:FindFirstChild("ElectricGlow")
 			if electricGlow then electricGlow:Destroy() end
 		end
 	end
@@ -2232,10 +2232,10 @@ function ItemManager:applyStun(target: Player | Model, duration: number)
 	humanoid.JumpPower = 0
 	
 	-- Visual effect
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if hrp then
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart then
 		-- Remove existing stun visual if any
-		local existingStun = hrp:FindFirstChild("StunVisual")
+		local existingStun = humanoidRootPart:FindFirstChild("StunVisual")
 		if existingStun then existingStun:Destroy() end
 		
 		local stunVisual = Instance.new("BillboardGui")
@@ -2243,7 +2243,7 @@ function ItemManager:applyStun(target: Player | Model, duration: number)
 		stunVisual.Size = UDim2.new(0, 50, 0, 50)
 		stunVisual.StudsOffset = Vector3.new(0, 3, 0)
 		stunVisual.AlwaysOnTop = true
-		stunVisual.Parent = hrp
+		stunVisual.Parent = humanoidRootPart
 		
 		local stars = Instance.new("TextLabel")
 		stars.Size = UDim2.new(1, 0, 1, 0)

@@ -18,11 +18,15 @@ local Config = {
 	},
 
 	-- Stage Settings
-Stages = {
-	Count = 5, -- จำนวนด่านที่จะสุ่ม
-	StageLength = 100, -- ความยาวแต่ละด่าน (studs)
-	StartOffset = Vector3.new(-150, 0, 250), -- ตำแหน่งเริ่มต้นของด่านแรก (ทางขวาและหน้า Lobby)
-},
+	Stages = {
+		TotalCount = 7,        -- จำนวนด่านทั้งหมดใน pool
+		SelectionCount = 5,    -- จำนวนด่านที่เลือกต่อรอบ (แก้ได้เพื่อ test)
+		StageLength = 100,     -- ความยาวแต่ละด่าน (studs)
+		StartOffset = Vector3.new(-150, 0, 250), -- ตำแหน่งเริ่มต้นของด่านแรก
+		BalancedRandom = {
+			MinPerDifficulty = 1, -- การันตีอย่างน้อย 1 ด่านจากแต่ละระดับความยาก
+		},
+	},
 
 	-- Score Settings
 	Score = {
@@ -36,14 +40,7 @@ Stages = {
 		PerCoin = 1, -- เงินที่ได้เมื่อเก็บเหรียญ
 		FinishBonus = 25, -- โบนัสเงินเมื่อเข้าเส้นชัย
 		StartingAmount = 0, -- เงินเริ่มต้นของผู้เล่นใหม่
-		-- รางวัลเมื่อผ่านแต่ละด่าน
-		StageRewards = {
-			3, -- Stage 1 (Easy): 3 currency
-			4, -- Stage 2 (Moving): 4 currency
-			4, -- Stage 3 (Spinning): 4 currency
-			5, -- Stage 4 (Disappearing): 5 currency
-			6, -- Stage 5 (Hard): 6 currency
-		},
+		-- StageRewards ย้ายไป StageInfo.Stages[i].reward แล้ว
 	},
 
 	-- Character Class Settings
@@ -190,6 +187,26 @@ Stages = {
 			[6] = 200,
 			[7] = 500,
 		},
+	},
+
+	-- Timing Settings (extracted magic numbers)
+	Timing = {
+		LeaderboardSendDelay = 3,       -- วินาทีก่อนส่ง leaderboard ให้ player ใหม่
+		CharacterSetupDelay = 0.5,      -- วินาทีรอ character โหลด
+		PositionCheckInterval = 0.5,    -- วินาทีระหว่างตรวจ player position
+		SelectionZoneInterval = 0.2,    -- วินาทีระหว่างตรวจ selection zone
+		AutoTeleportDelay = 5,          -- วินาทีก่อน auto-teleport กลับ lobby
+		TeleportFlagClearDelay = 0.5,   -- วินาทีก่อน clear teleporting flag
+		AutoSaveInterval = 30,          -- วินาทีระหว่าง auto-save
+		LeaderstatsLoadDelay = 1,       -- วินาทีรอ leaderstats โหลด
+	},
+
+	-- Map Physics Settings
+	Map = {
+		StageGapStuds = 10,             -- ระยะห่างระหว่าง stage (studs)
+		FinishLineRadius = 20,          -- ระยะตรวจจับ finish line (studs)
+		PlatformServoForce = 1000000,   -- แรง servo ของ moving platform
+		PlatformServoSpeed = 50,        -- ความเร็ว servo ของ moving platform
 	},
 
 	-- Debug / Development Settings

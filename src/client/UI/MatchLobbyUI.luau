@@ -38,14 +38,36 @@ function MatchLobbyUI:createUI()
 	self.container = container
 
 	local containerCorner = Instance.new("UICorner")
-	containerCorner.CornerRadius = Theme.CORNER_MD
+	containerCorner.CornerRadius = Theme.CORNER_LG
 	containerCorner.Parent = container
 
-	-- Stroke
+	-- Gradient background
+	local containerGrad = Instance.new("UIGradient")
+	containerGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+	})
+	containerGrad.Rotation = 135
+	containerGrad.Parent = container
+
+	-- Glow stroke
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.ACCENT_CYAN
-	stroke.Thickness = Theme.STROKE_MED
+	stroke.Thickness = Theme.STROKE_BOLD
+	stroke.Transparency = 0.2
 	stroke.Parent = container
+
+	-- Drop shadow
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(1, 6, 1, 6)
+	shadow.Position = UDim2.new(0, -3, 0, 4)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.6
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = container.ZIndex - 1
+	shadow.Parent = container
+	Theme.applyCorner(shadow, "lg")
 
 	-- Header
 	local header = Instance.new("Frame")
@@ -57,8 +79,21 @@ function MatchLobbyUI:createUI()
 	header.Parent = container
 
 	local headerCorner = Instance.new("UICorner")
-	headerCorner.CornerRadius = Theme.CORNER_MD
+	headerCorner.CornerRadius = Theme.CORNER_LG
 	headerCorner.Parent = header
+
+	-- Header gradient
+	local headerGrad = Instance.new("UIGradient")
+	headerGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.ACCENT_CYAN),
+	})
+	headerGrad.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 0.7),
+	})
+	headerGrad.Rotation = 0
+	headerGrad.Parent = header
 
 	-- Title
 	local title = Instance.new("TextLabel")
@@ -73,6 +108,13 @@ function MatchLobbyUI:createUI()
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Parent = header
 	self.titleLabel = title
+
+	-- Title text stroke
+	local titleStroke = Instance.new("UIStroke")
+	titleStroke.Color = Theme.HUD_SCORE_END
+	titleStroke.Thickness = 1.5
+	titleStroke.Transparency = 0.4
+	titleStroke.Parent = title
 
 	-- Close button
 	local closeBtn = Instance.new("TextButton")
@@ -181,6 +223,22 @@ function MatchLobbyUI:createUI()
 	createBtnCorner.CornerRadius = Theme.CORNER_SM
 	createBtnCorner.Parent = createBtn
 
+	-- Create button gradient
+	local createGrad = Instance.new("UIGradient")
+	createGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.SUCCESS),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED),
+	})
+	createGrad.Rotation = 90
+	createGrad.Parent = createBtn
+
+	-- Create button glow stroke
+	local createStroke = Instance.new("UIStroke")
+	createStroke.Color = Theme.SUCCESS
+	createStroke.Thickness = Theme.STROKE_THIN
+	createStroke.Transparency = 0.3
+	createStroke.Parent = createBtn
+
 	-- Leave/Ready button
 	local leaveBtn = Instance.new("TextButton")
 	leaveBtn.Name = "LeaveMatch"
@@ -199,6 +257,22 @@ function MatchLobbyUI:createUI()
 	local leaveBtnCorner = Instance.new("UICorner")
 	leaveBtnCorner.CornerRadius = Theme.CORNER_SM
 	leaveBtnCorner.Parent = leaveBtn
+
+	-- Leave button gradient
+	local leaveGrad = Instance.new("UIGradient")
+	leaveGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.DANGER),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED),
+	})
+	leaveGrad.Rotation = 90
+	leaveGrad.Parent = leaveBtn
+
+	-- Leave button glow stroke
+	local leaveStroke = Instance.new("UIStroke")
+	leaveStroke.Color = Theme.DANGER
+	leaveStroke.Thickness = Theme.STROKE_THIN
+	leaveStroke.Transparency = 0.3
+	leaveStroke.Parent = leaveBtn
 
 	-- Setup button events
 	self:setupButtonEvents()
@@ -228,21 +302,43 @@ function MatchLobbyUI:createRaceTimerUI()
 	self.timerFrame = timerFrame
 
 	local timerCorner = Instance.new("UICorner")
-	timerCorner.CornerRadius = Theme.CORNER_SM
+	timerCorner.CornerRadius = Theme.CORNER_LG
 	timerCorner.Parent = timerFrame
+
+	-- Timer gradient
+	local timerGrad = Instance.new("UIGradient")
+	timerGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+	})
+	timerGrad.Rotation = 135
+	timerGrad.Parent = timerFrame
 
 	local timerStroke = Instance.new("UIStroke")
 	timerStroke.Color = Theme.SUCCESS
 	timerStroke.Thickness = Theme.STROKE_MED
+	timerStroke.Transparency = 0.2
 	timerStroke.Parent = timerFrame
 	self.timerStroke = timerStroke
+
+	-- Drop shadow
+	local timerShadow = Instance.new("Frame")
+	timerShadow.Name = "Shadow"
+	timerShadow.Size = UDim2.new(1, 4, 1, 4)
+	timerShadow.Position = UDim2.new(0, -2, 0, 3)
+	timerShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	timerShadow.BackgroundTransparency = 0.7
+	timerShadow.BorderSizePixel = 0
+	timerShadow.ZIndex = timerFrame.ZIndex - 1
+	timerShadow.Parent = timerFrame
+	Theme.applyCorner(timerShadow, "lg")
 
 	local timerIcon = Instance.new("TextLabel")
 	timerIcon.Name = "Icon"
 	timerIcon.Size = UDim2.new(0, 30, 1, 0)
 	timerIcon.Position = UDim2.new(0, 10, 0, 0)
 	timerIcon.BackgroundTransparency = 1
-	timerIcon.Text = "⏱️"
+	timerIcon.Text = "\u{23F1}\u{FE0F}"
 	timerIcon.TextSize = 24
 	timerIcon.Parent = timerFrame
 
@@ -258,6 +354,13 @@ function MatchLobbyUI:createRaceTimerUI()
 	timerLabel.TextXAlignment = Enum.TextXAlignment.Left
 	timerLabel.Parent = timerFrame
 	self.timerLabel = timerLabel
+
+	-- Timer text stroke
+	local timerTextStroke = Instance.new("UIStroke")
+	timerTextStroke.Color = Theme.BG_OVERLAY
+	timerTextStroke.Thickness = 1.5
+	timerTextStroke.Transparency = 0.4
+	timerTextStroke.Parent = timerLabel
 end
 
 function MatchLobbyUI:createTimeWarningUI()
@@ -275,8 +378,15 @@ function MatchLobbyUI:createTimeWarningUI()
 	self.warningFrame = warningFrame
 
 	local warningCorner = Instance.new("UICorner")
-	warningCorner.CornerRadius = Theme.CORNER_MD
+	warningCorner.CornerRadius = Theme.CORNER_LG
 	warningCorner.Parent = warningFrame
+
+	-- Warning glow stroke
+	local warningStroke = Instance.new("UIStroke")
+	warningStroke.Color = Theme.DANGER
+	warningStroke.Thickness = Theme.STROKE_MED
+	warningStroke.Transparency = 0.3
+	warningStroke.Parent = warningFrame
 
 	local warningLabel = Instance.new("TextLabel")
 	warningLabel.Name = "Message"
@@ -305,8 +415,36 @@ function MatchLobbyUI:createRaceRankingUI()
 	self.rankFrame = rankFrame
 
 	local rankCorner = Instance.new("UICorner")
-	rankCorner.CornerRadius = Theme.CORNER_SM
+	rankCorner.CornerRadius = Theme.CORNER_MD
 	rankCorner.Parent = rankFrame
+
+	-- Rank gradient
+	local rankGrad = Instance.new("UIGradient")
+	rankGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+	})
+	rankGrad.Rotation = 135
+	rankGrad.Parent = rankFrame
+
+	-- Rank glow stroke
+	local rankStroke = Instance.new("UIStroke")
+	rankStroke.Color = Theme.ACCENT_CYAN
+	rankStroke.Thickness = Theme.STROKE_THIN
+	rankStroke.Transparency = 0.3
+	rankStroke.Parent = rankFrame
+
+	-- Drop shadow
+	local rankShadow = Instance.new("Frame")
+	rankShadow.Name = "Shadow"
+	rankShadow.Size = UDim2.new(1, 4, 1, 4)
+	rankShadow.Position = UDim2.new(0, -2, 0, 3)
+	rankShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	rankShadow.BackgroundTransparency = 0.7
+	rankShadow.BorderSizePixel = 0
+	rankShadow.ZIndex = rankFrame.ZIndex - 1
+	rankShadow.Parent = rankFrame
+	Theme.applyCorner(rankShadow, "md")
 
 	-- Header
 	local rankHeader = Instance.new("TextLabel")
@@ -490,16 +628,16 @@ function MatchLobbyUI:onRaceUpdate(data)
 	local seconds = math.floor(data.timeRemaining % 60)
 	self.timerLabel.Text = string.format("%02d:%02d", minutes, seconds)
 
-	-- Change timer color based on time remaining (gameplay indicator - preserved)
+	-- Change timer color based on time remaining
 	if data.timeRemaining <= 30 then
-		self.timerLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-		self.timerStroke.Color = Color3.fromRGB(255, 50, 50)
+		self.timerLabel.TextColor3 = Theme.DANGER
+		self.timerStroke.Color = Theme.DANGER
 	elseif data.timeRemaining <= 60 then
-		self.timerLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-		self.timerStroke.Color = Color3.fromRGB(255, 200, 50)
+		self.timerLabel.TextColor3 = Theme.WARNING
+		self.timerStroke.Color = Theme.WARNING
 	elseif data.timeRemaining <= 300 then
-		self.timerLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-		self.timerStroke.Color = Color3.fromRGB(100, 200, 100)
+		self.timerLabel.TextColor3 = Theme.WARNING
+		self.timerStroke.Color = Theme.SUCCESS
 	else
 		self.timerLabel.TextColor3 = Theme.SUCCESS
 		self.timerStroke.Color = Theme.SUCCESS
@@ -642,9 +780,9 @@ function MatchLobbyUI:updateRankingsList(rankings: {string}, yourRank: number)
 
 		-- Position medal
 		local medal = ""
-		if i == 1 then medal = "🥇"
-		elseif i == 2 then medal = "🥈"
-		elseif i == 3 then medal = "🥉"
+		if i == 1 then medal = "\u{1F947}"
+		elseif i == 2 then medal = "\u{1F948}"
+		elseif i == 3 then medal = "\u{1F949}"
 		else medal = i .. "."
 		end
 

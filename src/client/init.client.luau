@@ -168,10 +168,10 @@ countdownRemote.OnClientEvent:Connect(function(data)
 		task.delay(1.1, function()
 			local character = LocalPlayer.Character
 			if character and character:FindFirstChild("HumanoidRootPart") then
-				local hrp = character.HumanoidRootPart
+				local humanoidRootPart = character.HumanoidRootPart
 				snapCamera(CFrame.lookAt(
-					hrp.Position + Vector3.new(-10, 5, 0),
-					hrp.Position
+					humanoidRootPart.Position + Vector3.new(-10, 5, 0),
+					humanoidRootPart.Position
 				))
 			end
 		end)
@@ -184,10 +184,10 @@ returnToLobbyRemote.OnClientEvent:Connect(function()
 	task.wait(0.1)
 	local character = LocalPlayer.Character
 	if character and character:FindFirstChild("HumanoidRootPart") then
-		local hrp = character.HumanoidRootPart
+		local humanoidRootPart = character.HumanoidRootPart
 		snapCamera(CFrame.lookAt(
-			hrp.Position + Vector3.new(0, 5, -12),
-			hrp.Position + Vector3.new(0, 0, 5)
+			humanoidRootPart.Position + Vector3.new(0, 5, -12),
+			humanoidRootPart.Position + Vector3.new(0, 0, 5)
 		))
 	end
 end)
@@ -197,10 +197,10 @@ local function onCharacterSpawned()
 	task.wait(0.5) -- รอให้ character โหลดเสร็จ
 	local character = LocalPlayer.Character
 	if character and character:FindFirstChild("HumanoidRootPart") then
-		local hrp = character.HumanoidRootPart
+		local humanoidRootPart = character.HumanoidRootPart
 		-- หันตัวละครไปทาง +Z (SelectionZone)
-		local pos = hrp.Position
-		hrp.CFrame = CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
+		local pos = humanoidRootPart.Position
+		humanoidRootPart.CFrame = CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
 		-- snap กล้องตาม
 		snapCamera(CFrame.lookAt(
 			pos + Vector3.new(0, 5, -12),

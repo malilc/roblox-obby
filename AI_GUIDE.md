@@ -8,14 +8,17 @@
 src/
 ├── server/                      # Server-side code
 │   ├── init.server.luau         # Entry point - สร้าง GameManager
-│   ├── GameManager.luau         # ควบคุมเกมทั้งหมด
+│   ├── GameManager.luau         # ควบคุมเกมทั้งหมด (orchestrator)
 │   ├── MapManager.luau          # จัดการ map/stages + animations + per-match instancing
-│   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (auto-save ทุก 30วิ)
+│   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (ผ่าน DataStoreHelper)
 │   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + Daily Login + DataStore
 │   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Mario Kart
 │   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race + Stage Voting
 │   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
 │   ├── LeaderboardManager.luau  # 🏆 Global Leaderboard (OrderedDataStore + Physical Board)
+│   ├── SpectatorManager.luau    # 👁️ ระบบ Spectator Mode (แยกจาก GameManager)
+│   ├── SelectionZoneManager.luau # ⭐ ระบบ SelectionZone detection + stage confirm (แยกจาก GameManager)
+│   ├── DataStoreHelper.luau     # 💾 Centralized DataStore utilities + retry logic + schema versioning
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
 │
 ├── client/                      # Client-side code
@@ -23,10 +26,12 @@ src/
 │   ├── FlyController.luau       # ระบบบินทดสอบ (กด F)
 │   ├── ItemEffects.luau         # 🎯 Screen effects (shake, flash, zoom)
 │   ├── SoundManager.luau        # 🔊 BGM + SFX manager (ใส่ rbxassetid ใน SOUNDS table)
+│   ├── TweenHelper.luau         # 🎨 Reusable tween/animation utilities (pop, fadeIn, slideIn, etc.)
 │   ├── UltimateSkillController.luau # ⚡ Ultimate Skills (Sprint, Double Jump, Iron Will)
 │   ├── SpectatorCamera.luau     # 👁️ กล้อง Follow + FreeCam สำหรับ Spectator Mode
 │   └── UI/
 │       ├── MainUI.luau          # Controller หลัก (popup mutual exclusion)
+│       ├── UIFactory.luau       # 🏗️ Reusable UI component factory (createPanel/Button/Label/Modal)
 │       ├── ScoreUI.luau         # แสดงคะแนน
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # 🎯 แสดง Item (2 slots) + Tooltip
@@ -46,9 +51,11 @@ src/
 │       └── MobileInputUI.luau   # 📱 Touch buttons สำหรับมือถือ (Item/Sprint/Jump)
 │
 └── shared/                      # Shared code (server + client)
-    ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags + Ultimate Skills)
+    ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags + Ultimate Skills + Timing + Map)
+    ├── StageInfo.luau           # ⭐ Stage metadata (name, icon, difficulty, color, reward) — single source of truth
     ├── Types.luau               # Type definitions
     ├── Logger.luau              # 🔧 Centralized logging (configurable levels)
+    ├── RemoteRegistry.luau      # 📡 Centralized RemoteEvent access with caching + WaitForChild fallback
     ├── ItemTypes.luau           # 🎯 นิยาม Items ทั้งหมด
     └── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด (+ ultimateSkill field)
 ```
@@ -85,8 +92,52 @@ Workspace/
 ## 🎮 ระบบเลือกด่าน (Stage Selection)
 
 ### ไฟล์ที่เกี่ยวข้อง:
-- `src/server/GameManager.luau` - Logic ฝั่ง Server
+- `src/shared/StageInfo.luau` - Stage metadata (single source of truth)
+- `src/server/SelectionZoneManager.luau` - Zone detection + confirm
+- `src/server/MapManager.luau` - Map generation + balanced random
 - `src/client/UI/StageSelectionUI.luau` - GUI ฝั่ง Client
+
+### Stage Difficulty System:
+
+| Stage | ชื่อ | Icon | ความยาก | Reward | กลไก |
+|-------|------|------|---------|--------|------|
+| 1 | Jump | 🦘 | Easy | 3 | แพลตฟอร์มนิ่ง |
+| 2 | Moving | ↔️ | Normal | 4 | แพลตฟอร์มเคลื่อนที่ |
+| 3 | Spin | 🌀 | Normal | 4 | แท่งหมุน kill part |
+| 4 | Disappear | 💨 | Hard | 5 | แพลตฟอร์มหายไป |
+| 5 | Combo | ⚡ | Hard | 6 | ผสมทุกกลไก |
+| 6 | Lava Rise | 🌋 | Hard | 6 | พื้น kill part ยกตัว + แพลตฟอร์มลอย |
+| 7 | Narrow | 🎯 | Hard | 7 | แพลตฟอร์มแคบ + spinner + moving narrow |
+
+- Metadata ทั้งหมดอยู่ใน `StageInfo.luau` (name, icon, difficulty, color, gradientEnd, reward)
+- UI ใช้ `StageInfo.getStage(id)` แทน hardcoded arrays
+- Server ใช้ `StageInfo.getStage(id).reward` แทน `Config.Currency.StageRewards`
+
+### Balanced Random Algorithm:
+- `MapManager:balancedRandomStages()` เลือก `Config.Stages.SelectionCount` ด่านจาก pool ทั้งหมด
+- การันตีอย่างน้อย `Config.Stages.BalancedRandom.MinPerDifficulty` (default 1) จากแต่ละระดับความยาก
+- เติมที่เหลือจาก pool ที่ยังไม่ถูกเลือก แล้ว shuffle ลำดับสุดท้าย
+- เช่น pool 7 ด่าน (1E+2N+4H) เลือก 5 → ได้ประมาณ 1E+2N+2H (เฉลี่ยดี)
+
+### Config ที่เกี่ยวข้อง:
+- `Config.Stages.TotalCount` = 7 (จำนวนด่านทั้งหมดใน pool)
+- `Config.Stages.SelectionCount` = 5 (จำนวนด่านที่เลือกต่อรอบ, แก้ได้เพื่อ test)
+
+### Difficulty Tabs (StageSelectionUI):
+
+UI แบ่งเป็น 3 tabs ตามความยาก แต่ละ tab แสดงเฉพาะด่านของตัวเอง:
+
+| Tab | สี | ด่านที่แสดง | Layout |
+|-----|---|------------|--------|
+| EASY | เขียว | Stage 1 (Jump) | 1 ปุ่ม อยู่กลาง |
+| NORMAL | เหลือง | Stages 2-3 (Moving, Spin) | 2 ปุ่ม อยู่กลาง |
+| HARD | แดง | Stages 4-7 (Disappear-Narrow) | 4 ปุ่ม เต็ม row |
+
+- Selection ข้าม tab ได้ — `selectedStages` เป็น global ไม่ reset เมื่อเปลี่ยน tab
+- Tab labels แสดง count ที่เลือก เช่น `HARD (2)`
+- `switchTab(difficulty)` → `refreshStageButtons()` จัด visibility+position
+- `show()` เรียก `switchTab(self.activeTab)` หลัง reset Visible เสมอ (เพราะ show loop ทำ Visible=true ทุกตัว)
+- Default tab: Easy
 
 ### Flow:
 
@@ -95,34 +146,38 @@ Workspace/
     ↓
 Server ส่ง ShowStageSelection → Client
     ↓
-Client แสดง GUI เลือกด่าน
+Client แสดง GUI: Tab Bar [EASY][NORMAL][HARD] + ปุ่มด่านของ tab ที่เลือก
     ↓
-ผู้เล่นเลือกลำดับด่าน หรือ กด RANDOM
+ผู้เล่นคลิก tab เพื่อดูด่านแต่ละระดับ + เลือกด่าน (สูงสุด SelectionCount รวมทุก tab)
+    ↓
+กด RANDOM หรือ START
     ↓
 Client ส่ง ConfirmStageSelection → Server
     ↓
-Server สร้าง Map ตามลำดับที่เลือก
+Server สร้าง Map ตามลำดับที่เลือก (RANDOM ใช้ balanced algorithm)
     ↓
-Countdown 3, 2, 1
-    ↓
-Teleport ไปด่าน 1
+Countdown 3, 2, 1 → Teleport ไปด่าน 1
 ```
 
 ### การเลือกด่าน:
+- **คลิก tab** - สลับดูด่านระดับนั้น (Easy/Normal/Hard)
 - **คลิกปุ่มด่าน** - เพิ่มเข้าลำดับ (เช่น 3 → 1 → 5)
 - **คลิกอีกครั้ง** - ลบออกจากลำดับ
-- **ปุ่ม RANDOM** - สุ่มลำดับด่าน
+- **เลือกครบ SelectionCount** - กดปุ่มด่านอื่นไม่ได้ (จนกว่าจะถอดออก)
+- **ปุ่ม RANDOM** - สุ่มลำดับด่านแบบเฉลี่ยความยาก (balanced)
 - **ปุ่ม START** - ต้องเลือกอย่างน้อย 1 ด่านก่อนกดได้
+- **Difficulty badge** - แสดงบนปุ่มแต่ละด่าน (EASY/NORMAL/HARD)
 
 ### Zone Detection (Loop-based):
 
 ```lua
--- ตรวจสอบทุก 0.2 วินาที (เสถียรกว่า Touched events)
+-- ตรวจสอบทุก Config.Timing.SelectionZoneInterval (0.2 วินาที) — เสถียรกว่า Touched events
+-- จัดการโดย SelectionZoneManager.luau (แยกออกจาก GameManager)
 task.spawn(function()
     while true do
-        task.wait(0.2)
+        task.wait(Config.Timing.SelectionZoneInterval)
         for _, player in ipairs(Players:GetPlayers()) do
-            local isInZone = self:isPlayerInSelectionZone(player, selectionZone)
+            local isInZone = self:isPlayerInZone(player)
             -- เปรียบเทียบกับสถานะก่อนหน้า แล้ว show/hide UI
         end
     end
@@ -284,17 +339,20 @@ itemBox.Parent = itemPickups
 ```lua
 function StageTemplates.getStageCreators(): {(Vector3) -> Model}
     return {
-        StageTemplates.createStage1,
-        StageTemplates.createStage2,
-        StageTemplates.createStage3,
-        StageTemplates.createStage4,
-        StageTemplates.createStage5,
-        StageTemplates.createStage6, -- เพิ่มใหม่
+        StageTemplates.createStage1,  -- Easy: Jump
+        StageTemplates.createStage2,  -- Normal: Moving
+        StageTemplates.createStage3,  -- Normal: Spin
+        StageTemplates.createStage4,  -- Hard: Disappear
+        StageTemplates.createStage5,  -- Hard: Combo
+        StageTemplates.createStage6,  -- Hard: Lava Rise
+        StageTemplates.createStage7,  -- Hard: Narrow
+        StageTemplates.createStage8,  -- เพิ่มใหม่
     }
 end
 ```
 
-3. อัพเดท `Config.Stages.Count` ใน `src/shared/Config.luau`
+3. เพิ่ม metadata ใน `src/shared/StageInfo.luau` (id, name, icon, difficulty, color, gradientEnd, reward)
+4. อัพเดท `Config.Stages.TotalCount` ใน `src/shared/Config.luau`
 
 ---
 
@@ -303,28 +361,28 @@ end
 ### ไฟล์: `src/server/MapManager.luau`
 
 ```lua
--- สุ่มลำดับ (Fisher-Yates shuffle)
+-- สุ่มลำดับแบบ shuffle ธรรมดา (Fisher-Yates, TotalCount ด่าน)
 function MapManager:shuffleStages(): {number}
-    local stages = {}
-    for i = 1, Config.Stages.Count do
-        table.insert(stages, i)
-    end
-    
-    for i = #stages, 2, -1 do
-        local j = math.random(1, i)
-        stages[i], stages[j] = stages[j], stages[i]
-    end
-    
-    return stages
+
+-- สุ่มแบบเฉลี่ยความยาก (balanced random, return SelectionCount ด่าน)
+function MapManager:balancedRandomStages(selectionCount: number?): {number}
+    -- การันตี MinPerDifficulty จากแต่ละระดับ (Easy/Normal/Hard)
+    -- เติมที่เหลือจาก pool + shuffle ลำดับสุดท้าย
+
+-- สร้าง Map ด้วยลำดับที่กำหนด (global map)
+function MapManager:generateMapWithOrder(stageOrder: {number})
+    -- ผลลัพธ์เก็บใน self.globalMap.stageOrder, self.globalMap.stages
 end
 
--- สร้าง Map ด้วยลำดับที่กำหนด
-function MapManager:generateMapWithOrder(stageOrder: {number})
-    self:clearMap()
-    self.stageOrder = stageOrder
-    -- สร้างด่านตามลำดับ...
+-- สร้าง Map สำหรับ match เฉพาะ
+function MapManager:generateMapForMatch(matchId: string, stageOrder: {number})
+    -- ผลลัพธ์เก็บใน self.matchMaps[matchId]
 end
 ```
+
+**⚠️ ข้อสำคัญ (หลัง refactor):**
+- Global map state: `self.globalMap.stageOrder`, `self.globalMap.stages` (ไม่ใช่ `self.stageOrder`, `self.currentStages` แล้ว)
+- Internal helpers `_xxxInternal()` ถูก share ระหว่าง global และ per-match — ห้ามเรียกตรงๆ จากนอก MapManager
 
 **Output ใน Console**: `[MapManager] Stage order: 3, 1, 5, 2, 4`
 
@@ -395,9 +453,13 @@ local Config = {
 
     -- Stage Settings
     Stages = {
-        Count = 5,              -- จำนวนด่าน
+        TotalCount = 7,         -- จำนวนด่านทั้งหมดใน pool
+        SelectionCount = 5,     -- จำนวนด่านที่เลือกต่อรอบ (แก้ได้เพื่อ test)
         StageLength = 100,      -- ความยาวแต่ละด่าน
-        StartOffset = Vector3.new(0, 0, 150), -- ⭐ ห่างจาก Lobby
+        StartOffset = Vector3.new(-150, 0, 250),
+        BalancedRandom = {
+            MinPerDifficulty = 1, -- การันตีอย่างน้อย 1 ด่านจากแต่ละระดับ
+        },
     },
 
     -- Score Settings
@@ -412,14 +474,7 @@ local Config = {
         PerCoin = 1,            -- 💰 เงินที่ได้เมื่อเก็บเหรียญ
         FinishBonus = 25,       -- 💰 โบนัสเงินเมื่อเข้าเส้นชัย
         StartingAmount = 0,     -- 💰 เงินเริ่มต้นของผู้เล่นใหม่
-        -- 🎯 รางวัลเมื่อผ่านแต่ละด่าน (Stage Rewards)
-        StageRewards = {
-            3,  -- Stage 1: 3 currency
-            4,  -- Stage 2: 4 currency
-            4,  -- Stage 3: 4 currency
-            5,  -- Stage 4: 5 currency
-            6,  -- Stage 5: 6 currency
-        },
+        -- 🎯 Stage Rewards อยู่ใน StageInfo.luau (StageInfo.getStage(id).reward)
     },
 
     -- Push Item Settings
@@ -449,6 +504,26 @@ local Config = {
             [1] = 25, [2] = 50, [3] = 75, [4] = 100,
             [5] = 150, [6] = 200, [7] = 500,
         },
+    },
+
+    -- Timing Settings (previously hardcoded magic numbers)
+    Timing = {
+        LeaderboardSendDelay = 3,       -- delay ก่อนส่งผล leaderboard
+        CharacterSetupDelay = 0.5,      -- รอ character โหลด
+        PositionCheckInterval = 0.5,    -- loop ตรวจสอบตำแหน่ง
+        SelectionZoneInterval = 0.2,    -- loop ตรวจสอบ selection zone
+        AutoTeleportDelay = 5,          -- delay ก่อน auto-teleport หลังจบ
+        TeleportFlagClearDelay = 0.5,   -- delay ล้าง teleport flag
+        AutoSaveInterval = 30,          -- auto-save interval (วินาที)
+        LeaderstatsLoadDelay = 1,       -- delay ก่อน update leaderstats หลัง load
+    },
+
+    -- Map Settings (previously hardcoded magic numbers)
+    Map = {
+        StageGapStuds = 10,             -- ระยะห่างระหว่าง stages (studs)
+        FinishLineRadius = 20,          -- รัศมีตรวจจับ finish line
+        PlatformServoForce = 1000000,   -- ServoMaxForce สำหรับ moving platform
+        PlatformServoSpeed = 50,        -- ServoMaxVelocity สำหรับ moving platform
     },
 
     -- Debug / Development Settings
@@ -1311,7 +1386,9 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 
 ---
 
-## 🎨 UI Design System (Fall Guys Style)
+## 🎨 UI Design System (Colorful Youth Theme)
+
+> **Theme**: Vivid gradient backgrounds, glow strokes (transparency 0.2), drop shadows, CORNER_LG pills, bold text with UIStroke, playful animations — เป้าหมาย: เด็ก 10-20 ปี
 
 ### ThemeConfig: `src/shared/ThemeConfig.luau`
 
@@ -1332,14 +1409,19 @@ local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 | `Theme.PRIMARY` | (255, 220, 0) | ปุ่มหลัก (เหลือง) |
 | `Theme.PRIMARY_DARK` | (200, 165, 0) | hover/pressed |
 | `Theme.SECONDARY` | (255, 85, 50) | destructive / energy |
-| `Theme.ACCENT_CYAN` | (80, 220, 255) | info / highlight |
+| `Theme.ACCENT_CYAN` | (80, 220, 255) | info / highlight / glow border |
 | `Theme.ACCENT_PINK` | (255, 100, 180) | fun / special |
 | `Theme.TEXT_PRIMARY` | (255, 255, 255) | text บน dark bg |
+| `Theme.TEXT_DARK` | (30, 20, 60) | text บน light bg |
 | `Theme.TEXT_MUTED` | (195, 178, 230) | secondary text |
 | `Theme.SUCCESS` | (80, 230, 120) | equip / success |
 | `Theme.DANGER` | (255, 70, 70) | leave / locked / danger |
 | `Theme.WARNING` | (255, 200, 0) | time warning / can-buy |
-| `Theme.INFO` | (80, 200, 255) | cyan info |
+| `Theme.MEDAL_GOLD` | (255, 200, 50) | 1st place / gold |
+| `Theme.MEDAL_SILVER` | (200, 210, 220) | 2nd place |
+| `Theme.MEDAL_BRONZE` | (205, 130, 80) | 3rd place |
+| `Theme.HUD_SCORE_END` | (80, 160, 255) | HUD text glow (blue) |
+| `Theme.HUD_GLOW_GOLD` | (255, 180, 40) | HUD gold glow |
 
 ### Structure Tokens
 
@@ -1347,11 +1429,11 @@ local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 |-------|-------|----------|
 | `Theme.CORNER_SM` | 8px | buttons, small badges |
 | `Theme.CORNER_MD` | 14px | HUD panels, cards |
-| `Theme.CORNER_LG` | 20px | modal containers |
+| `Theme.CORNER_LG` | 20px | modal containers (preferred) |
 | `Theme.CORNER_FULL` | UDim(1,0) | circles / pills |
-| `Theme.STROKE_THIN` | 1.5 | default border |
-| `Theme.STROKE_MED` | 2.5 | selected / focused |
-| `Theme.STROKE_BOLD` | 4 | emphasis / glow |
+| `Theme.STROKE_THIN` | 1.5 | subtle border |
+| `Theme.STROKE_MED` | 2.5 | glow border (default) |
+| `Theme.STROKE_BOLD` | 4 | main modal glow |
 
 ### Helper Functions
 
@@ -1362,20 +1444,75 @@ Theme.applyCorner(obj, size) -- "sm"|"md"|"lg"|"full" → UICorner
 Theme.applyStroke(obj, color, weight, transparency) -- "thin"|"med"|"bold" → UIStroke
 ```
 
+### Vivid Gradient Pattern (ใช้กับทุก modal/panel ใหม่)
+
+```lua
+-- 1. Gradient background (BG_SURFACE → BG_BASE, 135°)
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+    ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+})
+gradient.Rotation = 135
+gradient.Parent = mainFrame
+
+-- 2. Glow stroke (ACCENT_CYAN หรือ contextual color)
+local stroke = Instance.new("UIStroke")
+stroke.Color = Theme.ACCENT_CYAN  -- หรือ MEDAL_GOLD, SUCCESS, DANGER
+stroke.Thickness = Theme.STROKE_BOLD  -- หรือ STROKE_MED
+stroke.Transparency = 0.2
+stroke.Parent = mainFrame
+
+-- 3. Drop shadow
+local shadow = Instance.new("Frame")
+shadow.Size = UDim2.new(1, 6, 1, 6)
+shadow.Position = UDim2.new(0, -3, 0, 4)
+shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+shadow.BackgroundTransparency = 0.6
+shadow.BorderSizePixel = 0
+shadow.ZIndex = mainFrame.ZIndex - 1
+shadow.Parent = mainFrame
+Theme.applyCorner(shadow, "lg")
+
+-- 4. Header text stroke (UIStroke ไม่ใช่ TextStroke)
+local titleStroke = Instance.new("UIStroke")
+titleStroke.Color = Theme.HUD_SCORE_END
+titleStroke.Thickness = 1.5
+titleStroke.Transparency = 0.4
+titleStroke.Parent = titleLabel
+
+-- 5. Button gradient (contextual color → BG_ELEVATED, 90°)
+local btnGradient = Instance.new("UIGradient")
+btnGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Theme.SUCCESS),  -- หรือ DANGER, PRIMARY
+    ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+})
+btnGradient.Rotation = 90
+btnGradient.Parent = button
+```
+
 ### UI Rules
-1. **ห้าม** ใช้ inline `Color3.fromRGB(...)` สำหรับสีพื้นหลัง/ข้อความ
+1. **ห้าม** ใช้ inline `Color3.fromRGB(...)` สำหรับสีพื้นหลัง/ข้อความ (ยกเว้น drop shadow = `Color3.new(0,0,0)`)
 2. **ต้อง** require ThemeConfig ทุกไฟล์ UI
 3. Background: `BG_BASE` → `BG_SURFACE` → `BG_ELEVATED` (dark → light)
 4. Font: Gotham family เท่านั้น (Gotham, GothamBold, GothamBlack)
-5. Text บน dark bg = `TEXT_PRIMARY` (white)
+5. Text บน dark bg = `TEXT_PRIMARY` (white); Text บน light bg = `TEXT_DARK`
+6. ทุก modal ใหม่ต้องมี: UIGradient + glow UIStroke (transparency 0.2) + drop shadow
+7. Corner: modal = `CORNER_LG`, panel/card = `CORNER_MD`, button = `CORNER_SM`
+8. Stroke glow: `STROKE_BOLD` (thickness 4) สำหรับ modal หลัก, `STROKE_MED` (2.5) สำหรับ panel ย่อย
+9. **Emoji ใน Luau**: ใช้ unicode escape `\u{1F381}` แทน emoji ตรงๆ ใน string literals เพื่อหลีกเลี่ยง encoding issues
 
 ### Checklist สำหรับ UI ใหม่
 
 - [ ] `local Theme = require(ReplicatedStorage.Shared.ThemeConfig)`
 - [ ] background ใช้ `BG_BASE` / `BG_SURFACE` / `BG_ELEVATED`
-- [ ] ปุ่มหลัก = `PRIMARY` (yellow), success = `SUCCESS`, danger = `DANGER`
+- [ ] UIGradient (BG_SURFACE → BG_BASE, 135°) บน main container
+- [ ] Glow UIStroke (ACCENT_CYAN, STROKE_BOLD, transparency 0.2) บน main container
+- [ ] Drop shadow Frame (Size +6px, Position -3/+4, transparency 0.6) บน main container
+- [ ] Title UIStroke (HUD_SCORE_END, 1.5, 0.4) บน header label
+- [ ] ปุ่มหลัก = gradient (contextual → BG_ELEVATED, 90°) + glow stroke
 - [ ] text = `TEXT_PRIMARY` หรือ `TEXT_MUTED`
-- [ ] UICorner: panel = `CORNER_MD`, button = `CORNER_SM`, modal = `CORNER_LG`
+- [ ] UICorner: modal = `CORNER_LG`, panel = `CORNER_MD`, button = `CORNER_SM`
 - [ ] ลงทะเบียนใน `MainUI.luau` ถ้าเป็น popup
 
 ---
@@ -1530,14 +1667,19 @@ end)
 | Constant | Value | Location |
 |----------|-------|----------|
 | `STAGE_LENGTH` | `Config.Stages.StageLength` (100) | StageTemplates.luau |
-| `Config.Stages.Count` | 5 | Config.luau |
+| `Config.Stages.TotalCount` | 7 | Config.luau |
+| `Config.Stages.SelectionCount` | 5 | Config.luau |
 | `Config.Stages.StartOffset` | (-150, 0, 250) | Config.luau |
 | `Config.Lobby.SpawnPosition` | (0, 103, 0) | Config.luau |
 | `Config.KillZoneY` | -120 | Config.luau |
 | `Friction` | 2.0 | StageTemplates.luau |
-| `checkPlayerPosition interval` | 0.5 วินาที | GameManager.luau |
-| `selectionZone interval` | 0.2 วินาที | GameManager.luau |
-| `Finish Line delay` | 2 วินาที | GameManager.luau |
+| `Config.Timing.PositionCheckInterval` | 0.5 วินาที | Config.luau |
+| `Config.Timing.SelectionZoneInterval` | 0.2 วินาที | Config.luau |
+| `Config.Timing.AutoTeleportDelay` | 5 วินาที | Config.luau |
+| `Config.Timing.AutoSaveInterval` | 30 วินาที | Config.luau |
+| `Config.Map.StageGapStuds` | 10 studs | Config.luau |
+| `Config.Map.FinishLineRadius` | 20 studs | Config.luau |
+| `Config.Map.PlatformServoForce` | 1000000 | Config.luau |
 
 ---
 
@@ -1595,7 +1737,7 @@ end)
 37. **Rankings**: คำนวณจาก stage + distance ใน stage
 
 ### 💰 Currency System
-38. **Stage Rewards**: `Config.Currency.StageRewards` (S1=3, S2=4, S3=4, S4=5, S5=6)
+38. **Stage Rewards**: อยู่ใน `StageInfo.luau` → `StageInfo.getStage(id).reward` (S1=3, S2=4, S3=4, S4=5, S5=6, S6=6, S7=7)
 39. **Currency Breakdown**: Stage Clear (5) + Stage Rewards + Finish Bonus (25)
 40. **CurrencyUI**: มุมบนซ้าย (ใต้ StageFrame)
 
@@ -1671,3 +1813,21 @@ end)
 89. **Input Validation**: `ConfirmStageSelection` remote ผ่าน `validateStageOrder()` ก่อนใช้งาน
 90. **Shared Map Limitation**: Map เป็น global shared ใน workspace - ถ้า 2+ players เล่นพร้อมกันจะมีปัญหา (ต้องทำ instanced map ในอนาคต)
 91. **Race Direction**: Stages progress ตามแกน +X (ไม่ใช่ +Z) - "ahead" check ใช้ `Position.X`
+
+### 🏗️ Architecture (Refactored Feb 2026)
+92. **GameManager split**: SpectatorManager + SelectionZoneManager แยกออกจาก GameManager ใช้ dependency injection pattern
+93. **DataStoreHelper**: DataStore ทุก module ควรใช้ `DataStoreHelper.loadAsync()` + `DataStoreHelper.saveAsync()` (retry 3 ครั้ง, exponential backoff, schema versioning)
+94. **RemoteRegistry**: ใช้ `RemoteRegistry.get("EventName")` แทนการ WaitForChild ตรงๆ (cached, safe fallback)
+95. **TweenHelper**: Animation ซ้ำๆ ให้ใช้ `src/client/TweenHelper.luau` (pop, fadeIn, fadeOut, slideIn, glowStroke, colorFlash)
+96. **UIFactory**: UI ใหม่ให้ใช้ `src/client/UI/UIFactory.luau` สำหรับ createPanel/createButton/createLabel แทนการสร้าง Instance ตรงๆ
+97. **humanoidRootPart**: ใช้ชื่อเต็มเสมอ (ไม่ใช่ `hrp`) ทั้ง project
+98. **StageInfo (single source of truth)**: Stage metadata ทั้งหมด (name, icon, difficulty, color, reward) อยู่ใน `StageInfo.luau` — ห้าม hardcode ใน UI
+99. **Balanced Random**: `MapManager:balancedRandomStages()` ใช้แทน `shuffleStages()` เมื่อเลือก RANDOM (การันตีทุกระดับความยาก)
+100. **TotalCount vs SelectionCount**: `Config.Stages.TotalCount` = pool size (7), `Config.Stages.SelectionCount` = per-run size (5)
+101. **Stage Tab Filter**: `switchTab(diff)` → `refreshStageButtons()` จัด `Visible`+`Position` บน buttonContainer; `show()` ต้องเรียก switchTab หลัง loop ที่ set Visible=true
+102. **Tab Selection Global**: selectedStages ไม่ reset เมื่อเปลี่ยน tab — selection ข้าม tab ได้, max = SelectionCount รวม
+103. **MapManager internal**: ฟังก์ชัน `_xxxInternal()` เป็น internal helpers สำหรับ global/per-match deduplication — ห้ามเรียกจากนอก MapManager
+104. **Config.Timing / Config.Map**: Magic numbers เวลาและ map ทั้งหมดอยู่ใน Config แล้ว — ไม่ hardcode ค่าใหม่
+105. **Vivid Gradient Theme (Feb 2026)**: UI ทั้งหมด 14 ไฟล์ถูก refactor ให้ใช้ gradient + glow stroke + drop shadow pattern ตาม Colorful Youth theme — ดู UI Design System section สำหรับ pattern ล่าสุด
+106. **Emoji Unicode Escapes**: ใน Luau string literals ให้ใช้ `\u{1F381}` แทน emoji ตรงๆ (เช่น 🎁) เพื่อหลีกเลี่ยง encoding issues บาง environment
+107. **Light Theme UIs ถูก Dark-theme แล้ว**: ClassSelectionUI (main panel), TitleCollectionUI, TitleHUDUI ถูกปรับจาก light palette เป็น dark gradient เพื่อ visual consistency — ไม่ต้อง maintain light theme แยกแล้ว

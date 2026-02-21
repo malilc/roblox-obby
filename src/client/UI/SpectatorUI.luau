@@ -58,13 +58,23 @@ function SpectatorUI:createUI()
 	spectateBtn.Parent = promptContainer
 
 	local specCorner = Instance.new("UICorner")
-	specCorner.CornerRadius = Theme.CORNER_SM
+	specCorner.CornerRadius = Theme.CORNER_MD
 	specCorner.Parent = spectateBtn
 
 	local specStroke = Instance.new("UIStroke")
 	specStroke.Color = Theme.ACCENT_CYAN
 	specStroke.Thickness = Theme.STROKE_MED
+	specStroke.Transparency = 0.2
 	specStroke.Parent = spectateBtn
+
+	-- Spectate button gradient
+	local specGradient = Instance.new("UIGradient")
+	specGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.ACCENT_CYAN),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+	})
+	specGradient.Rotation = 90
+	specGradient.Parent = spectateBtn
 
 	spectateBtn.MouseButton1Click:Connect(function()
 		self:startSpectating()
@@ -84,13 +94,23 @@ function SpectatorUI:createUI()
 	leavePromptBtn.Parent = promptContainer
 
 	local leaveCorner = Instance.new("UICorner")
-	leaveCorner.CornerRadius = Theme.CORNER_SM
+	leaveCorner.CornerRadius = Theme.CORNER_MD
 	leaveCorner.Parent = leavePromptBtn
 
 	local leaveStroke = Instance.new("UIStroke")
 	leaveStroke.Color = Theme.DANGER
 	leaveStroke.Thickness = Theme.STROKE_MED
+	leaveStroke.Transparency = 0.2
 	leaveStroke.Parent = leavePromptBtn
+
+	-- Leave button gradient
+	local leaveGradient = Instance.new("UIGradient")
+	leaveGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+	})
+	leaveGradient.Rotation = 90
+	leaveGradient.Parent = leavePromptBtn
 
 	leavePromptBtn.MouseButton1Click:Connect(function()
 		self:hideSpectatePrompt()
@@ -123,8 +143,24 @@ function SpectatorUI:createUI()
 	self.spectatingLabel = topLabel
 
 	local topCorner = Instance.new("UICorner")
-	topCorner.CornerRadius = Theme.CORNER_SM
+	topCorner.CornerRadius = Theme.CORNER_MD
 	topCorner.Parent = topLabel
+
+	-- Top label gradient
+	local topGradient = Instance.new("UIGradient")
+	topGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(1, Theme.BG_OVERLAY)
+	})
+	topGradient.Rotation = 135
+	topGradient.Parent = topLabel
+
+	-- Top label glow stroke
+	local topStroke = Instance.new("UIStroke")
+	topStroke.Color = Theme.ACCENT_CYAN
+	topStroke.Thickness = Theme.STROKE_THIN
+	topStroke.Transparency = 0.3
+	topStroke.Parent = topLabel
 
 	-- Left: Rankings panel
 	local rankingsPanel = Instance.new("Frame")
@@ -139,13 +175,36 @@ function SpectatorUI:createUI()
 	self.rankingsPanel = rankingsPanel
 
 	local rankCorner = Instance.new("UICorner")
-	rankCorner.CornerRadius = Theme.CORNER_SM
+	rankCorner.CornerRadius = Theme.CORNER_MD
 	rankCorner.Parent = rankingsPanel
 
+	-- Rankings gradient
+	local rankGradient = Instance.new("UIGradient")
+	rankGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+	})
+	rankGradient.Rotation = 135
+	rankGradient.Parent = rankingsPanel
+
+	-- Rankings glow stroke
 	local rankStroke = Instance.new("UIStroke")
-	rankStroke.Color = Theme.BG_ELEVATED
+	rankStroke.Color = Theme.ACCENT_CYAN
 	rankStroke.Thickness = Theme.STROKE_THIN
+	rankStroke.Transparency = 0.3
 	rankStroke.Parent = rankingsPanel
+
+	-- Rankings drop shadow
+	local rankShadow = Instance.new("Frame")
+	rankShadow.Name = "Shadow"
+	rankShadow.Size = UDim2.new(1, 6, 1, 6)
+	rankShadow.Position = UDim2.new(0, -3, 0, 4)
+	rankShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	rankShadow.BackgroundTransparency = 0.6
+	rankShadow.BorderSizePixel = 0
+	rankShadow.ZIndex = rankingsPanel.ZIndex - 1
+	rankShadow.Parent = rankingsPanel
+	Theme.applyCorner(rankShadow, "md")
 
 	-- Rankings header
 	local rankHeader = Instance.new("TextLabel")
@@ -200,8 +259,17 @@ function SpectatorUI:createUI()
 	controlBar.Parent = hud
 
 	local controlCorner = Instance.new("UICorner")
-	controlCorner.CornerRadius = Theme.CORNER_SM
+	controlCorner.CornerRadius = Theme.CORNER_MD
 	controlCorner.Parent = controlBar
+
+	-- Control bar gradient
+	local controlGradient = Instance.new("UIGradient")
+	controlGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(1, Theme.BG_OVERLAY)
+	})
+	controlGradient.Rotation = 135
+	controlGradient.Parent = controlBar
 
 	local controlLayout = Instance.new("UIListLayout")
 	controlLayout.FillDirection = Enum.FillDirection.Horizontal
