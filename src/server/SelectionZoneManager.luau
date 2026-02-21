@@ -111,13 +111,13 @@ end
 -- Validate stage order from client input
 function SelectionZoneManager:validateStageOrder(stageOrder: any): {number}?
 	if type(stageOrder) ~= "table" then return nil end
-	if #stageOrder == 0 or #stageOrder > Config.Stages.Count then return nil end
+	if #stageOrder == 0 or #stageOrder > Config.Stages.SelectionCount then return nil end
 
 	local seen = {}
 	for _, stageNum in ipairs(stageOrder) do
 		if type(stageNum) ~= "number" then return nil end
 		stageNum = math.floor(stageNum)
-		if stageNum < 1 or stageNum > Config.Stages.Count then return nil end
+		if stageNum < 1 or stageNum > Config.Stages.TotalCount then return nil end
 		if seen[stageNum] then return nil end
 		seen[stageNum] = true
 	end
@@ -138,7 +138,7 @@ function SelectionZoneManager:onStageSelectionConfirmed(player: Player, data: an
 	local stageOrder: {number}
 
 	if data.isRandom == true then
-		stageOrder = self.deps.mapManager:shuffleStages()
+		stageOrder = self.deps.mapManager:balancedRandomStages()
 	elseif data.stageOrder then
 		local validated = self:validateStageOrder(data.stageOrder)
 		if not validated then

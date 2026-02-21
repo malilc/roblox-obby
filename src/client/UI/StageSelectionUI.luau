@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local StageSelectionUI = {}
@@ -121,82 +122,101 @@ function StageSelectionUI:createUI()
 	subtitle.Size = UDim2.new(1, 0, 0, 20)
 	subtitle.Position = UDim2.new(0, 0, 0, 50)
 	subtitle.BackgroundTransparency = 1
-	subtitle.Text = "Click stages to build your custom order"
+	subtitle.Text = "Pick up to " .. Config.Stages.SelectionCount .. " stages, or press RANDOM"
 	subtitle.TextColor3 = Theme.TEXT_MUTED
 	subtitle.TextSize = 14
 	subtitle.Font = Enum.Font.Gotham
 	subtitle.TextTransparency = 0.3
 	subtitle.Parent = titleContainer
 
+	-- Difficulty Tab Bar
+	local tabBar = Instance.new("Frame")
+	tabBar.Name = "TabBar"
+	tabBar.Size = UDim2.new(1, -40, 0, 30)
+	tabBar.Position = UDim2.new(0, 20, 0, 95)
+	tabBar.BackgroundTransparency = 1
+	tabBar.Parent = mainFrame
+
+	self.activeTab = "Easy"
+	self.tabButtons = {}
+	self.tabStrokesMap = {}
+
+	local difficulties = {"Easy", "Normal", "Hard"}
+	for idx, diff in ipairs(difficulties) do
+		local diffInfo = StageInfo.DifficultyInfo[diff]
+
+		local tab = Instance.new("TextButton")
+		tab.Name = "Tab_" .. diff
+		tab.Size = UDim2.new(0, 160, 0, 28)
+		tab.Position = UDim2.new(0, (idx - 1) * 180, 0, 0)
+		tab.BackgroundColor3 = diffInfo.badgeColor
+		tab.BackgroundTransparency = 0.7
+		tab.BorderSizePixel = 0
+		tab.Text = diffInfo.label
+		tab.TextColor3 = Theme.TEXT_PRIMARY
+		tab.TextSize = 13
+		tab.Font = Enum.Font.GothamBold
+		tab.Parent = tabBar
+
+		local tabCorner = Instance.new("UICorner")
+		tabCorner.CornerRadius = UDim.new(0, 6)
+		tabCorner.Parent = tab
+
+		local tabStroke = Instance.new("UIStroke")
+		tabStroke.Color = diffInfo.color
+		tabStroke.Thickness = 1.5
+		tabStroke.Transparency = 0.7
+		tabStroke.Parent = tab
+
+		tab.MouseButton1Click:Connect(function()
+			self:switchTab(diff)
+		end)
+
+		self.tabButtons[diff] = tab
+		self.tabStrokesMap[diff] = tabStroke
+	end
+
 	-- Stage Buttons Container
 	local buttonsContainer = Instance.new("Frame")
 	buttonsContainer.Name = "ButtonsContainer"
-	buttonsContainer.Size = UDim2.new(1, -40, 0, 240)
-	buttonsContainer.Position = UDim2.new(0, 20, 0, 100)
+	buttonsContainer.Size = UDim2.new(1, -40, 0, 200)
+	buttonsContainer.Position = UDim2.new(0, 20, 0, 135)
 	buttonsContainer.BackgroundTransparency = 1
 	buttonsContainer.Parent = mainFrame
 	self.buttonsContainer = buttonsContainer
 
-	-- Stage buttons with modern design
-	local stageNames = {
-		"Jump",
-		"Moving",
-		"Spin",
-		"Disappear",
-		"Combo"
-	}
-
-	local stageIcons = {
-		"🦘",
-		"↔️",
-		"🌀",
-		"💨",
-		"⚡"
-	}
-
-	-- Gameplay-specific stage colors - DO NOT replace with theme tokens
-	local stageColors = {
-		Color3.fromRGB(76, 175, 80),   -- Green
-		Color3.fromRGB(255, 152, 0),   -- Orange
-		Color3.fromRGB(156, 39, 176),  -- Purple
-		Color3.fromRGB(233, 30, 99),   -- Pink
-		Color3.fromRGB(244, 67, 54)    -- Red
-	}
-
-	local stageGradients = {
-		{Color3.fromRGB(76, 175, 80), Color3.fromRGB(129, 199, 132)},
-		{Color3.fromRGB(255, 152, 0), Color3.fromRGB(255, 183, 77)},
-		{Color3.fromRGB(156, 39, 176), Color3.fromRGB(186, 104, 200)},
-		{Color3.fromRGB(233, 30, 99), Color3.fromRGB(240, 98, 146)},
-		{Color3.fromRGB(244, 67, 54), Color3.fromRGB(239, 154, 154)}
-	}
-
+	-- Stage buttons from StageInfo (single source of truth)
+	local totalStages = StageInfo.getTotalStageCount()
 	self.stageButtons = {}
 
-	for i = 1, 5 do
+	for i = 1, totalStages do
+		local stageData = StageInfo.getStage(i)
+		if not stageData then continue end
+
 		local buttonContainer = Instance.new("Frame")
 		buttonContainer.Name = "Stage" .. i .. "Container"
 		buttonContainer.Size = UDim2.new(0, 100, 0, 105)
-		buttonContainer.Position = UDim2.new(0, ((i - 1) % 3) * 120, 0, math.floor((i - 1) / 3) * 125)
+		buttonContainer.Position = UDim2.new(0, 0, 0, 0)
 		buttonContainer.BackgroundTransparency = 1
+		buttonContainer.Visible = false
 		buttonContainer.Parent = buttonsContainer
 
 		local button = Instance.new("TextButton")
 		button.Name = "Stage" .. i .. "Button"
 		button.Size = UDim2.new(1, 0, 1, 0)
 		button.Position = UDim2.new(0, 0, 0, 0)
-		button.BackgroundColor3 = stageColors[i]
+		button.BackgroundColor3 = stageData.color
 		button.BackgroundTransparency = 0.2
 		button.BorderSizePixel = 0
 		button.Text = ""
 		button.Parent = buttonContainer
 
 		-- Add gradient
-		createGradient(button, stageGradients[i][1], stageGradients[i][2])
+		createGradient(button, stageData.color, stageData.gradientEnd)
 
 		-- Add border
 		local buttonStroke = Instance.new("UIStroke")
-		buttonStroke.Color = stageColors[i]
+		buttonStroke.Color = stageData.color
 		buttonStroke.Thickness = 2
 		buttonStroke.Transparency = 0.6
 		buttonStroke.Parent = button
@@ -205,13 +225,32 @@ function StageSelectionUI:createUI()
 		btnCorner.CornerRadius = UDim.new(0, 12)
 		btnCorner.Parent = button
 
+		-- Difficulty badge (top-right corner)
+		local diffInfo = StageInfo.DifficultyInfo[stageData.difficulty]
+		local badge = Instance.new("TextLabel")
+		badge.Name = "DifficultyBadge"
+		badge.Size = UDim2.new(0, 42, 0, 14)
+		badge.Position = UDim2.new(1, -44, 0, 4)
+		badge.BackgroundColor3 = diffInfo.badgeColor
+		badge.BackgroundTransparency = 0.2
+		badge.Text = diffInfo.label
+		badge.TextColor3 = Color3.fromRGB(255, 255, 255)
+		badge.TextSize = 8
+		badge.Font = Enum.Font.GothamBold
+		badge.ZIndex = button.ZIndex + 1
+		badge.Parent = button
+
+		local badgeCorner = Instance.new("UICorner")
+		badgeCorner.CornerRadius = UDim.new(0, 4)
+		badgeCorner.Parent = badge
+
 		-- Icon
 		local icon = Instance.new("TextLabel")
 		icon.Name = "Icon"
 		icon.Size = UDim2.new(1, 0, 0, 40)
 		icon.Position = UDim2.new(0, 0, 0, 10)
 		icon.BackgroundTransparency = 1
-		icon.Text = stageIcons[i]
+		icon.Text = stageData.icon
 		icon.TextSize = 32
 		icon.Font = Enum.Font.GothamBold
 		icon.TextColor3 = Theme.TEXT_PRIMARY
@@ -236,21 +275,20 @@ function StageSelectionUI:createUI()
 		nameLabel.Size = UDim2.new(1, 0, 0, 16)
 		nameLabel.Position = UDim2.new(0, 0, 0, 68)
 		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = stageNames[i]
+		nameLabel.Text = stageData.name
 		nameLabel.TextSize = 11
 		nameLabel.Font = Enum.Font.Gotham
 		nameLabel.TextColor3 = Theme.TEXT_PRIMARY
 		nameLabel.TextStrokeTransparency = 0.7
 		nameLabel.Parent = button
 
-		-- Stage Reward indicator (แสดงรางวัลเมื่อผ่านด่าน)
-		local stageReward = Config.Currency.StageRewards[i] or 0
+		-- Stage Reward indicator
 		local coinLabel = Instance.new("TextLabel")
 		coinLabel.Name = "CoinLabel"
 		coinLabel.Size = UDim2.new(1, 0, 0, 14)
 		coinLabel.Position = UDim2.new(0, 0, 0, 84)
 		coinLabel.BackgroundTransparency = 1
-		coinLabel.Text = "💰 +" .. stageReward
+		coinLabel.Text = "💰 +" .. stageData.reward
 		coinLabel.TextSize = 10
 		coinLabel.Font = Enum.Font.GothamBold
 		coinLabel.TextColor3 = Theme.MEDAL_GOLD
@@ -305,7 +343,8 @@ function StageSelectionUI:createUI()
 			button = button,
 			container = buttonContainer,
 			indicator = selectedIndicator,
-			stroke = buttonStroke
+			stroke = buttonStroke,
+			difficulty = stageData.difficulty,
 		}
 	end
 
@@ -504,6 +543,9 @@ function StageSelectionUI:createUI()
 	countdownMessage.ZIndex = 101
 	countdownMessage.Parent = countdownFrame
 	self.countdownMessage = countdownMessage
+
+	-- Initialize default tab
+	self:switchTab("Easy")
 end
 
 function StageSelectionUI:setupRemotes()
@@ -563,6 +605,9 @@ function StageSelectionUI:show()
 		end
 	end
 
+	-- Re-apply tab filter (show() sets all Visible=true above)
+	self:switchTab(self.activeTab)
+
 	-- Simple fade in
 	self.mainFrame.BackgroundTransparency = 1
 	local fadeIn = TweenService:Create(self.mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -594,6 +639,9 @@ function StageSelectionUI:toggleStage(stageNum: number)
 		-- Remove from selection
 		table.remove(self.selectedStages, index)
 		self:updateButtonState(stageNum, false)
+	elseif #self.selectedStages >= Config.Stages.SelectionCount then
+		-- Max selection reached
+		return
 	else
 		-- Add to selection
 		table.insert(self.selectedStages, stageNum)
@@ -615,6 +663,7 @@ function StageSelectionUI:toggleStage(stageNum: number)
 	end
 
 	self:updateSelectedLabel()
+	self:updateTabCounts()
 end
 
 function StageSelectionUI:updateButtonState(stageNum: number, isSelected: boolean)
@@ -652,8 +701,9 @@ function StageSelectionUI:updateSelectedLabel()
 
 		-- คำนวณ total rewards
 		local totalRewards = 0
-		for _, stageNum in ipairs(self.selectedStages) do
-			totalRewards = totalRewards + (Config.Currency.StageRewards[stageNum] or 0)
+		for _, sNum in ipairs(self.selectedStages) do
+			local sData = StageInfo.getStage(sNum)
+			totalRewards = totalRewards + (sData and sData.reward or 0)
 		end
 
 		self.selectedLabel.Text = "✨ " .. orderText .. "  |  💰 +" .. totalRewards .. " rewards"
@@ -710,12 +760,95 @@ end
 function StageSelectionUI:clearSelection()
 	self.selectedStages = {}
 
-	for i = 1, 5 do
+	for i = 1, StageInfo.getTotalStageCount() do
 		self:updateButtonState(i, false)
 	end
 
 	self:updateSelectedLabel()
-	-- updateStartButtonState จะถูกเรียกจาก updateSelectedLabel แล้ว
+	self:updateTabCounts()
+end
+
+-- Switch active difficulty tab
+function StageSelectionUI:switchTab(difficulty: string)
+	self.activeTab = difficulty
+
+	-- Update tab visuals
+	for diff, tab in pairs(self.tabButtons) do
+		local stroke = self.tabStrokesMap[diff]
+		if diff == difficulty then
+			-- Active tab
+			TweenService:Create(tab, TweenInfo.new(0.15), {
+				BackgroundTransparency = 0.1,
+			}):Play()
+			if stroke then
+				TweenService:Create(stroke, TweenInfo.new(0.15), {
+					Transparency = 0,
+					Thickness = 2.5,
+				}):Play()
+			end
+		else
+			-- Inactive tab
+			TweenService:Create(tab, TweenInfo.new(0.15), {
+				BackgroundTransparency = 0.7,
+			}):Play()
+			if stroke then
+				TweenService:Create(stroke, TweenInfo.new(0.15), {
+					Transparency = 0.7,
+					Thickness = 1.5,
+				}):Play()
+			end
+		end
+	end
+
+	-- Refresh button visibility
+	self:refreshStageButtons()
+end
+
+-- Show/hide and reposition buttons for active tab
+function StageSelectionUI:refreshStageButtons()
+	-- Collect visible stages for active tab
+	local visibleStages = {}
+	for i = 1, StageInfo.getTotalStageCount() do
+		local btnData = self.stageButtons[i]
+		if btnData and btnData.difficulty == self.activeTab then
+			table.insert(visibleStages, i)
+		end
+	end
+
+	-- Hide all buttons first
+	for _, btnData in pairs(self.stageButtons) do
+		btnData.container.Visible = false
+	end
+
+	-- Show and position visible buttons (centered)
+	local columns = 4
+	local count = #visibleStages
+	local rowOffset = math.max(0, (columns - count) * 120 / 2)
+
+	for idx, stageId in ipairs(visibleStages) do
+		local btnData = self.stageButtons[stageId]
+		btnData.container.Position = UDim2.new(0, rowOffset + (idx - 1) * 120, 0, 0)
+		btnData.container.Visible = true
+	end
+end
+
+-- Update tab labels with selection counts
+function StageSelectionUI:updateTabCounts()
+	for _, diff in ipairs({"Easy", "Normal", "Hard"}) do
+		local count = 0
+		for _, stageNum in ipairs(self.selectedStages) do
+			local sd = StageInfo.getStage(stageNum)
+			if sd and sd.difficulty == diff then
+				count = count + 1
+			end
+		end
+		local diffInfo = StageInfo.DifficultyInfo[diff]
+		local label = diffInfo.label
+		if count > 0 then
+			label = label .. " (" .. count .. ")"
+		end
+		self.tabButtons[diff].Text = label
+	end
 end
 
 function StageSelectionUI:confirmSelection(isRandom: boolean)

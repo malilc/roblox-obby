@@ -583,14 +583,14 @@ function MatchManager:handleStageVote(player: Player, stageOrder: {number})
 	if not room or room.state ~= "Waiting" then return end
 	
 	-- Validate stage order
-	if type(stageOrder) ~= "table" or #stageOrder == 0 or #stageOrder > Config.Stages.Count then
+	if type(stageOrder) ~= "table" or #stageOrder == 0 or #stageOrder > Config.Stages.SelectionCount then
 		return
 	end
 	
 	-- Validate each stage number
 	local seen = {}
 	for _, stageNum in ipairs(stageOrder) do
-		if type(stageNum) ~= "number" or stageNum < 1 or stageNum > Config.Stages.Count then
+		if type(stageNum) ~= "number" or stageNum < 1 or stageNum > Config.Stages.TotalCount then
 			return
 		end
 		if seen[stageNum] then return end -- duplicate
@@ -638,7 +638,7 @@ function MatchManager:calculateFinalStageOrder(room: MatchRoom): {number}
 	
 	-- Count votes for each stage
 	local stageCounts = {}
-	for i = 1, Config.Stages.Count do
+	for i = 1, Config.Stages.TotalCount do
 		stageCounts[i] = 0
 	end
 	
@@ -652,7 +652,7 @@ function MatchManager:calculateFinalStageOrder(room: MatchRoom): {number}
 	-- Build weighted pool based on votes
 	-- More votes = higher chance to be selected
 	local allStages = {}
-	for i = 1, Config.Stages.Count do
+	for i = 1, Config.Stages.TotalCount do
 		allStages[i] = i
 	end
 	
@@ -673,23 +673,32 @@ function MatchManager:calculateFinalStageOrder(room: MatchRoom): {number}
 		return a < b
 	end)
 	
-	-- Return all stages in vote-weighted order
-	return allStages
+	-- Return top SelectionCount stages in vote-weighted order
+	local result = {}
+	for i = 1, math.min(Config.Stages.SelectionCount, #allStages) do
+		table.insert(result, allStages[i])
+	end
+	return result
 end
 
--- Shuffle all stages
+-- Shuffle all stages and return SelectionCount stages
 function MatchManager:shuffleAllStages(): {number}
 	local stages = {}
-	for i = 1, Config.Stages.Count do
+	for i = 1, Config.Stages.TotalCount do
 		stages[i] = i
 	end
-	
+
 	for i = #stages, 2, -1 do
 		local j = math.random(1, i)
 		stages[i], stages[j] = stages[j], stages[i]
 	end
-	
-	return stages
+
+	-- Truncate to SelectionCount
+	local result = {}
+	for i = 1, math.min(Config.Stages.SelectionCount, #stages) do
+		table.insert(result, stages[i])
+	end
+	return result
 end
 
 -- Get stage order for a match (used by GameManager)

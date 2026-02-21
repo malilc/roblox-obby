@@ -13,6 +13,7 @@ local LeaderboardManager = require(script.Parent.LeaderboardManager)
 local SpectatorManager = require(script.Parent.SpectatorManager)
 local SelectionZoneManager = require(script.Parent.SelectionZoneManager)
 local Config = require(ReplicatedStorage.Shared.Config)
+local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local GameManager = {}
@@ -342,7 +343,8 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 		
 		-- Stage Reward (ตามด่านที่ผ่าน)
 		local completedStageNum = stageOrder[stageIndex - 1] -- ด่านที่เพิ่งผ่าน
-		local stageReward = Config.Currency.StageRewards[completedStageNum] or 0
+		local stageData = StageInfo.getStage(completedStageNum)
+		local stageReward = if stageData then stageData.reward else 0
 		if stageReward > 0 then
 			self.currencyManager:addCurrency(player, stageReward)
 			
@@ -367,8 +369,8 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 	
 	-- Get dynamic total stages
 	local totalStages = #stageOrder
-	if totalStages == 0 then totalStages = Config.Stages.Count end
-	
+	if totalStages == 0 then totalStages = Config.Stages.SelectionCount end
+
 	-- Update MatchManager with progress
 	local character = player.Character
 	local distance = 0
@@ -411,8 +413,8 @@ function GameManager:onPlayerFinished(player: Player)
 
 	-- Get dynamic total stages
 	local totalStages = #stageOrder
-	if totalStages == 0 then totalStages = Config.Stages.Count end
-	
+	if totalStages == 0 then totalStages = Config.Stages.SelectionCount end
+
 	-- Give Stage Clear bonus and Stage Reward for the LAST stage (not given in onStageComplete)
 	if totalStages > 0 then
 		-- Stage Clear bonus for last stage
@@ -420,7 +422,8 @@ function GameManager:onPlayerFinished(player: Player)
 		
 		-- Stage Reward for last stage
 		local lastStageNum = stageOrder[totalStages]
-		local lastStageReward = Config.Currency.StageRewards[lastStageNum] or 0
+		local lastStageData = StageInfo.getStage(lastStageNum)
+		local lastStageReward = if lastStageData then lastStageData.reward else 0
 		if lastStageReward > 0 then
 			self.currencyManager:addCurrency(player, lastStageReward)
 			
@@ -643,8 +646,8 @@ end
 function GameManager:startCountdown(player: Player, seconds: number, stageOrder: {number}?)
 	-- Get dynamic total stages
 	local totalStages = stageOrder and #stageOrder or #self.mapManager.globalMap.stageOrder
-	if totalStages == 0 then totalStages = Config.Stages.Count end
-	
+	if totalStages == 0 then totalStages = Config.Stages.SelectionCount end
+
 	for i = seconds, 1, -1 do
 		self.countdownUpdateRemote:FireClient(player, {
 			number = i,

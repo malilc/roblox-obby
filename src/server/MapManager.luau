@@ -7,6 +7,7 @@ local StageTemplates = require(script.Parent.StageTemplates)
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Logger = require(ReplicatedStorage.Shared.Logger)
+local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 
 local MapManager = {}
 MapManager.__index = MapManager
@@ -54,20 +55,79 @@ function MapManager.new()
 	return self
 end
 
--- สุ่มลำดับ stages
+-- Fisher-Yates shuffle utility
+local function shuffleArray(arr: {any})
+	for i = #arr, 2, -1 do
+		local j = math.random(1, i)
+		arr[i], arr[j] = arr[j], arr[i]
+	end
+end
+
+-- สุ่มลำดับ stages ทั้งหมด (utility, ไม่ balanced)
 function MapManager:shuffleStages(): {number}
 	local stages = {}
-	for i = 1, Config.Stages.Count do
+	for i = 1, Config.Stages.TotalCount do
 		table.insert(stages, i)
 	end
+	shuffleArray(stages)
+	return stages
+end
 
-	-- Fisher-Yates shuffle
-	for i = #stages, 2, -1 do
-		local j = math.random(1, i)
-		stages[i], stages[j] = stages[j], stages[i]
+-- สุ่มลำดับ stages แบบเฉลี่ยความยาก (balanced random)
+function MapManager:balancedRandomStages(selectionCount: number?): {number}
+	local count = selectionCount or Config.Stages.SelectionCount
+
+	-- 1. แบ่ง pool ตาม difficulty
+	local pools = { Easy = {}, Normal = {}, Hard = {} }
+	for _, stage in ipairs(StageInfo.Stages) do
+		table.insert(pools[stage.difficulty], stage.id)
 	end
 
-	return stages
+	-- 2. Shuffle แต่ละ pool
+	for _, pool in pairs(pools) do
+		shuffleArray(pool)
+	end
+
+	-- 3. การันตี MinPerDifficulty จากแต่ละระดับ
+	local selected = {}
+	local usedSet = {}
+	local minPer = Config.Stages.BalancedRandom.MinPerDifficulty
+
+	for _, difficulty in ipairs({"Easy", "Normal", "Hard"}) do
+		local pool = pools[difficulty]
+		local toTake = math.min(minPer, #pool)
+		for i = 1, toTake do
+			if #selected < count then
+				local id = pool[i]
+				table.insert(selected, id)
+				usedSet[id] = true
+			end
+		end
+	end
+
+	-- 4. เติมที่เหลือจาก pool ที่ยังไม่ถูกเลือก
+	local remaining = count - #selected
+	if remaining > 0 then
+		local remainingPool = {}
+		for _, difficulty in ipairs({"Easy", "Normal", "Hard"}) do
+			for _, id in ipairs(pools[difficulty]) do
+				if not usedSet[id] then
+					table.insert(remainingPool, id)
+				end
+			end
+		end
+		shuffleArray(remainingPool)
+
+		for i = 1, math.min(remaining, #remainingPool) do
+			table.insert(selected, remainingPool[i])
+		end
+	end
+
+	-- 5. Shuffle ลำดับสุดท้าย
+	shuffleArray(selected)
+
+	Logger.debug("MapManager", "Balanced random stages:", table.concat(selected, ", "))
+	return selected
 end
 
 -- ============================================

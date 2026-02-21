@@ -52,6 +52,7 @@ src/
 │
 └── shared/                      # Shared code (server + client)
     ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags + Ultimate Skills + Timing + Map)
+    ├── StageInfo.luau           # ⭐ Stage metadata (name, icon, difficulty, color, reward) — single source of truth
     ├── Types.luau               # Type definitions
     ├── Logger.luau              # 🔧 Centralized logging (configurable levels)
     ├── RemoteRegistry.luau      # 📡 Centralized RemoteEvent access with caching + WaitForChild fallback
@@ -91,8 +92,52 @@ Workspace/
 ## 🎮 ระบบเลือกด่าน (Stage Selection)
 
 ### ไฟล์ที่เกี่ยวข้อง:
-- `src/server/GameManager.luau` - Logic ฝั่ง Server
+- `src/shared/StageInfo.luau` - Stage metadata (single source of truth)
+- `src/server/SelectionZoneManager.luau` - Zone detection + confirm
+- `src/server/MapManager.luau` - Map generation + balanced random
 - `src/client/UI/StageSelectionUI.luau` - GUI ฝั่ง Client
+
+### Stage Difficulty System:
+
+| Stage | ชื่อ | Icon | ความยาก | Reward | กลไก |
+|-------|------|------|---------|--------|------|
+| 1 | Jump | 🦘 | Easy | 3 | แพลตฟอร์มนิ่ง |
+| 2 | Moving | ↔️ | Normal | 4 | แพลตฟอร์มเคลื่อนที่ |
+| 3 | Spin | 🌀 | Normal | 4 | แท่งหมุน kill part |
+| 4 | Disappear | 💨 | Hard | 5 | แพลตฟอร์มหายไป |
+| 5 | Combo | ⚡ | Hard | 6 | ผสมทุกกลไก |
+| 6 | Lava Rise | 🌋 | Hard | 6 | พื้น kill part ยกตัว + แพลตฟอร์มลอย |
+| 7 | Narrow | 🎯 | Hard | 7 | แพลตฟอร์มแคบ + spinner + moving narrow |
+
+- Metadata ทั้งหมดอยู่ใน `StageInfo.luau` (name, icon, difficulty, color, gradientEnd, reward)
+- UI ใช้ `StageInfo.getStage(id)` แทน hardcoded arrays
+- Server ใช้ `StageInfo.getStage(id).reward` แทน `Config.Currency.StageRewards`
+
+### Balanced Random Algorithm:
+- `MapManager:balancedRandomStages()` เลือก `Config.Stages.SelectionCount` ด่านจาก pool ทั้งหมด
+- การันตีอย่างน้อย `Config.Stages.BalancedRandom.MinPerDifficulty` (default 1) จากแต่ละระดับความยาก
+- เติมที่เหลือจาก pool ที่ยังไม่ถูกเลือก แล้ว shuffle ลำดับสุดท้าย
+- เช่น pool 7 ด่าน (1E+2N+4H) เลือก 5 → ได้ประมาณ 1E+2N+2H (เฉลี่ยดี)
+
+### Config ที่เกี่ยวข้อง:
+- `Config.Stages.TotalCount` = 7 (จำนวนด่านทั้งหมดใน pool)
+- `Config.Stages.SelectionCount` = 5 (จำนวนด่านที่เลือกต่อรอบ, แก้ได้เพื่อ test)
+
+### Difficulty Tabs (StageSelectionUI):
+
+UI แบ่งเป็น 3 tabs ตามความยาก แต่ละ tab แสดงเฉพาะด่านของตัวเอง:
+
+| Tab | สี | ด่านที่แสดง | Layout |
+|-----|---|------------|--------|
+| EASY | เขียว | Stage 1 (Jump) | 1 ปุ่ม อยู่กลาง |
+| NORMAL | เหลือง | Stages 2-3 (Moving, Spin) | 2 ปุ่ม อยู่กลาง |
+| HARD | แดง | Stages 4-7 (Disappear-Narrow) | 4 ปุ่ม เต็ม row |
+
+- Selection ข้าม tab ได้ — `selectedStages` เป็น global ไม่ reset เมื่อเปลี่ยน tab
+- Tab labels แสดง count ที่เลือก เช่น `HARD (2)`
+- `switchTab(difficulty)` → `refreshStageButtons()` จัด visibility+position
+- `show()` เรียก `switchTab(self.activeTab)` หลัง reset Visible เสมอ (เพราะ show loop ทำ Visible=true ทุกตัว)
+- Default tab: Easy
 
 ### Flow:
 
@@ -101,24 +146,27 @@ Workspace/
     ↓
 Server ส่ง ShowStageSelection → Client
     ↓
-Client แสดง GUI เลือกด่าน
+Client แสดง GUI: Tab Bar [EASY][NORMAL][HARD] + ปุ่มด่านของ tab ที่เลือก
     ↓
-ผู้เล่นเลือกลำดับด่าน หรือ กด RANDOM
+ผู้เล่นคลิก tab เพื่อดูด่านแต่ละระดับ + เลือกด่าน (สูงสุด SelectionCount รวมทุก tab)
+    ↓
+กด RANDOM หรือ START
     ↓
 Client ส่ง ConfirmStageSelection → Server
     ↓
-Server สร้าง Map ตามลำดับที่เลือก
+Server สร้าง Map ตามลำดับที่เลือก (RANDOM ใช้ balanced algorithm)
     ↓
-Countdown 3, 2, 1
-    ↓
-Teleport ไปด่าน 1
+Countdown 3, 2, 1 → Teleport ไปด่าน 1
 ```
 
 ### การเลือกด่าน:
+- **คลิก tab** - สลับดูด่านระดับนั้น (Easy/Normal/Hard)
 - **คลิกปุ่มด่าน** - เพิ่มเข้าลำดับ (เช่น 3 → 1 → 5)
 - **คลิกอีกครั้ง** - ลบออกจากลำดับ
-- **ปุ่ม RANDOM** - สุ่มลำดับด่าน
+- **เลือกครบ SelectionCount** - กดปุ่มด่านอื่นไม่ได้ (จนกว่าจะถอดออก)
+- **ปุ่ม RANDOM** - สุ่มลำดับด่านแบบเฉลี่ยความยาก (balanced)
 - **ปุ่ม START** - ต้องเลือกอย่างน้อย 1 ด่านก่อนกดได้
+- **Difficulty badge** - แสดงบนปุ่มแต่ละด่าน (EASY/NORMAL/HARD)
 
 ### Zone Detection (Loop-based):
 
@@ -291,17 +339,20 @@ itemBox.Parent = itemPickups
 ```lua
 function StageTemplates.getStageCreators(): {(Vector3) -> Model}
     return {
-        StageTemplates.createStage1,
-        StageTemplates.createStage2,
-        StageTemplates.createStage3,
-        StageTemplates.createStage4,
-        StageTemplates.createStage5,
-        StageTemplates.createStage6, -- เพิ่มใหม่
+        StageTemplates.createStage1,  -- Easy: Jump
+        StageTemplates.createStage2,  -- Normal: Moving
+        StageTemplates.createStage3,  -- Normal: Spin
+        StageTemplates.createStage4,  -- Hard: Disappear
+        StageTemplates.createStage5,  -- Hard: Combo
+        StageTemplates.createStage6,  -- Hard: Lava Rise
+        StageTemplates.createStage7,  -- Hard: Narrow
+        StageTemplates.createStage8,  -- เพิ่มใหม่
     }
 end
 ```
 
-3. อัพเดท `Config.Stages.Count` ใน `src/shared/Config.luau`
+3. เพิ่ม metadata ใน `src/shared/StageInfo.luau` (id, name, icon, difficulty, color, gradientEnd, reward)
+4. อัพเดท `Config.Stages.TotalCount` ใน `src/shared/Config.luau`
 
 ---
 
@@ -310,8 +361,13 @@ end
 ### ไฟล์: `src/server/MapManager.luau`
 
 ```lua
--- สุ่มลำดับ (Fisher-Yates shuffle)
+-- สุ่มลำดับแบบ shuffle ธรรมดา (Fisher-Yates, TotalCount ด่าน)
 function MapManager:shuffleStages(): {number}
+
+-- สุ่มแบบเฉลี่ยความยาก (balanced random, return SelectionCount ด่าน)
+function MapManager:balancedRandomStages(selectionCount: number?): {number}
+    -- การันตี MinPerDifficulty จากแต่ละระดับ (Easy/Normal/Hard)
+    -- เติมที่เหลือจาก pool + shuffle ลำดับสุดท้าย
 
 -- สร้าง Map ด้วยลำดับที่กำหนด (global map)
 function MapManager:generateMapWithOrder(stageOrder: {number})
@@ -397,9 +453,13 @@ local Config = {
 
     -- Stage Settings
     Stages = {
-        Count = 5,              -- จำนวนด่าน
+        TotalCount = 7,         -- จำนวนด่านทั้งหมดใน pool
+        SelectionCount = 5,     -- จำนวนด่านที่เลือกต่อรอบ (แก้ได้เพื่อ test)
         StageLength = 100,      -- ความยาวแต่ละด่าน
-        StartOffset = Vector3.new(0, 0, 150), -- ⭐ ห่างจาก Lobby
+        StartOffset = Vector3.new(-150, 0, 250),
+        BalancedRandom = {
+            MinPerDifficulty = 1, -- การันตีอย่างน้อย 1 ด่านจากแต่ละระดับ
+        },
     },
 
     -- Score Settings
@@ -414,14 +474,7 @@ local Config = {
         PerCoin = 1,            -- 💰 เงินที่ได้เมื่อเก็บเหรียญ
         FinishBonus = 25,       -- 💰 โบนัสเงินเมื่อเข้าเส้นชัย
         StartingAmount = 0,     -- 💰 เงินเริ่มต้นของผู้เล่นใหม่
-        -- 🎯 รางวัลเมื่อผ่านแต่ละด่าน (Stage Rewards)
-        StageRewards = {
-            3,  -- Stage 1: 3 currency
-            4,  -- Stage 2: 4 currency
-            4,  -- Stage 3: 4 currency
-            5,  -- Stage 4: 5 currency
-            6,  -- Stage 5: 6 currency
-        },
+        -- 🎯 Stage Rewards อยู่ใน StageInfo.luau (StageInfo.getStage(id).reward)
     },
 
     -- Push Item Settings
@@ -1548,7 +1601,8 @@ end)
 | Constant | Value | Location |
 |----------|-------|----------|
 | `STAGE_LENGTH` | `Config.Stages.StageLength` (100) | StageTemplates.luau |
-| `Config.Stages.Count` | 5 | Config.luau |
+| `Config.Stages.TotalCount` | 7 | Config.luau |
+| `Config.Stages.SelectionCount` | 5 | Config.luau |
 | `Config.Stages.StartOffset` | (-150, 0, 250) | Config.luau |
 | `Config.Lobby.SpawnPosition` | (0, 103, 0) | Config.luau |
 | `Config.KillZoneY` | -120 | Config.luau |
@@ -1617,7 +1671,7 @@ end)
 37. **Rankings**: คำนวณจาก stage + distance ใน stage
 
 ### 💰 Currency System
-38. **Stage Rewards**: `Config.Currency.StageRewards` (S1=3, S2=4, S3=4, S4=5, S5=6)
+38. **Stage Rewards**: อยู่ใน `StageInfo.luau` → `StageInfo.getStage(id).reward` (S1=3, S2=4, S3=4, S4=5, S5=6, S6=6, S7=7)
 39. **Currency Breakdown**: Stage Clear (5) + Stage Rewards + Finish Bonus (25)
 40. **CurrencyUI**: มุมบนซ้าย (ใต้ StageFrame)
 
@@ -1700,5 +1754,10 @@ end)
 95. **TweenHelper**: Animation ซ้ำๆ ให้ใช้ `src/client/TweenHelper.luau` (pop, fadeIn, fadeOut, slideIn, glowStroke, colorFlash)
 96. **UIFactory**: UI ใหม่ให้ใช้ `src/client/UI/UIFactory.luau` สำหรับ createPanel/createButton/createLabel แทนการสร้าง Instance ตรงๆ
 97. **humanoidRootPart**: ใช้ชื่อเต็มเสมอ (ไม่ใช่ `hrp`) ทั้ง project
+98. **StageInfo (single source of truth)**: Stage metadata ทั้งหมด (name, icon, difficulty, color, reward) อยู่ใน `StageInfo.luau` — ห้าม hardcode ใน UI
+99. **Balanced Random**: `MapManager:balancedRandomStages()` ใช้แทน `shuffleStages()` เมื่อเลือก RANDOM (การันตีทุกระดับความยาก)
+100. **TotalCount vs SelectionCount**: `Config.Stages.TotalCount` = pool size (7), `Config.Stages.SelectionCount` = per-run size (5)
+101. **Stage Tab Filter**: `switchTab(diff)` → `refreshStageButtons()` จัด `Visible`+`Position` บน buttonContainer; `show()` ต้องเรียก switchTab หลัง loop ที่ set Visible=true
+102. **Tab Selection Global**: selectedStages ไม่ reset เมื่อเปลี่ยน tab — selection ข้าม tab ได้, max = SelectionCount รวม
 98. **MapManager internal**: ฟังก์ชัน `_xxxInternal()` เป็น internal helpers สำหรับ global/per-match deduplication — ห้ามเรียกจากนอก MapManager
 99. **Config.Timing / Config.Map**: Magic numbers เวลาและ map ทั้งหมดอยู่ใน Config แล้ว — ไม่ hardcode ค่าใหม่

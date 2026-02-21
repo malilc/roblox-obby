@@ -1,5 +1,5 @@
 -- Stage Templates Generator
--- สร้าง 5 ด่านพื้นฐานสำหรับ Obby
+-- สร้าง 7 ด่านสำหรับ Obby (1 Easy + 2 Normal + 4 Hard)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
@@ -545,14 +545,233 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 	return stage
 end
 
+-- Stage 6: Lava Rise (Hard) - ปีนขึ้นก่อนพื้น lava ตามทัน
+function StageTemplates.createStage6(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage6_LavaRise"
+
+	-- Start Part
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition,
+		Color = Color3.fromRGB(255, 87, 34),
+	})
+	startPart.Parent = stage
+
+	-- Checkpoint
+	local checkpoint = createCheckpoint(startPosition + Vector3.new(0, 1.5, 0))
+	checkpoint.Parent = stage
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	-- Rising lava floor (kill part that moves upward)
+	local lavaFloor = createPart({
+		Name = "LavaFloor",
+		Size = Vector3.new(STAGE_LENGTH + 20, 2, 30),
+		Position = startPosition + Vector3.new(STAGE_LENGTH / 2, -15, 0),
+		Color = Color3.fromRGB(255, 60, 0),
+		Material = Enum.Material.Neon,
+	})
+	lavaFloor:SetAttribute("IsKillPart", true)
+	lavaFloor:SetAttribute("IsMoving", true)
+	lavaFloor:SetAttribute("MoveAxis", "Y")
+	lavaFloor:SetAttribute("MoveDistance", 35)
+	lavaFloor:SetAttribute("MoveSpeed", 1.5)
+	lavaFloor.Parent = obstacles
+
+	-- Lava glow effect
+	local lavaLight = Instance.new("PointLight")
+	lavaLight.Color = Color3.fromRGB(255, 100, 0)
+	lavaLight.Brightness = 3
+	lavaLight.Range = 25
+	lavaLight.Parent = lavaFloor
+
+	-- Platforms zigzagging upward (10 platforms)
+	local platformCount = 10
+	local spacing = STAGE_LENGTH / (platformCount + 1)
+
+	for i = 1, platformCount do
+		local zOffset = if i % 2 == 0 then 5 else -5
+		local yRise = i * 3 -- ค่อยๆ สูงขึ้น
+
+		local platform = createPart({
+			Name = "RisePlatform_" .. i,
+			Size = Vector3.new(5, 1, 5),
+			Position = startPosition + Vector3.new(spacing * i, yRise, zOffset),
+			Color = Color3.fromRGB(180, 80, 30),
+		})
+
+		-- บางแพลตฟอร์ม disappear (เร็วกว่า Stage 4)
+		if i % 3 == 0 then
+			platform:SetAttribute("IsDisappearing", true)
+			platform:SetAttribute("DisappearDelay", 1.0)
+			platform:SetAttribute("ReappearDelay", 2.5)
+			platform.Color = Color3.fromRGB(255, 140, 50) -- สีต่างจากปกติ
+		end
+
+		platform.Parent = obstacles
+	end
+
+	-- Item pickups บนเส้นทางเสี่ยง
+	local coin1 = createItemPickup(startPosition + Vector3.new(spacing * 2, 10, 6))
+	coin1.Parent = itemPickups
+
+	local coin2 = createItemPickup(startPosition + Vector3.new(spacing * 4, 16, -6))
+	coin2.Parent = itemPickups
+
+	local coin3 = createItemPickup(startPosition + Vector3.new(spacing * 6, 22, 4))
+	coin3.Parent = itemPickups
+
+	local coin4 = createItemPickup(startPosition + Vector3.new(spacing * 8, 28, -4))
+	coin4.Parent = itemPickups
+
+	local coin5 = createItemPickup(startPosition + Vector3.new(spacing * 10, 33, 0))
+	coin5.Parent = itemPickups
+
+	-- End Part (สูง เพราะปีนขึ้นไป)
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, platformCount * 3, 0),
+		Color = Color3.fromRGB(255, 87, 34),
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
+-- Stage 7: Narrow (Hard) - แพลตฟอร์มแคบมาก + spinner + moving
+function StageTemplates.createStage7(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage7_Narrow"
+
+	-- Start Part
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition,
+		Color = Color3.fromRGB(183, 28, 28),
+	})
+	startPart.Parent = stage
+
+	-- Checkpoint
+	local checkpoint = createCheckpoint(startPosition + Vector3.new(0, 1.5, 0))
+	checkpoint.Parent = stage
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	-- Section 1: Narrow static platforms (เล็กลงเรื่อยๆ)
+	local section1Count = 5
+	local section1Spacing = (STAGE_LENGTH * 0.4) / (section1Count + 1)
+
+	for i = 1, section1Count do
+		local platSize = 4 - (i - 1) * 0.4 -- 4 → 2.4 studs
+		local platform = createPart({
+			Name = "NarrowPlat_" .. i,
+			Size = Vector3.new(platSize, 1, platSize),
+			Position = startPosition + Vector3.new(section1Spacing * i, math.random(-3, 3), math.random(-3, 3)),
+			Color = Color3.fromRGB(200, 50, 50),
+		})
+		platform.Parent = obstacles
+	end
+
+	-- Section 2: Spinner gauntlet + narrow walkway
+	local section2Start = STAGE_LENGTH * 0.4
+	local narrowWalk = createPart({
+		Name = "NarrowWalk",
+		Size = Vector3.new(30, 2, 3), -- แคบมาก 3 studs
+		Position = startPosition + Vector3.new(section2Start + 15, 0, 0),
+		Color = Color3.fromRGB(100, 100, 120),
+	})
+	narrowWalk.Parent = obstacles
+
+	-- 3 spinners ข้าม narrow walkway
+	for i = 1, 3 do
+		local spinner = createPart({
+			Name = "NarrowSpinner_" .. i,
+			Size = Vector3.new(12, 1.5, 1.5),
+			Position = startPosition + Vector3.new(section2Start + 8 * i, 3, 0),
+			Color = Color3.fromRGB(255, 30, 30),
+		})
+		spinner:SetAttribute("IsSpinning", true)
+		spinner:SetAttribute("SpinSpeed", 3 + i * 0.7) -- 3.7, 4.4, 5.1
+		spinner:SetAttribute("IsKillPart", true)
+		spinner.Parent = obstacles
+	end
+
+	-- Section 3: Moving narrow platforms
+	local section3Start = STAGE_LENGTH * 0.7
+	local section3Count = 3
+	local section3Spacing = (STAGE_LENGTH * 0.3) / (section3Count + 1)
+
+	for i = 1, section3Count do
+		local platform = createPart({
+			Name = "MovingNarrow_" .. i,
+			Size = Vector3.new(3, 1, 3),
+			Position = startPosition + Vector3.new(section3Start + section3Spacing * i, 0, 0),
+			Color = Color3.fromRGB(255, 80, 80),
+		})
+		platform:SetAttribute("IsMoving", true)
+		platform:SetAttribute("MoveAxis", "Z")
+		platform:SetAttribute("MoveDistance", 6)
+		platform:SetAttribute("MoveSpeed", 3 + i)
+		platform.Parent = obstacles
+	end
+
+	-- Item pickups
+	local coin1 = createItemPickup(startPosition + Vector3.new(section1Spacing * 2, 5, 4))
+	coin1.Parent = itemPickups
+
+	local coin2 = createItemPickup(startPosition + Vector3.new(section1Spacing * 4, 6, -3))
+	coin2.Parent = itemPickups
+
+	local coin3 = createItemPickup(startPosition + Vector3.new(section2Start + 10, 8, 3))
+	coin3.Parent = itemPickups
+
+	local coin4 = createItemPickup(startPosition + Vector3.new(section2Start + 25, 7, -3))
+	coin4.Parent = itemPickups
+
+	local coin5 = createItemPickup(startPosition + Vector3.new(section3Start + section3Spacing, 5, 5))
+	coin5.Parent = itemPickups
+
+	local coin6 = createItemPickup(startPosition + Vector3.new(section3Start + section3Spacing * 3, 6, -5))
+	coin6.Parent = itemPickups
+
+	-- End Part
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
+		Color = Color3.fromRGB(183, 28, 28),
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
 -- Get all stage creators
 function StageTemplates.getStageCreators(): {(Vector3) -> Model}
 	return {
-		StageTemplates.createStage1,
-		StageTemplates.createStage2,
-		StageTemplates.createStage3,
-		StageTemplates.createStage4,
-		StageTemplates.createStage5,
+		StageTemplates.createStage1,  -- Easy: Jump
+		StageTemplates.createStage2,  -- Normal: Moving
+		StageTemplates.createStage3,  -- Normal: Spin
+		StageTemplates.createStage4,  -- Hard: Disappear
+		StageTemplates.createStage5,  -- Hard: Combo
+		StageTemplates.createStage6,  -- Hard: Lava Rise
+		StageTemplates.createStage7,  -- Hard: Narrow
 	}
 end
 

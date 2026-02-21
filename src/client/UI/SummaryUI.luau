@@ -4,19 +4,13 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local SummaryUI = {}
 SummaryUI.__index = SummaryUI
 
--- Stage names for display
-local STAGE_NAMES = {
-	"Easy",
-	"Moving",
-	"Spinning",
-	"Disappearing",
-	"Hard",
-}
+-- Stage data from StageInfo (single source of truth)
 
 function SummaryUI.new(parent: ScreenGui)
 	local self = setmetatable({}, SummaryUI)
@@ -418,7 +412,9 @@ function SummaryUI:createCurrencyRow(key: string, labelText: string, index: numb
 end
 
 function SummaryUI:createStageTag(stageNum: number, index: number): Frame
-	local stageReward = Config.Currency.StageRewards[stageNum] or 0
+	local stageData = StageInfo.getStage(stageNum)
+	local stageReward = stageData and stageData.reward or 0
+	local diffInfo = stageData and StageInfo.DifficultyInfo[stageData.difficulty]
 
 	local tag = Instance.new("Frame")
 	tag.Name = "Stage" .. stageNum
@@ -431,13 +427,29 @@ function SummaryUI:createStageTag(stageNum: number, index: number): Frame
 	tagCorner.CornerRadius = Theme.CORNER_SM
 	tagCorner.Parent = tag
 
+	-- Difficulty color stripe (top border)
+	if diffInfo then
+		local stripe = Instance.new("Frame")
+		stripe.Name = "DiffStripe"
+		stripe.Size = UDim2.new(1, 0, 0, 3)
+		stripe.Position = UDim2.new(0, 0, 0, 0)
+		stripe.BackgroundColor3 = diffInfo.color
+		stripe.BorderSizePixel = 0
+		stripe.ZIndex = 54
+		stripe.Parent = tag
+
+		local stripeCorner = Instance.new("UICorner")
+		stripeCorner.CornerRadius = UDim.new(0, 2)
+		stripeCorner.Parent = stripe
+	end
+
 	-- Stage number
 	local stageLabel = Instance.new("TextLabel")
 	stageLabel.Size = UDim2.new(1, 0, 0, 16)
-	stageLabel.Position = UDim2.new(0, 0, 0, 1)
+	stageLabel.Position = UDim2.new(0, 0, 0, 3)
 	stageLabel.BackgroundTransparency = 1
 	stageLabel.Text = "S" .. stageNum
-	stageLabel.TextColor3 = Theme.ACCENT_CYAN
+	stageLabel.TextColor3 = diffInfo and diffInfo.color or Theme.ACCENT_CYAN
 	stageLabel.TextSize = 11
 	stageLabel.Font = Enum.Font.GothamBold
 	stageLabel.ZIndex = 54
@@ -446,7 +458,7 @@ function SummaryUI:createStageTag(stageNum: number, index: number): Frame
 	-- Stage reward
 	local coinLabel = Instance.new("TextLabel")
 	coinLabel.Size = UDim2.new(1, 0, 0, 14)
-	coinLabel.Position = UDim2.new(0, 0, 0, 16)
+	coinLabel.Position = UDim2.new(0, 0, 0, 17)
 	coinLabel.BackgroundTransparency = 1
 	coinLabel.Text = "💰+" .. stageReward
 	coinLabel.TextColor3 = Theme.MEDAL_GOLD
