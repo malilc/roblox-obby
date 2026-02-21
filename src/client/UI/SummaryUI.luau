@@ -62,9 +62,21 @@ function SummaryUI:createUI()
 	local borderStroke = Instance.new("UIStroke")
 	borderStroke.Color = Theme.PRIMARY
 	borderStroke.Thickness = Theme.STROKE_BOLD
-	borderStroke.Transparency = 0.3
+	borderStroke.Transparency = 0.2
 	borderStroke.Parent = mainFrame
 	self.borderStroke = borderStroke
+
+	-- Drop shadow
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(1, 6, 1, 6)
+	shadow.Position = UDim2.new(0, -3, 0, 4)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.6
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = mainFrame.ZIndex - 1
+	shadow.Parent = mainFrame
+	Theme.applyCorner(shadow, "lg")
 
 	-- Title
 	local titleLabel = Instance.new("TextLabel")
@@ -82,6 +94,12 @@ function SummaryUI:createUI()
 	titleLabel.Parent = mainFrame
 	self.titleLabel = titleLabel
 
+	local titleUIStroke = Instance.new("UIStroke")
+	titleUIStroke.Color = Theme.HUD_SCORE_END
+	titleUIStroke.Thickness = 1.5
+	titleUIStroke.Transparency = 0.4
+	titleUIStroke.Parent = titleLabel
+
 	-- Stages Container (แสดง Stage ที่เล่น)
 	local stagesContainer = Instance.new("Frame")
 	stagesContainer.Name = "StagesContainer"
@@ -97,6 +115,14 @@ function SummaryUI:createUI()
 	local stagesCorner = Instance.new("UICorner")
 	stagesCorner.CornerRadius = Theme.CORNER_SM
 	stagesCorner.Parent = stagesContainer
+
+	local stagesGradient = Instance.new("UIGradient")
+	stagesGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+	})
+	stagesGradient.Rotation = 90
+	stagesGradient.Parent = stagesContainer
 
 	-- Stages header
 	local stagesHeader = Instance.new("TextLabel")
@@ -143,6 +169,14 @@ function SummaryUI:createUI()
 	statsCorner.CornerRadius = Theme.CORNER_SM
 	statsCorner.Parent = statsContainer
 
+	local statsGradient = Instance.new("UIGradient")
+	statsGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+	})
+	statsGradient.Rotation = 90
+	statsGradient.Parent = statsContainer
+
 	-- Stats header
 	local statsHeader = Instance.new("TextLabel")
 	statsHeader.Size = UDim2.new(1, 0, 0, 20)
@@ -182,6 +216,14 @@ function SummaryUI:createUI()
 	local currencyCorner = Instance.new("UICorner")
 	currencyCorner.CornerRadius = Theme.CORNER_SM
 	currencyCorner.Parent = currencyContainer
+
+	local currencyGradient = Instance.new("UIGradient")
+	currencyGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+	})
+	currencyGradient.Rotation = 90
+	currencyGradient.Parent = currencyContainer
 
 	-- Currency header
 	local currencyHeader = Instance.new("TextLabel")
@@ -282,8 +324,8 @@ function SummaryUI:createUI()
 	-- OK Button gradient
 	local okGradient = Instance.new("UIGradient")
 	okGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 220, 130)),
-		ColorSequenceKeypoint.new(1, Theme.SUCCESS)
+		ColorSequenceKeypoint.new(0, Theme.SUCCESS),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
 	})
 	okGradient.Rotation = 90
 	okGradient.Parent = okButton
@@ -292,7 +334,7 @@ function SummaryUI:createUI()
 	local okStroke = Instance.new("UIStroke")
 	okStroke.Color = Theme.SUCCESS
 	okStroke.Thickness = Theme.STROKE_MED
-	okStroke.Transparency = 0.5
+	okStroke.Transparency = 0.3
 	okStroke.Parent = okButton
 
 	-- Button click

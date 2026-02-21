@@ -52,7 +52,7 @@ function ItemTestingUI:createUI()
 	self.toggleButton = toggleButton
 	
 	local toggleCorner = Instance.new("UICorner")
-	toggleCorner.CornerRadius = UDim.new(0, 8)
+	toggleCorner.CornerRadius = Theme.CORNER_SM
 	toggleCorner.Parent = toggleButton
 	
 	-- Main panel
@@ -67,12 +67,22 @@ function ItemTestingUI:createUI()
 	self.mainFrame = mainFrame
 	
 	local mainCorner = Instance.new("UICorner")
-	mainCorner.CornerRadius = UDim.new(0, 12)
+	mainCorner.CornerRadius = Theme.CORNER_MD
 	mainCorner.Parent = mainFrame
-	
+
+	-- Gradient background
+	local mainGradient = Instance.new("UIGradient")
+	mainGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+	})
+	mainGradient.Rotation = 135
+	mainGradient.Parent = mainFrame
+
 	local mainStroke = Instance.new("UIStroke")
 	mainStroke.Color = Theme.DANGER
-	mainStroke.Thickness = 2
+	mainStroke.Thickness = Theme.STROKE_MED
+	mainStroke.Transparency = 0.2
 	mainStroke.Parent = mainFrame
 	
 	-- Title
@@ -164,7 +174,7 @@ function ItemTestingUI:createItemButtons()
 	separator.Size = UDim2.new(1, 0, 0, 25)
 	separator.BackgroundTransparency = 1
 	separator.Text = "── Tools ──"
-	separator.TextColor3 = Color3.fromRGB(255, 200, 100)
+	separator.TextColor3 = Theme.PRIMARY
 	separator.TextSize = 14
 	separator.Font = Enum.Font.GothamBold
 	separator.LayoutOrder = layoutOrder + 50
@@ -183,7 +193,7 @@ function ItemTestingUI:createItemButtons()
 	spawnDummyButton.Parent = self.scrollFrame
 	
 	local spawnCorner = Instance.new("UICorner")
-	spawnCorner.CornerRadius = UDim.new(0, 8)
+	spawnCorner.CornerRadius = Theme.CORNER_SM
 	spawnCorner.Parent = spawnDummyButton
 	
 	spawnDummyButton.MouseButton1Click:Connect(function()
@@ -204,7 +214,7 @@ function ItemTestingUI:createItemButtons()
 	removeDummyButton.Parent = self.scrollFrame
 	
 	local removeCorner = Instance.new("UICorner")
-	removeCorner.CornerRadius = UDim.new(0, 8)
+	removeCorner.CornerRadius = Theme.CORNER_SM
 	removeCorner.Parent = removeDummyButton
 	
 	removeDummyButton.MouseButton1Click:Connect(function()
@@ -225,7 +235,7 @@ function ItemTestingUI:createItemButtons()
 	clearButton.Parent = self.scrollFrame
 	
 	local clearCorner = Instance.new("UICorner")
-	clearCorner.CornerRadius = UDim.new(0, 8)
+	clearCorner.CornerRadius = Theme.CORNER_SM
 	clearCorner.Parent = clearButton
 	
 	clearButton.MouseButton1Click:Connect(function()
@@ -238,7 +248,7 @@ function ItemTestingUI:createItemButtons()
 	dlSeparator.Size = UDim2.new(1, 0, 0, 25)
 	dlSeparator.BackgroundTransparency = 1
 	dlSeparator.Text = "── Daily Login ──"
-	dlSeparator.TextColor3 = Color3.fromRGB(255, 200, 40)
+	dlSeparator.TextColor3 = Theme.PRIMARY
 	dlSeparator.TextSize = 14
 	dlSeparator.Font = Enum.Font.GothamBold
 	dlSeparator.LayoutOrder = layoutOrder + 101
@@ -247,21 +257,21 @@ function ItemTestingUI:createItemButtons()
 	local dailyLoginBtn = Instance.new("TextButton")
 	dailyLoginBtn.Name = "ResetDailyLoginBtn"
 	dailyLoginBtn.Size = UDim2.new(1, 0, 0, 45)
-	dailyLoginBtn.BackgroundColor3 = Color3.fromRGB(35, 22, 65)
-	dailyLoginBtn.Text = "🎁 Reset Daily Login"
-	dailyLoginBtn.TextColor3 = Color3.fromRGB(255, 200, 40)
+	dailyLoginBtn.BackgroundColor3 = Theme.BG_BASE
+	dailyLoginBtn.Text = "\u{1F381} Reset Daily Login"
+	dailyLoginBtn.TextColor3 = Theme.PRIMARY
 	dailyLoginBtn.TextSize = 14
 	dailyLoginBtn.Font = Enum.Font.GothamBold
 	dailyLoginBtn.LayoutOrder = layoutOrder + 102
 	dailyLoginBtn.Parent = self.scrollFrame
 
 	local dlCorner = Instance.new("UICorner")
-	dlCorner.CornerRadius = UDim.new(0, 8)
+	dlCorner.CornerRadius = Theme.CORNER_SM
 	dlCorner.Parent = dailyLoginBtn
 
 	local dlStroke = Instance.new("UIStroke")
-	dlStroke.Color = Color3.fromRGB(255, 200, 40)
-	dlStroke.Thickness = 1.5
+	dlStroke.Color = Theme.PRIMARY
+	dlStroke.Thickness = Theme.STROKE_THIN
 	dlStroke.Parent = dailyLoginBtn
 
 	dailyLoginBtn.MouseButton1Click:Connect(function()
@@ -292,7 +302,7 @@ function ItemTestingUI:createItemButton(itemDef, layoutOrder: number): TextButto
 	button.Parent = self.scrollFrame
 	
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = button
 	
 	local stroke = Instance.new("UIStroke")
@@ -318,7 +328,7 @@ function ItemTestingUI:createItemButton(itemDef, layoutOrder: number): TextButto
 	nameLabel.Position = UDim2.new(0, 50, 0, 5)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = itemDef.name
-	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.TextColor3 = Theme.TEXT_PRIMARY
 	nameLabel.TextSize = 14
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -331,7 +341,7 @@ function ItemTestingUI:createItemButton(itemDef, layoutOrder: number): TextButto
 	descLabel.Position = UDim2.new(0, 50, 0, 25)
 	descLabel.BackgroundTransparency = 1
 	descLabel.Text = itemDef.description
-	descLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+	descLabel.TextColor3 = Theme.TEXT_MUTED
 	descLabel.TextSize = 10
 	descLabel.Font = Enum.Font.Gotham
 	descLabel.TextXAlignment = Enum.TextXAlignment.Left

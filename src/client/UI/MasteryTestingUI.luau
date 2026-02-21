@@ -43,12 +43,22 @@ function MasteryTestingUI:createUI()
 	self.mainFrame = mainFrame
 	
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
+	corner.CornerRadius = Theme.CORNER_MD
 	corner.Parent = mainFrame
-	
+
+	-- Gradient background
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+	})
+	gradient.Rotation = 135
+	gradient.Parent = mainFrame
+
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.WARNING
-	stroke.Thickness = 2
+	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.2
 	stroke.Parent = mainFrame
 	
 	-- Title
@@ -78,7 +88,7 @@ function MasteryTestingUI:createUI()
 	closeBtn.Parent = mainFrame
 	
 	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0, 6)
+	closeCorner.CornerRadius = Theme.CORNER_SM
 	closeCorner.Parent = closeBtn
 	
 	closeBtn.MouseButton1Click:Connect(function()
@@ -132,7 +142,7 @@ function MasteryTestingUI:createUI()
 	setAllBtn.Parent = buttonsFrame
 	
 	local setAllCorner = Instance.new("UICorner")
-	setAllCorner.CornerRadius = UDim.new(0, 6)
+	setAllCorner.CornerRadius = Theme.CORNER_SM
 	setAllCorner.Parent = setAllBtn
 	
 	setAllBtn.MouseButton1Click:Connect(function()
@@ -153,7 +163,7 @@ function MasteryTestingUI:createUI()
 	resetAllBtn.Parent = buttonsFrame
 	
 	local resetAllCorner = Instance.new("UICorner")
-	resetAllCorner.CornerRadius = UDim.new(0, 6)
+	resetAllCorner.CornerRadius = Theme.CORNER_SM
 	resetAllCorner.Parent = resetAllBtn
 	
 	resetAllBtn.MouseButton1Click:Connect(function()
@@ -172,7 +182,7 @@ function MasteryTestingUI:createClassEntry(parent: Frame, classId: string, class
 	entry.Parent = parent
 	
 	local entryCorner = Instance.new("UICorner")
-	entryCorner.CornerRadius = UDim.new(0, 6)
+	entryCorner.CornerRadius = Theme.CORNER_SM
 	entryCorner.Parent = entry
 	
 	-- Class color indicator

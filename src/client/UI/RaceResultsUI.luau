@@ -38,14 +38,36 @@ function RaceResultsUI:createUI()
 	self.container = container
 
 	local containerCorner = Instance.new("UICorner")
-	containerCorner.CornerRadius = Theme.CORNER_MD
+	containerCorner.CornerRadius = Theme.CORNER_LG
 	containerCorner.Parent = container
+
+	-- Gradient background
+	local containerGradient = Instance.new("UIGradient")
+	containerGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+	})
+	containerGradient.Rotation = 135
+	containerGradient.Parent = container
 
 	-- Border/Glow
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.MEDAL_GOLD
 	stroke.Thickness = Theme.STROKE_BOLD
+	stroke.Transparency = 0.2
 	stroke.Parent = container
+
+	-- Drop shadow
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(1, 6, 1, 6)
+	shadow.Position = UDim2.new(0, -3, 0, 4)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.6
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = container.ZIndex - 1
+	shadow.Parent = container
+	Theme.applyCorner(shadow, "lg")
 
 	-- Header background
 	local headerBg = Instance.new("Frame")
@@ -57,8 +79,17 @@ function RaceResultsUI:createUI()
 	headerBg.Parent = container
 
 	local headerCorner = Instance.new("UICorner")
-	headerCorner.CornerRadius = Theme.CORNER_MD
+	headerCorner.CornerRadius = Theme.CORNER_LG
 	headerCorner.Parent = headerBg
+
+	-- Header gradient
+	local headerGradient = Instance.new("UIGradient")
+	headerGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.MEDAL_GOLD),
+		ColorSequenceKeypoint.new(1, Theme.PRIMARY_DARK)
+	})
+	headerGradient.Rotation = 90
+	headerGradient.Parent = headerBg
 
 	-- Title
 	local title = Instance.new("TextLabel")
@@ -72,6 +103,12 @@ function RaceResultsUI:createUI()
 	title.Font = Enum.Font.GothamBlack
 	title.Parent = container
 	self.titleLabel = title
+
+	local titleStroke = Instance.new("UIStroke")
+	titleStroke.Color = Theme.HUD_SCORE_END
+	titleStroke.Thickness = 1.5
+	titleStroke.Transparency = 0.4
+	titleStroke.Parent = title
 
 	-- Subtitle (reason)
 	local subtitle = Instance.new("TextLabel")
@@ -130,8 +167,24 @@ function RaceResultsUI:createUI()
 	closeBtn.Parent = container
 
 	local closeBtnCorner = Instance.new("UICorner")
-	closeBtnCorner.CornerRadius = Theme.CORNER_SM
+	closeBtnCorner.CornerRadius = Theme.CORNER_MD
 	closeBtnCorner.Parent = closeBtn
+
+	-- Close button gradient
+	local closeBtnGradient = Instance.new("UIGradient")
+	closeBtnGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.SUCCESS),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+	})
+	closeBtnGradient.Rotation = 90
+	closeBtnGradient.Parent = closeBtn
+
+	-- Close button glow stroke
+	local closeBtnStroke = Instance.new("UIStroke")
+	closeBtnStroke.Color = Theme.SUCCESS
+	closeBtnStroke.Thickness = Theme.STROKE_THIN
+	closeBtnStroke.Transparency = 0.3
+	closeBtnStroke.Parent = closeBtn
 
 	closeBtn.MouseButton1Click:Connect(function()
 		self:hide()
@@ -219,6 +272,19 @@ function RaceResultsUI:createResultEntry(index: number, result: {
 	local entryCorner = Instance.new("UICorner")
 	entryCorner.CornerRadius = Theme.CORNER_SM
 	entryCorner.Parent = entry
+
+	-- Entry gradient based on medal
+	local entryGradient = Instance.new("UIGradient")
+	local medalBgColor = if result.position == 1 then Theme.MEDAL_GOLD
+		elseif result.position == 2 then Theme.MEDAL_SILVER
+		elseif result.position == 3 then Theme.MEDAL_BRONZE
+		else Theme.BG_ELEVATED
+	entryGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, medalBgColor),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+	})
+	entryGradient.Rotation = 0
+	entryGradient.Parent = entry
 
 	-- Position medal/number
 	local position = Instance.new("TextLabel")

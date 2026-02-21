@@ -1,4 +1,4 @@
--- ScoreUI: แสดงคะแนนแบบ Modern Style (Enhanced Version)
+-- ScoreUI: แสดงคะแนนแบบ Colorful Youth Style (Vivid Gradient)
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -11,6 +11,23 @@ local LocalPlayer = Players.LocalPlayer
 
 local ScoreUI = {}
 ScoreUI.__index = ScoreUI
+
+-- Helper: create drop shadow under a pill
+local function createDropShadow(pill: Frame)
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(1, 4, 1, 4)
+	shadow.Position = UDim2.new(0, -2, 0, 3)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.7
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = pill.ZIndex - 1
+	shadow.Parent = pill
+
+	local shadowCorner = Instance.new("UICorner")
+	shadowCorner.CornerRadius = Theme.CORNER_LG
+	shadowCorner.Parent = shadow
+end
 
 function ScoreUI.new(parent: ScreenGui)
 	local self = setmetatable({}, ScoreUI)
@@ -28,28 +45,32 @@ function ScoreUI.new(parent: ScreenGui)
 end
 
 function ScoreUI:createUI()
-	-- === SCORE FRAME (มุมบนซ้าย) - Modern Design ===
+	-- === SCORE FRAME (มุมบนซ้าย) - Vivid Cyan Gradient ===
 	local scoreFrame = UIFactory.createPanel(self.parent, {
 		name = "ScoreFrame",
-		size = UDim2.new(0, 120, 0, 44),
+		size = UDim2.new(0, 130, 0, 44),
 		position = UDim2.new(0, 10, 0, 10),
-		bgColor = Theme.BG_BASE,
-		bgTransparency = 0.3,
+		bgColor = Theme.HUD_SCORE_START,
+		bgTransparency = 0.15,
 		cornerSize = "lg",
-		strokeColor = Theme.ACCENT_CYAN,
-		strokeTransparency = 0.5,
+		strokeColor = Theme.HUD_GLOW_CYAN,
+		strokeWeight = "med",
+		strokeTransparency = 0.2,
 	})
 	self.scoreFrame = scoreFrame
 	self.frameStroke = scoreFrame:FindFirstChildOfClass("UIStroke")
 
-	-- Gradient background
+	-- Vivid cyan→blue gradient
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.HUD_SCORE_START),
+		ColorSequenceKeypoint.new(1, Theme.HUD_SCORE_END)
 	})
-	gradient.Rotation = 45
+	gradient.Rotation = 135
 	gradient.Parent = scoreFrame
+
+	-- Drop shadow
+	createDropShadow(scoreFrame)
 
 	-- Score Icon Container
 	local iconContainer = Instance.new("Frame")
@@ -60,7 +81,7 @@ function ScoreUI:createUI()
 	iconContainer.Parent = scoreFrame
 	self.iconContainer = iconContainer
 
-	-- Score Icon Background (star)
+	-- Score Icon Background (star circle)
 	local scoreIcon = Instance.new("Frame")
 	scoreIcon.Name = "ScoreIcon"
 	scoreIcon.Size = UDim2.new(1, 0, 1, 0)
@@ -74,12 +95,12 @@ function ScoreUI:createUI()
 	iconCorner.CornerRadius = Theme.CORNER_FULL
 	iconCorner.Parent = scoreIcon
 
-	-- Icon gradient (3D effect)
+	-- Icon gradient (vivid 3D)
 	local iconGradient = Instance.new("UIGradient")
 	iconGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 220, 255)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 250, 255)),
 		ColorSequenceKeypoint.new(0.5, Theme.ACCENT_CYAN),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 120, 200))
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 100, 220))
 	})
 	iconGradient.Rotation = 135
 	iconGradient.Parent = scoreIcon
@@ -94,16 +115,16 @@ function ScoreUI:createUI()
 	starSymbol.TextSize = 20
 	starSymbol.Parent = scoreIcon
 
-	-- Icon stroke
+	-- Icon stroke (vivid glow)
 	local iconStroke = Instance.new("UIStroke")
-	iconStroke.Color = Color3.fromRGB(50, 100, 180)
+	iconStroke.Color = Color3.fromRGB(30, 80, 200)
 	iconStroke.Thickness = Theme.STROKE_MED
 	iconStroke.Parent = scoreIcon
 
 	-- Score Number
 	local scoreLabel = Instance.new("TextLabel")
 	scoreLabel.Name = "ScoreLabel"
-	scoreLabel.Size = UDim2.new(1, -50, 1, 0)
+	scoreLabel.Size = UDim2.new(1, -48, 1, 0)
 	scoreLabel.Position = UDim2.new(0, 44, 0, 0)
 	scoreLabel.BackgroundTransparency = 1
 	scoreLabel.Text = "0"
@@ -114,43 +135,46 @@ function ScoreUI:createUI()
 	scoreLabel.Parent = scoreFrame
 	self.roundScoreLabel = scoreLabel
 
-	-- Text stroke for better visibility
+	-- Bold text stroke for visibility
 	local textStroke = Instance.new("UIStroke")
-	textStroke.Color = Color3.fromRGB(30, 60, 100)
-	textStroke.Thickness = Theme.STROKE_THIN
-	textStroke.Transparency = 0.5
+	textStroke.Color = Color3.fromRGB(15, 50, 150)
+	textStroke.Thickness = 2
+	textStroke.Transparency = 0.3
 	textStroke.Parent = scoreLabel
 
-	-- === HIGH SCORE FRAME (ข้าง Score) ===
+	-- === HIGH SCORE FRAME (ข้าง Score) - Purple→Pink Gradient ===
 	local highScoreFrame = Instance.new("Frame")
 	highScoreFrame.Name = "HighScoreFrame"
 	highScoreFrame.Size = UDim2.new(0, 100, 0, 32)
-	highScoreFrame.Position = UDim2.new(0, 135, 0, 16)
-	highScoreFrame.BackgroundColor3 = Theme.BG_OVERLAY
-	highScoreFrame.BackgroundTransparency = 0.4
+	highScoreFrame.Position = UDim2.new(0, 145, 0, 16)
+	highScoreFrame.BackgroundColor3 = Theme.ACCENT_PINK
+	highScoreFrame.BackgroundTransparency = 0.15
 	highScoreFrame.BorderSizePixel = 0
 	highScoreFrame.Parent = self.parent
 	self.highScoreFrame = highScoreFrame
 
 	local hsCorner = Instance.new("UICorner")
-	hsCorner.CornerRadius = Theme.CORNER_MD
+	hsCorner.CornerRadius = Theme.CORNER_LG
 	hsCorner.Parent = highScoreFrame
 
-	-- High Score Gradient
+	-- Purple→Pink Gradient
 	local hsGradient = Instance.new("UIGradient")
 	hsGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_OVERLAY)
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 80, 200)),
+		ColorSequenceKeypoint.new(1, Theme.ACCENT_PINK)
 	})
-	hsGradient.Rotation = 45
+	hsGradient.Rotation = 135
 	hsGradient.Parent = highScoreFrame
 
-	-- High Score Stroke
+	-- High Score Glow Stroke
 	local hsStroke = Instance.new("UIStroke")
-	hsStroke.Color = Theme.PRIMARY
-	hsStroke.Thickness = Theme.STROKE_THIN
-	hsStroke.Transparency = 0.6
+	hsStroke.Color = Theme.ACCENT_PINK
+	hsStroke.Thickness = Theme.STROKE_MED
+	hsStroke.Transparency = 0.3
 	hsStroke.Parent = highScoreFrame
+
+	-- Drop shadow
+	createDropShadow(highScoreFrame)
 
 	-- Trophy Icon
 	local trophyIcon = Instance.new("TextLabel")
@@ -169,12 +193,19 @@ function ScoreUI:createUI()
 	highScoreLabel.Position = UDim2.new(0, 32, 0, 0)
 	highScoreLabel.BackgroundTransparency = 1
 	highScoreLabel.Text = "0"
-	highScoreLabel.TextColor3 = Theme.PRIMARY
+	highScoreLabel.TextColor3 = Theme.TEXT_PRIMARY
 	highScoreLabel.TextSize = 16
 	highScoreLabel.Font = Enum.Font.GothamBold
 	highScoreLabel.TextXAlignment = Enum.TextXAlignment.Left
 	highScoreLabel.Parent = highScoreFrame
 	self.highScoreLabel = highScoreLabel
+
+	-- HS text stroke
+	local hsTextStroke = Instance.new("UIStroke")
+	hsTextStroke.Color = Color3.fromRGB(80, 30, 120)
+	hsTextStroke.Thickness = 1.5
+	hsTextStroke.Transparency = 0.3
+	hsTextStroke.Parent = highScoreLabel
 
 	-- === STAGE PROGRESS (ใต้ Score) ===
 	local stageFrame = Instance.new("Frame")
@@ -182,13 +213,13 @@ function ScoreUI:createUI()
 	stageFrame.Size = UDim2.new(0, 160, 0, 28)
 	stageFrame.Position = UDim2.new(0, 10, 0, 58)
 	stageFrame.BackgroundColor3 = Theme.BG_OVERLAY
-	stageFrame.BackgroundTransparency = 0.4
+	stageFrame.BackgroundTransparency = 0.3
 	stageFrame.BorderSizePixel = 0
 	stageFrame.Parent = self.parent
 	self.stageFrame = stageFrame
 
 	local stageCorner = Instance.new("UICorner")
-	stageCorner.CornerRadius = Theme.CORNER_MD
+	stageCorner.CornerRadius = Theme.CORNER_LG
 	stageCorner.Parent = stageFrame
 
 	-- Stage Gradient
@@ -200,11 +231,11 @@ function ScoreUI:createUI()
 	stageGradient.Rotation = 45
 	stageGradient.Parent = stageFrame
 
-	-- Stage Stroke
+	-- Stage Glow Stroke
 	local stageStroke = Instance.new("UIStroke")
 	stageStroke.Color = Theme.SUCCESS
-	stageStroke.Thickness = Theme.STROKE_THIN
-	stageStroke.Transparency = 0.6
+	stageStroke.Thickness = Theme.STROKE_MED
+	stageStroke.Transparency = 0.4
 	stageStroke.Parent = stageFrame
 
 	-- Stage Icon
@@ -220,6 +251,9 @@ function ScoreUI:createUI()
 	-- Hide by default
 	stageFrame.Visible = false
 
+	-- Drop shadow
+	createDropShadow(stageFrame)
+
 	-- Stage Progress Bar Background
 	local progressBg = Instance.new("Frame")
 	progressBg.Name = "ProgressBg"
@@ -233,7 +267,7 @@ function ScoreUI:createUI()
 	progressBgCorner.CornerRadius = Theme.CORNER_SM
 	progressBgCorner.Parent = progressBg
 
-	-- Stage Progress Bar Fill
+	-- Stage Progress Bar Fill (vivid green→lime gradient)
 	local progressFill = Instance.new("Frame")
 	progressFill.Name = "ProgressFill"
 	progressFill.Size = UDim2.new(0, 0, 1, 0)
@@ -247,10 +281,10 @@ function ScoreUI:createUI()
 	progressFillCorner.CornerRadius = Theme.CORNER_SM
 	progressFillCorner.Parent = progressFill
 
-	-- Progress Fill Gradient
+	-- Vivid green→lime gradient
 	local progressGradient = Instance.new("UIGradient")
 	progressGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 255, 180)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 255, 150)),
 		ColorSequenceKeypoint.new(1, Theme.SUCCESS)
 	})
 	progressGradient.Rotation = 0
@@ -270,42 +304,54 @@ function ScoreUI:createUI()
 	stageLabel.Parent = stageFrame
 	self.stageLabel = stageLabel
 
-	-- === MATCH TIMER (บนกลางหน้าจอ) ===
+	-- === MATCH TIMER (บนกลางหน้าจอ) - Gradient ===
 	local timerFrame = Instance.new("Frame")
 	timerFrame.Name = "TimerFrame"
 	timerFrame.Size = UDim2.new(0, 120, 0, 40)
 	timerFrame.Position = UDim2.new(0.5, -60, 0, 10)
 	timerFrame.BackgroundColor3 = Theme.BG_BASE
-	timerFrame.BackgroundTransparency = 0.3
+	timerFrame.BackgroundTransparency = 0.2
 	timerFrame.BorderSizePixel = 0
 	timerFrame.Visible = false
 	timerFrame.Parent = self.parent
 	self.timerFrame = timerFrame
 
 	local timerCorner = Instance.new("UICorner")
-	timerCorner.CornerRadius = Theme.CORNER_MD
+	timerCorner.CornerRadius = Theme.CORNER_LG
 	timerCorner.Parent = timerFrame
 
+	-- Timer gradient
+	local timerGradient = Instance.new("UIGradient")
+	timerGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 30, 100))
+	})
+	timerGradient.Rotation = 135
+	timerGradient.Parent = timerFrame
+
 	local timerStroke = Instance.new("UIStroke")
-	timerStroke.Color = Theme.ACCENT_CYAN
-	timerStroke.Thickness = Theme.STROKE_THIN
-	timerStroke.Transparency = 0.4
+	timerStroke.Color = Theme.HUD_GLOW_CYAN
+	timerStroke.Thickness = Theme.STROKE_MED
+	timerStroke.Transparency = 0.3
 	timerStroke.Parent = timerFrame
 	self.timerStroke = timerStroke
 
+	-- Drop shadow
+	createDropShadow(timerFrame)
+
 	local timerIcon = Instance.new("TextLabel")
 	timerIcon.Name = "TimerIcon"
-	timerIcon.Size = UDim2.new(0, 24, 1, 0)
+	timerIcon.Size = UDim2.new(0, 28, 1, 0)
 	timerIcon.Position = UDim2.new(0, 4, 0, 0)
 	timerIcon.BackgroundTransparency = 1
 	timerIcon.Text = "⏱"
-	timerIcon.TextSize = 18
+	timerIcon.TextSize = 20
 	timerIcon.Parent = timerFrame
 
 	local timerLabel = Instance.new("TextLabel")
 	timerLabel.Name = "TimerLabel"
-	timerLabel.Size = UDim2.new(1, -32, 1, 0)
-	timerLabel.Position = UDim2.new(0, 28, 0, 0)
+	timerLabel.Size = UDim2.new(1, -36, 1, 0)
+	timerLabel.Position = UDim2.new(0, 32, 0, 0)
 	timerLabel.BackgroundTransparency = 1
 	timerLabel.Text = "15:00"
 	timerLabel.TextColor3 = Theme.TEXT_PRIMARY
@@ -314,6 +360,13 @@ function ScoreUI:createUI()
 	timerLabel.TextXAlignment = Enum.TextXAlignment.Center
 	timerLabel.Parent = timerFrame
 	self.timerLabel = timerLabel
+
+	-- Timer text stroke
+	local timerTextStroke = Instance.new("UIStroke")
+	timerTextStroke.Color = Color3.fromRGB(20, 10, 60)
+	timerTextStroke.Thickness = 1.5
+	timerTextStroke.Transparency = 0.3
+	timerTextStroke.Parent = timerLabel
 end
 
 function ScoreUI:updateScore(data: {[string]: any})
@@ -367,18 +420,18 @@ end
 
 function ScoreUI:playScoreAnimation()
 	-- Scale up score frame
-	local originalSize = UDim2.new(0, 120, 0, 44)
+	local originalSize = UDim2.new(0, 130, 0, 44)
 
 	-- Frame scale animation
 	local scaleUp = TweenService:Create(self.scoreFrame, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
-		Size = UDim2.new(0, 135, 0, 50)
+		Size = UDim2.new(0, 145, 0, 50)
 	})
 	scaleUp:Play()
 
-	-- Glow effect
+	-- Glow effect (brighter)
 	local glowUp = TweenService:Create(self.frameStroke, TweenInfo.new(0.1), {
 		Transparency = 0,
-		Thickness = Theme.STROKE_MED
+		Thickness = Theme.STROKE_BOLD
 	})
 	glowUp:Play()
 
@@ -389,8 +442,8 @@ function ScoreUI:playScoreAnimation()
 		scaleDown:Play()
 
 		local glowDown = TweenService:Create(self.frameStroke, TweenInfo.new(0.2), {
-			Transparency = 0.5,
-			Thickness = Theme.STROKE_THIN
+			Transparency = 0.2,
+			Thickness = Theme.STROKE_MED
 		})
 		glowDown:Play()
 	end)
@@ -427,12 +480,12 @@ function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
 	notification.Size = UDim2.new(0, 280, 0, 60)
 	notification.Position = UDim2.new(0.5, -140, 0.25, 0)
 	notification.BackgroundColor3 = Theme.BG_BASE
-	notification.BackgroundTransparency = 0.2
+	notification.BackgroundTransparency = 0.1
 	notification.BorderSizePixel = 0
 	notification.Parent = self.parent
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Theme.CORNER_MD
+	corner.CornerRadius = Theme.CORNER_LG
 	corner.Parent = notification
 
 	-- Gradient
@@ -470,8 +523,8 @@ function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
 		-- Gold stroke
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = Theme.PRIMARY
-		stroke.Thickness = Theme.STROKE_MED
-		stroke.Transparency = 0.3
+		stroke.Thickness = Theme.STROKE_BOLD
+		stroke.Transparency = 0.2
 		stroke.Parent = notification
 	else
 		icon.Text = "✅"
@@ -481,8 +534,8 @@ function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
 		-- Green stroke
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = Theme.SUCCESS
-		stroke.Thickness = Theme.STROKE_MED
-		stroke.Transparency = 0.4
+		stroke.Thickness = Theme.STROKE_BOLD
+		stroke.Transparency = 0.2
 		stroke.Parent = notification
 	end
 
@@ -494,7 +547,7 @@ function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
 
 	local showTween = TweenService:Create(notification, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
 		Position = UDim2.new(0.5, -140, 0.25, 0),
-		BackgroundTransparency = 0.2
+		BackgroundTransparency = 0.1
 	})
 	showTween:Play()
 
@@ -551,7 +604,7 @@ function ScoreUI:showStageProgress(totalStages: number?)
 	end
 
 	local fadeIn = TweenService:Create(self.stageFrame, TweenInfo.new(0.5), {
-		BackgroundTransparency = 0.4
+		BackgroundTransparency = 0.3
 	})
 	fadeIn:Play()
 end
@@ -573,7 +626,7 @@ function ScoreUI:showTimer()
 	self.timerFrame.BackgroundTransparency = 1
 	self.timerLabel.TextTransparency = 1
 	local fadeIn = TweenService:Create(self.timerFrame, TweenInfo.new(0.3), {
-		BackgroundTransparency = 0.3
+		BackgroundTransparency = 0.2
 	})
 	fadeIn:Play()
 	TweenService:Create(self.timerLabel, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
@@ -616,7 +669,7 @@ function ScoreUI:updateTimer(seconds: number)
 		end
 	else
 		self.timerLabel.TextColor3 = Theme.TEXT_PRIMARY
-		self.timerStroke.Color = Theme.ACCENT_CYAN
+		self.timerStroke.Color = Theme.HUD_GLOW_CYAN
 	end
 end
 

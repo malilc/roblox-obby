@@ -114,9 +114,19 @@ function MobileInputUI:createTouchButton(parent: Frame, name: string, label: str
 	corner.CornerRadius = Theme.CORNER_MD
 	corner.Parent = button
 
+	-- Subtle gradient
+	local btnGradient = Instance.new("UIGradient")
+	btnGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_ELEVATED),
+		ColorSequenceKeypoint.new(1, Theme.BG_SURFACE)
+	})
+	btnGradient.Rotation = 135
+	btnGradient.Parent = button
+
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.BG_ELEVATED
 	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.2
 	stroke.Parent = button
 
 	-- Tap feedback

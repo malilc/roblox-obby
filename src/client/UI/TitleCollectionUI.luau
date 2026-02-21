@@ -185,13 +185,36 @@ function TitleCollectionUI:createUI()
 	self.container = container
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 14)
+	corner.CornerRadius = Theme.CORNER_LG
 	corner.Parent = container
 
+	-- Gradient background
+	local containerGrad = Instance.new("UIGradient")
+	containerGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+	})
+	containerGrad.Rotation = 135
+	containerGrad.Parent = container
+
+	-- Glow stroke
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = COLORS.STROKE_DEFAULT
-	stroke.Thickness = 1.5
+	stroke.Color = Theme.ACCENT_CYAN
+	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.2
 	stroke.Parent = container
+
+	-- Drop shadow
+	local containerShadow = Instance.new("Frame")
+	containerShadow.Name = "Shadow"
+	containerShadow.Size = UDim2.new(1, 6, 1, 6)
+	containerShadow.Position = UDim2.new(0, -3, 0, 4)
+	containerShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	containerShadow.BackgroundTransparency = 0.6
+	containerShadow.BorderSizePixel = 0
+	containerShadow.ZIndex = container.ZIndex - 1
+	containerShadow.Parent = container
+	Theme.applyCorner(containerShadow, "lg")
 
 	-- ===== HEADER =====
 	local header = Instance.new("TextLabel")
@@ -205,6 +228,13 @@ function TitleCollectionUI:createUI()
 	header.Font = Enum.Font.GothamBlack
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.Parent = container
+
+	-- Header text stroke
+	local headerStroke = Instance.new("UIStroke")
+	headerStroke.Color = Theme.HUD_SCORE_END
+	headerStroke.Thickness = 1.5
+	headerStroke.Transparency = 0.4
+	headerStroke.Parent = header
 
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
@@ -220,7 +250,7 @@ function TitleCollectionUI:createUI()
 	self.closeButton = closeButton
 
 	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0, 8)
+	closeCorner.CornerRadius = Theme.CORNER_SM
 	closeCorner.Parent = closeButton
 
 	-- ===== ACTIVE TITLE BANNER =====
@@ -235,7 +265,7 @@ function TitleCollectionUI:createUI()
 	self.bannerFrame = bannerFrame
 
 	local bannerCorner = Instance.new("UICorner")
-	bannerCorner.CornerRadius = UDim.new(0, 8)
+	bannerCorner.CornerRadius = Theme.CORNER_SM
 	bannerCorner.Parent = bannerFrame
 
 	local bannerStroke = Instance.new("UIStroke")

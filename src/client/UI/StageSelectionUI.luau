@@ -69,31 +69,28 @@ function StageSelectionUI:createUI()
 	-- Add gradient background
 	createGradient(mainFrame, Theme.BG_BASE, Theme.BG_SURFACE)
 
-	-- Add border glow
+	-- Glow stroke
 	local borderStroke = Instance.new("UIStroke")
 	borderStroke.Color = Theme.ACCENT_CYAN
-	borderStroke.Thickness = Theme.STROKE_MED
-	borderStroke.Transparency = 0.5
+	borderStroke.Thickness = Theme.STROKE_BOLD
+	borderStroke.Transparency = 0.2
 	borderStroke.Parent = mainFrame
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Theme.CORNER_MD
+	corner.CornerRadius = Theme.CORNER_LG
 	corner.Parent = mainFrame
 
-	-- Shadow effect (using another frame)
+	-- Drop shadow
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(1, 4, 1, 4)
-	shadow.Position = UDim2.new(0, -2, 0, -2)
-	shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	shadow.BackgroundTransparency = 0.7
+	shadow.Size = UDim2.new(1, 6, 1, 6)
+	shadow.Position = UDim2.new(0, -3, 0, 4)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.6
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = mainFrame.ZIndex - 1
 	shadow.Parent = mainFrame
-
-	local shadowCorner = Instance.new("UICorner")
-	shadowCorner.CornerRadius = Theme.CORNER_MD
-	shadowCorner.Parent = shadow
+	Theme.applyCorner(shadow, "lg")
 
 	-- Title with gradient text effect
 	local titleContainer = Instance.new("Frame")
@@ -234,7 +231,7 @@ function StageSelectionUI:createUI()
 		badge.BackgroundColor3 = diffInfo.badgeColor
 		badge.BackgroundTransparency = 0.2
 		badge.Text = diffInfo.label
-		badge.TextColor3 = Color3.fromRGB(255, 255, 255)
+		badge.TextColor3 = Theme.TEXT_PRIMARY
 		badge.TextSize = 8
 		badge.Font = Enum.Font.GothamBold
 		badge.ZIndex = button.ZIndex + 1
@@ -301,7 +298,7 @@ function StageSelectionUI:createUI()
 		selectedIndicator.Name = "SelectedIndicator"
 		selectedIndicator.Size = UDim2.new(1, -4, 1, -4)
 		selectedIndicator.Position = UDim2.new(0, 2, 0, 2)
-		selectedIndicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		selectedIndicator.BackgroundColor3 = Theme.TEXT_PRIMARY
 		selectedIndicator.BackgroundTransparency = 0.8
 		selectedIndicator.BorderSizePixel = 0
 		selectedIndicator.Visible = false
@@ -501,7 +498,7 @@ function StageSelectionUI:createUI()
 	createGradient(countdownFrame, Theme.BG_BASE, Theme.BG_OVERLAY)
 
 	local countdownCorner = Instance.new("UICorner")
-	countdownCorner.CornerRadius = Theme.CORNER_MD
+	countdownCorner.CornerRadius = Theme.CORNER_LG
 	countdownCorner.Parent = countdownFrame
 
 	local countdownStroke = Instance.new("UIStroke")

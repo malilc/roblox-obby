@@ -304,13 +304,36 @@ function ClassSelectionUI:createUI()
 	self.container = container
 
 	local containerCorner = Instance.new("UICorner")
-	containerCorner.CornerRadius = Theme.CORNER_MD
+	containerCorner.CornerRadius = Theme.CORNER_LG
 	containerCorner.Parent = container
 
+	-- Gradient background
+	local containerGrad = Instance.new("UIGradient")
+	containerGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+	})
+	containerGrad.Rotation = 135
+	containerGrad.Parent = container
+
+	-- Glow stroke
 	local containerStroke = Instance.new("UIStroke")
-	containerStroke.Color = COLORS.STROKE_DEFAULT
-	containerStroke.Thickness = Theme.STROKE_MED
+	containerStroke.Color = Theme.ACCENT_CYAN
+	containerStroke.Thickness = Theme.STROKE_BOLD
+	containerStroke.Transparency = 0.2
 	containerStroke.Parent = container
+
+	-- Drop shadow
+	local containerShadow = Instance.new("Frame")
+	containerShadow.Name = "Shadow"
+	containerShadow.Size = UDim2.new(1, 6, 1, 6)
+	containerShadow.Position = UDim2.new(0, -3, 0, 4)
+	containerShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	containerShadow.BackgroundTransparency = 0.6
+	containerShadow.BorderSizePixel = 0
+	containerShadow.ZIndex = container.ZIndex - 1
+	containerShadow.Parent = container
+	Theme.applyCorner(containerShadow, "lg")
 
 	-- Header row
 	local header = Instance.new("TextLabel")
@@ -324,6 +347,13 @@ function ClassSelectionUI:createUI()
 	header.Font = Enum.Font.GothamBlack
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.Parent = container
+
+	-- Header text stroke
+	local headerTextStroke = Instance.new("UIStroke")
+	headerTextStroke.Color = Theme.HUD_SCORE_END
+	headerTextStroke.Thickness = 1.5
+	headerTextStroke.Transparency = 0.4
+	headerTextStroke.Parent = header
 
 	local subHeader = Instance.new("TextLabel")
 	subHeader.Name = "SubHeader"
@@ -819,8 +849,8 @@ end
 function ClassSelectionUI:createCurrentClassIndicator()
 	local indicator = Instance.new("Frame")
 	indicator.Name = "ClassIndicator"
-	indicator.Size = UDim2.new(0, 168, 0, 40)
-	indicator.Position = UDim2.new(0, 10, 0, 140)
+	indicator.Size = UDim2.new(0, 175, 0, 42)
+	indicator.Position = UDim2.new(0, 10, 0, 138)
 	indicator.BackgroundColor3 = COLORS.INDICATOR_BG
 	indicator.BackgroundTransparency = 0.1
 	indicator.BorderSizePixel = 0
@@ -828,30 +858,56 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	self.classIndicator = indicator
 
 	local indicatorCorner = Instance.new("UICorner")
-	indicatorCorner.CornerRadius = Theme.CORNER_SM
+	indicatorCorner.CornerRadius = Theme.CORNER_LG
 	indicatorCorner.Parent = indicator
+
+	-- Class-color gradient (updated dynamically in updateIndicator)
+	local indicatorGradient = Instance.new("UIGradient")
+	indicatorGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, COLORS.INDICATOR_BG),
+		ColorSequenceKeypoint.new(1, COLORS.INDICATOR_BG)
+	})
+	indicatorGradient.Rotation = 0
+	indicatorGradient.Parent = indicator
+	self.indicatorGradient = indicatorGradient
 
 	local indicatorStroke = Instance.new("UIStroke")
 	indicatorStroke.Color = COLORS.STROKE_DEFAULT
-	indicatorStroke.Thickness = Theme.STROKE_THIN
+	indicatorStroke.Thickness = Theme.STROKE_MED
+	indicatorStroke.Transparency = 0.3
 	indicatorStroke.Parent = indicator
 	self.indicatorStroke = indicatorStroke
+
+	-- Drop shadow
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(1, 4, 1, 4)
+	shadow.Position = UDim2.new(0, -2, 0, 3)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.7
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = indicator.ZIndex - 1
+	shadow.Parent = indicator
+
+	local shadowCorner = Instance.new("UICorner")
+	shadowCorner.CornerRadius = Theme.CORNER_LG
+	shadowCorner.Parent = shadow
 
 	-- Icon
 	local indicatorIcon = Instance.new("TextLabel")
 	indicatorIcon.Name = "Icon"
-	indicatorIcon.Size = UDim2.new(0, 32, 1, 0)
-	indicatorIcon.Position = UDim2.new(0, 4, 0, 0)
+	indicatorIcon.Size = UDim2.new(0, 32, 0, 32)
+	indicatorIcon.Position = UDim2.new(0, 5, 0.5, -16)
 	indicatorIcon.BackgroundTransparency = 1
-	indicatorIcon.TextSize = 20
+	indicatorIcon.TextSize = 22
 	indicatorIcon.Parent = indicator
 	self.indicatorIcon = indicatorIcon
 
 	-- Name
 	local indicatorName = Instance.new("TextLabel")
 	indicatorName.Name = "Name"
-	indicatorName.Size = UDim2.new(0, 70, 1, 0)
-	indicatorName.Position = UDim2.new(0, 34, 0, 0)
+	indicatorName.Size = UDim2.new(0, 70, 0, 20)
+	indicatorName.Position = UDim2.new(0, 36, 0, 4)
 	indicatorName.BackgroundTransparency = 1
 	indicatorName.TextSize = 15
 	indicatorName.Font = Enum.Font.GothamBold
@@ -859,12 +915,45 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	indicatorName.Parent = indicator
 	self.indicatorName = indicatorName
 
+	-- Name text stroke
+	local nameStroke = Instance.new("UIStroke")
+	nameStroke.Color = Color3.fromRGB(20, 10, 40)
+	nameStroke.Thickness = 1.5
+	nameStroke.Transparency = 0.4
+	nameStroke.Parent = indicatorName
+
+	-- Mini XP bar
+	local xpBarBg = Instance.new("Frame")
+	xpBarBg.Name = "IndicatorXpBarBg"
+	xpBarBg.Size = UDim2.new(0, 55, 0, 3)
+	xpBarBg.Position = UDim2.new(0, 36, 0, 26)
+	xpBarBg.BackgroundColor3 = Theme.BG_ELEVATED
+	xpBarBg.BorderSizePixel = 0
+	xpBarBg.Parent = indicator
+
+	local xpBarBgCorner = Instance.new("UICorner")
+	xpBarBgCorner.CornerRadius = UDim.new(0, 2)
+	xpBarBgCorner.Parent = xpBarBg
+
+	local xpBarFill = Instance.new("Frame")
+	xpBarFill.Name = "IndicatorXpBarFill"
+	xpBarFill.Size = UDim2.new(0, 0, 1, 0)
+	xpBarFill.BackgroundColor3 = Theme.ACCENT_CYAN
+	xpBarFill.BorderSizePixel = 0
+	xpBarFill.Parent = xpBarBg
+
+	local xpBarFillCorner = Instance.new("UICorner")
+	xpBarFillCorner.CornerRadius = UDim.new(0, 2)
+	xpBarFillCorner.Parent = xpBarFill
+
+	self.indicatorXpBarFill = xpBarFill
+
 	-- Mastery badge
 	local masteryBadge = Instance.new("TextLabel")
 	masteryBadge.Name = "MasteryBadge"
-	masteryBadge.Size = UDim2.new(0, 40, 0, 20)
-	masteryBadge.Position = UDim2.new(0, 106, 0.5, -10)
-	masteryBadge.BackgroundColor3 = Theme.BG_SURFACE
+	masteryBadge.Size = UDim2.new(0, 44, 0, 20)
+	masteryBadge.Position = UDim2.new(0, 100, 0.5, -10)
+	masteryBadge.BackgroundColor3 = Theme.BG_ELEVATED
 	masteryBadge.BackgroundTransparency = 0.2
 	masteryBadge.BorderSizePixel = 0
 	masteryBadge.Text = "Lv.1"
@@ -884,7 +973,7 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	chevron.Position = UDim2.new(1, -20, 0, 0)
 	chevron.BackgroundTransparency = 1
 	chevron.Text = ">"
-	chevron.TextColor3 = COLORS.TEXT_SECONDARY
+	chevron.TextColor3 = Theme.TEXT_MUTED
 	chevron.TextSize = 16
 	chevron.Font = Enum.Font.GothamBold
 	chevron.Parent = indicator
@@ -899,11 +988,11 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	clickButton.MouseButton1Click:Connect(function()
 		-- Brief scale pulse
 		TweenService:Create(indicator, TweenInfo.new(0.08), {
-			Size = UDim2.new(0, 172, 0, 42),
+			Size = UDim2.new(0, 180, 0, 44),
 		}):Play()
 		task.delay(0.08, function()
 			TweenService:Create(indicator, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
-				Size = UDim2.new(0, 168, 0, 40),
+				Size = UDim2.new(0, 175, 0, 42),
 			}):Play()
 		end)
 
@@ -913,19 +1002,19 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	-- Hover effects
 	clickButton.MouseEnter:Connect(function()
 		TweenService:Create(indicator, TweenInfo.new(0.12), {
-			BackgroundColor3 = COLORS.INDICATOR_HOVER,
+			BackgroundTransparency = 0.05,
 		}):Play()
 		TweenService:Create(self.indicatorStroke, TweenInfo.new(0.12), {
-			Color = COLORS.TEXT_ACCENT,
+			Transparency = 0,
 		}):Play()
 	end)
 
 	clickButton.MouseLeave:Connect(function()
 		TweenService:Create(indicator, TweenInfo.new(0.12), {
-			BackgroundColor3 = COLORS.INDICATOR_BG,
+			BackgroundTransparency = 0.1,
 		}):Play()
 		TweenService:Create(self.indicatorStroke, TweenInfo.new(0.12), {
-			Color = COLORS.STROKE_DEFAULT,
+			Transparency = 0.3,
 		}):Play()
 	end)
 
@@ -1171,7 +1260,7 @@ function ClassSelectionUI:showToast(text: string, color: Color3?)
 	toast.Name = "ClassToast"
 	toast.AnchorPoint = Vector2.new(0, 0)
 	toast.Size = UDim2.new(0, 380, 0, 38)
-	toast.Position = UDim2.new(0, 10, 0, 230)  -- Moved down to not overlap TitleHUD (which is at Y=186)
+	toast.Position = UDim2.new(0, 10, 0, 230)  -- Below TitleHUD (which is at Y=184)
 	toast.BackgroundColor3 = COLORS.TOAST_BG
 	toast.BackgroundTransparency = 0.05
 	toast.BorderSizePixel = 0
@@ -1351,10 +1440,29 @@ function ClassSelectionUI:updateIndicator(classId: string)
 	self.indicatorName.Text = classDef.name
 	self.indicatorName.TextColor3 = classDef.color
 
+	-- Update class-color gradient on indicator
+	if self.indicatorGradient then
+		self.indicatorGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, classDef.color),
+			ColorSequenceKeypoint.new(1, COLORS.INDICATOR_BG)
+		})
+		self.indicatorGradient.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.7),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+	end
+
+	-- Update stroke to class color
+	if self.indicatorStroke then
+		self.indicatorStroke.Color = classDef.color
+	end
+
 	-- Update mastery badge
 	local masteryInfo = self.classMastery[classId]
 	local level = masteryInfo and masteryInfo.level or 1
 	local isMax = masteryInfo and masteryInfo.isMax or false
+	local xp = masteryInfo and masteryInfo.xp or 0
+	local xpToNext = masteryInfo and masteryInfo.xpToNext or 0
 
 	if self.indicatorMasteryBadge then
 		self.indicatorMasteryBadge.Text = string.format("Lv.%d", level)
@@ -1363,8 +1471,20 @@ function ClassSelectionUI:updateIndicator(classId: string)
 			self.indicatorMasteryBadge.BackgroundColor3 = Theme.BG_ELEVATED
 		else
 			self.indicatorMasteryBadge.TextColor3 = COLORS.TEXT_ACCENT
-			self.indicatorMasteryBadge.BackgroundColor3 = Theme.BG_SURFACE
+			self.indicatorMasteryBadge.BackgroundColor3 = Theme.BG_ELEVATED
 		end
+	end
+
+	-- Update mini XP bar
+	if self.indicatorXpBarFill then
+		local fillPct = 0
+		if isMax then
+			fillPct = 1
+		elseif xpToNext > 0 then
+			fillPct = math.clamp(xp / xpToNext, 0, 1)
+		end
+		self.indicatorXpBarFill.Size = UDim2.new(fillPct, 0, 1, 0)
+		self.indicatorXpBarFill.BackgroundColor3 = classDef.color
 	end
 end
 

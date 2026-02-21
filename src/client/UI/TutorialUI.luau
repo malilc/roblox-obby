@@ -51,7 +51,17 @@ function TutorialUI:createUI()
 	local helpStroke = Instance.new("UIStroke")
 	helpStroke.Color = Theme.ACCENT_CYAN
 	helpStroke.Thickness = Theme.STROKE_MED
+	helpStroke.Transparency = 0.2
 	helpStroke.Parent = helpButton
+
+	-- Help button gradient
+	local helpGradient = Instance.new("UIGradient")
+	helpGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+	})
+	helpGradient.Rotation = 135
+	helpGradient.Parent = helpButton
 
 	helpButton.MouseButton1Click:Connect(function()
 		self:toggle()
@@ -111,8 +121,36 @@ function TutorialUI:createUI()
 	self.panel = panel
 
 	local panelCorner = Instance.new("UICorner")
-	panelCorner.CornerRadius = Theme.CORNER_MD
+	panelCorner.CornerRadius = Theme.CORNER_LG
 	panelCorner.Parent = panel
+
+	-- Panel gradient
+	local panelGradient = Instance.new("UIGradient")
+	panelGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+	})
+	panelGradient.Rotation = 135
+	panelGradient.Parent = panel
+
+	-- Panel glow stroke
+	local panelStroke = Instance.new("UIStroke")
+	panelStroke.Color = Theme.ACCENT_CYAN
+	panelStroke.Thickness = Theme.STROKE_MED
+	panelStroke.Transparency = 0.2
+	panelStroke.Parent = panel
+
+	-- Panel drop shadow
+	local panelShadow = Instance.new("Frame")
+	panelShadow.Name = "Shadow"
+	panelShadow.Size = UDim2.new(1, 6, 1, 6)
+	panelShadow.Position = UDim2.new(0, -3, 0, 4)
+	panelShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	panelShadow.BackgroundTransparency = 0.6
+	panelShadow.BorderSizePixel = 0
+	panelShadow.ZIndex = panel.ZIndex - 1
+	panelShadow.Parent = panel
+	Theme.applyCorner(panelShadow, "lg")
 
 	-- Header
 	local header = Instance.new("TextLabel")
@@ -127,6 +165,12 @@ function TutorialUI:createUI()
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.ZIndex = 12
 	header.Parent = panel
+
+	local headerStroke = Instance.new("UIStroke")
+	headerStroke.Color = Theme.HUD_SCORE_END
+	headerStroke.Thickness = 1.5
+	headerStroke.Transparency = 0.4
+	headerStroke.Parent = header
 
 	-- Close button
 	local closeButton = Instance.new("TextButton")
@@ -145,6 +189,12 @@ function TutorialUI:createUI()
 	local closeCorner = Instance.new("UICorner")
 	closeCorner.CornerRadius = Theme.CORNER_SM
 	closeCorner.Parent = closeButton
+
+	local closeStroke = Instance.new("UIStroke")
+	closeStroke.Color = Theme.DANGER
+	closeStroke.Thickness = Theme.STROKE_THIN
+	closeStroke.Transparency = 0.3
+	closeStroke.Parent = closeButton
 
 	closeButton.MouseButton1Click:Connect(function()
 		self:hide()

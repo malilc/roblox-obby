@@ -1,4 +1,4 @@
--- TitleHUDUI: แสดง Active Title บน HUD และเปิดหน้า Title Collection
+-- TitleHUDUI: แสดง Active Title บน HUD (Colorful Youth Style - Rarity Glow)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -15,7 +15,7 @@ TitleHUDUI.__index = TitleHUDUI
 -- Dark theme colors
 local COLORS = {
 	BG = Theme.BG_SURFACE,
-	BG_TRANSPARENCY = 0.15,
+	BG_TRANSPARENCY = 0.1,
 	BG_BUTTON = Theme.BG_ELEVATED,
 	BG_BUTTON_HOVER = Theme.BG_BASE,
 	STROKE_DEFAULT = Theme.BG_ELEVATED,
@@ -91,11 +91,11 @@ function TitleHUDUI.new(parent: ScreenGui, onOpenCollection: (() -> ())?)
 end
 
 function TitleHUDUI:createUI()
-	-- Main container - dark rounded bar
+	-- Main container - bigger rounded pill with rarity glow
 	local container = Instance.new("Frame")
 	container.Name = "TitleHUDContainer"
-	container.Size = UDim2.new(0, 220, 0, 36)
-	container.Position = UDim2.new(0, 10, 0, 186)
+	container.Size = UDim2.new(0, 210, 0, 36)
+	container.Position = UDim2.new(0, 10, 0, 184)
 	container.BackgroundColor3 = COLORS.BG
 	container.BackgroundTransparency = COLORS.BG_TRANSPARENCY
 	container.BorderSizePixel = 0
@@ -103,14 +103,41 @@ function TitleHUDUI:createUI()
 	self.container = container
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Theme.CORNER_SM
+	corner.CornerRadius = Theme.CORNER_LG
 	corner.Parent = container
 
+	-- Rarity gradient (updated dynamically)
+	local containerGradient = Instance.new("UIGradient")
+	containerGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, COLORS.BG),
+		ColorSequenceKeypoint.new(1, COLORS.BG)
+	})
+	containerGradient.Rotation = 0
+	containerGradient.Parent = container
+	self.containerGradient = containerGradient
+
+	-- Glow stroke (updated to rarity color)
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = COLORS.STROKE_DEFAULT
-	stroke.Thickness = Theme.STROKE_THIN
+	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.3
 	stroke.Parent = container
 	self.containerStroke = stroke
+
+	-- Drop shadow
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(1, 4, 1, 4)
+	shadow.Position = UDim2.new(0, -2, 0, 3)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.7
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = container.ZIndex - 1
+	shadow.Parent = container
+
+	local shadowCorner = Instance.new("UICorner")
+	shadowCorner.CornerRadius = Theme.CORNER_LG
+	shadowCorner.Parent = shadow
 
 	-- Title text label
 	local titleLabel = Instance.new("TextLabel")
@@ -127,10 +154,18 @@ function TitleHUDUI:createUI()
 	titleLabel.Parent = container
 	self.titleLabel = titleLabel
 
+	-- Title text stroke
+	local titleTextStroke = Instance.new("UIStroke")
+	titleTextStroke.Color = Color3.fromRGB(20, 10, 40)
+	titleTextStroke.Thickness = 1.5
+	titleTextStroke.Transparency = 0.5
+	titleTextStroke.Parent = titleLabel
+	self.titleTextStroke = titleTextStroke
+
 	-- Make the whole container clickable when no title (hint text)
 	local containerButton = Instance.new("TextButton")
 	containerButton.Name = "ContainerButton"
-	containerButton.Size = UDim2.new(1, -36, 1, 0)
+	containerButton.Size = UDim2.new(1, -40, 1, 0)
 	containerButton.Position = UDim2.new(0, 0, 0, 0)
 	containerButton.BackgroundTransparency = 1
 	containerButton.Text = ""
@@ -144,7 +179,7 @@ function TitleHUDUI:createUI()
 		end
 	end)
 
-	-- Collection button (📋 icon)
+	-- Collection button
 	local openButton = Instance.new("TextButton")
 	openButton.Name = "OpenCollectionButton"
 	openButton.Size = UDim2.new(0, 28, 0, 28)
@@ -184,19 +219,13 @@ function TitleHUDUI:createUI()
 	-- Hover effect for whole container
 	container.MouseEnter:Connect(function()
 		TweenService:Create(stroke, TweenInfo.new(0.12), {
-			Color = if self.activeTitle then self.containerStroke.Color else Theme.ACCENT_CYAN,
+			Transparency = 0,
 		}):Play()
 	end)
 
 	container.MouseLeave:Connect(function()
-		local targetColor = COLORS.STROKE_DEFAULT
-		if self.activeTitle then
-			local classDef = ClassTypes.getClass(self.activeTitle.classId)
-			local theme = getTitleTheme(self.activeTitle.rarity, classDef and classDef.color or nil)
-			targetColor = theme.frameColor
-		end
 		TweenService:Create(stroke, TweenInfo.new(0.12), {
-			Color = targetColor,
+			Transparency = 0.3,
 		}):Play()
 	end)
 end
@@ -209,6 +238,16 @@ function TitleHUDUI:updateActiveTitle(activeTitle: any)
 		self.titleLabel.TextColor3 = COLORS.TEXT_HINT
 		self.titleLabel.TextStrokeTransparency = 1
 		self.containerStroke.Color = COLORS.STROKE_DEFAULT
+		self.titleTextStroke.Transparency = 0.8
+
+		-- Reset gradient to default
+		if self.containerGradient then
+			self.containerGradient.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, COLORS.BG),
+				ColorSequenceKeypoint.new(1, COLORS.BG)
+			})
+			self.containerGradient.Transparency = NumberSequence.new(0)
+		end
 		return
 	end
 
@@ -217,9 +256,23 @@ function TitleHUDUI:updateActiveTitle(activeTitle: any)
 
 	self.titleLabel.Text = string.format("[%s] %s", self.activeTitle.rarity, self.activeTitle.name)
 	self.titleLabel.TextColor3 = theme.textColor
-	self.titleLabel.TextStrokeTransparency = 0.65
+	self.titleLabel.TextStrokeTransparency = 0.5
 	self.titleLabel.TextStrokeColor3 = theme.strokeColor
 	self.containerStroke.Color = theme.frameColor
+	self.titleTextStroke.Color = theme.strokeColor
+	self.titleTextStroke.Transparency = 0.3
+
+	-- Apply rarity gradient background
+	if self.containerGradient then
+		self.containerGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, theme.frameColor),
+			ColorSequenceKeypoint.new(1, COLORS.BG)
+		})
+		self.containerGradient.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.8),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+	end
 end
 
 function TitleHUDUI:setupRemotes()

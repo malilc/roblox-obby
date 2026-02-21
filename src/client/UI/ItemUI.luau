@@ -67,12 +67,22 @@ function ItemUI:createUI()
 	self.tooltip = tooltip
 
 	local tooltipCorner = Instance.new("UICorner")
-	tooltipCorner.CornerRadius = Theme.CORNER_SM
+	tooltipCorner.CornerRadius = Theme.CORNER_MD
 	tooltipCorner.Parent = tooltip
+
+	-- Tooltip gradient
+	local tooltipGradient = Instance.new("UIGradient")
+	tooltipGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_OVERLAY),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+	})
+	tooltipGradient.Rotation = 135
+	tooltipGradient.Parent = tooltip
 
 	local tooltipStroke = Instance.new("UIStroke")
 	tooltipStroke.Color = Theme.TEXT_MUTED
 	tooltipStroke.Thickness = Theme.STROKE_MED
+	tooltipStroke.Transparency = 0.2
 	tooltipStroke.Parent = tooltip
 	self.tooltipStroke = tooltipStroke
 
@@ -182,10 +192,20 @@ function ItemUI:createSlot(slotIndex: number, parent: Frame)
 	frameCorner.CornerRadius = Theme.CORNER_MD
 	frameCorner.Parent = slotFrame
 
+	-- Slot gradient background
+	local slotGradient = Instance.new("UIGradient")
+	slotGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_ELEVATED),
+		ColorSequenceKeypoint.new(1, Theme.BG_SURFACE)
+	})
+	slotGradient.Rotation = 135
+	slotGradient.Parent = slotFrame
+
 	-- Border/glow
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.TEXT_MUTED
 	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.2
 	stroke.Parent = slotFrame
 	self.slotStrokes[slotIndex] = stroke
 
@@ -278,6 +298,15 @@ function ItemUI:createStatusIcon(name: string, emoji: string, color: Color3): Fr
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = icon
+
+	-- Status icon gradient
+	local iconGradient = Instance.new("UIGradient")
+	iconGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color),
+		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+	})
+	iconGradient.Rotation = 135
+	iconGradient.Parent = icon
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 1, 0)

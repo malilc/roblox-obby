@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 
 local RemoteRegistry = require(ReplicatedStorage.Shared.RemoteRegistry)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local ScoreUI = require(script.Parent.ScoreUI)
 local ItemUI = require(script.Parent.ItemUI)
@@ -220,18 +221,18 @@ function MainUI:showTimeWarning(message: string, isCritical: boolean?)
 	notification.Name = "TimeWarning"
 	notification.Size = UDim2.new(0, 260, 0, 36)
 	notification.Position = UDim2.new(0.5, -130, 0, 60)
-	notification.BackgroundColor3 = if isCritical then Color3.fromRGB(180, 30, 30) else Color3.fromRGB(160, 80, 0)
+	notification.BackgroundColor3 = if isCritical then Theme.DANGER else Theme.WARNING
 	notification.BackgroundTransparency = 0.2
 	notification.BorderSizePixel = 0
-	notification.Text = "⏰  " .. message
-	notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+	notification.Text = "\u{23F0}  " .. message
+	notification.TextColor3 = Theme.TEXT_PRIMARY
 	notification.TextSize = 16
 	notification.Font = Enum.Font.GothamBold
 	notification.TextTransparency = 1
 	notification.Parent = self.screenGui
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = notification
 
 	TweenService:Create(notification, TweenInfo.new(0.25), { TextTransparency = 0, BackgroundTransparency = 0.2 }):Play()
@@ -253,18 +254,18 @@ function MainUI:showDeathNotification()
 	notification.Size = UDim2.new(0, 120, 0, 30)
 	notification.Position = UDim2.new(0.5, -60, 0, 90)
 	notification.AnchorPoint = Vector2.new(0, 0)
-	notification.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	notification.BackgroundColor3 = Theme.BG_OVERLAY
 	notification.BackgroundTransparency = 0.5
 	notification.BorderSizePixel = 0
 	notification.Text = "Respawn"
-	notification.TextColor3 = Color3.fromRGB(255, 100, 100)
+	notification.TextColor3 = Theme.DANGER
 	notification.TextSize = 14
 	notification.Font = Enum.Font.GothamBold
 	notification.TextTransparency = 0
 	notification.Parent = self.screenGui
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
+	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = notification
 
 	-- Fade in

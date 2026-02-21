@@ -1382,7 +1382,9 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 
 ---
 
-## 🎨 UI Design System (Fall Guys Style)
+## 🎨 UI Design System (Colorful Youth Theme)
+
+> **Theme**: Vivid gradient backgrounds, glow strokes (transparency 0.2), drop shadows, CORNER_LG pills, bold text with UIStroke, playful animations — เป้าหมาย: เด็ก 10-20 ปี
 
 ### ThemeConfig: `src/shared/ThemeConfig.luau`
 
@@ -1403,14 +1405,19 @@ local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 | `Theme.PRIMARY` | (255, 220, 0) | ปุ่มหลัก (เหลือง) |
 | `Theme.PRIMARY_DARK` | (200, 165, 0) | hover/pressed |
 | `Theme.SECONDARY` | (255, 85, 50) | destructive / energy |
-| `Theme.ACCENT_CYAN` | (80, 220, 255) | info / highlight |
+| `Theme.ACCENT_CYAN` | (80, 220, 255) | info / highlight / glow border |
 | `Theme.ACCENT_PINK` | (255, 100, 180) | fun / special |
 | `Theme.TEXT_PRIMARY` | (255, 255, 255) | text บน dark bg |
+| `Theme.TEXT_DARK` | (30, 20, 60) | text บน light bg |
 | `Theme.TEXT_MUTED` | (195, 178, 230) | secondary text |
 | `Theme.SUCCESS` | (80, 230, 120) | equip / success |
 | `Theme.DANGER` | (255, 70, 70) | leave / locked / danger |
 | `Theme.WARNING` | (255, 200, 0) | time warning / can-buy |
-| `Theme.INFO` | (80, 200, 255) | cyan info |
+| `Theme.MEDAL_GOLD` | (255, 200, 50) | 1st place / gold |
+| `Theme.MEDAL_SILVER` | (200, 210, 220) | 2nd place |
+| `Theme.MEDAL_BRONZE` | (205, 130, 80) | 3rd place |
+| `Theme.HUD_SCORE_END` | (80, 160, 255) | HUD text glow (blue) |
+| `Theme.HUD_GLOW_GOLD` | (255, 180, 40) | HUD gold glow |
 
 ### Structure Tokens
 
@@ -1418,11 +1425,11 @@ local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 |-------|-------|----------|
 | `Theme.CORNER_SM` | 8px | buttons, small badges |
 | `Theme.CORNER_MD` | 14px | HUD panels, cards |
-| `Theme.CORNER_LG` | 20px | modal containers |
+| `Theme.CORNER_LG` | 20px | modal containers (preferred) |
 | `Theme.CORNER_FULL` | UDim(1,0) | circles / pills |
-| `Theme.STROKE_THIN` | 1.5 | default border |
-| `Theme.STROKE_MED` | 2.5 | selected / focused |
-| `Theme.STROKE_BOLD` | 4 | emphasis / glow |
+| `Theme.STROKE_THIN` | 1.5 | subtle border |
+| `Theme.STROKE_MED` | 2.5 | glow border (default) |
+| `Theme.STROKE_BOLD` | 4 | main modal glow |
 
 ### Helper Functions
 
@@ -1433,20 +1440,75 @@ Theme.applyCorner(obj, size) -- "sm"|"md"|"lg"|"full" → UICorner
 Theme.applyStroke(obj, color, weight, transparency) -- "thin"|"med"|"bold" → UIStroke
 ```
 
+### Vivid Gradient Pattern (ใช้กับทุก modal/panel ใหม่)
+
+```lua
+-- 1. Gradient background (BG_SURFACE → BG_BASE, 135°)
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+    ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+})
+gradient.Rotation = 135
+gradient.Parent = mainFrame
+
+-- 2. Glow stroke (ACCENT_CYAN หรือ contextual color)
+local stroke = Instance.new("UIStroke")
+stroke.Color = Theme.ACCENT_CYAN  -- หรือ MEDAL_GOLD, SUCCESS, DANGER
+stroke.Thickness = Theme.STROKE_BOLD  -- หรือ STROKE_MED
+stroke.Transparency = 0.2
+stroke.Parent = mainFrame
+
+-- 3. Drop shadow
+local shadow = Instance.new("Frame")
+shadow.Size = UDim2.new(1, 6, 1, 6)
+shadow.Position = UDim2.new(0, -3, 0, 4)
+shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+shadow.BackgroundTransparency = 0.6
+shadow.BorderSizePixel = 0
+shadow.ZIndex = mainFrame.ZIndex - 1
+shadow.Parent = mainFrame
+Theme.applyCorner(shadow, "lg")
+
+-- 4. Header text stroke (UIStroke ไม่ใช่ TextStroke)
+local titleStroke = Instance.new("UIStroke")
+titleStroke.Color = Theme.HUD_SCORE_END
+titleStroke.Thickness = 1.5
+titleStroke.Transparency = 0.4
+titleStroke.Parent = titleLabel
+
+-- 5. Button gradient (contextual color → BG_ELEVATED, 90°)
+local btnGradient = Instance.new("UIGradient")
+btnGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Theme.SUCCESS),  -- หรือ DANGER, PRIMARY
+    ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+})
+btnGradient.Rotation = 90
+btnGradient.Parent = button
+```
+
 ### UI Rules
-1. **ห้าม** ใช้ inline `Color3.fromRGB(...)` สำหรับสีพื้นหลัง/ข้อความ
+1. **ห้าม** ใช้ inline `Color3.fromRGB(...)` สำหรับสีพื้นหลัง/ข้อความ (ยกเว้น drop shadow = `Color3.new(0,0,0)`)
 2. **ต้อง** require ThemeConfig ทุกไฟล์ UI
 3. Background: `BG_BASE` → `BG_SURFACE` → `BG_ELEVATED` (dark → light)
 4. Font: Gotham family เท่านั้น (Gotham, GothamBold, GothamBlack)
-5. Text บน dark bg = `TEXT_PRIMARY` (white)
+5. Text บน dark bg = `TEXT_PRIMARY` (white); Text บน light bg = `TEXT_DARK`
+6. ทุก modal ใหม่ต้องมี: UIGradient + glow UIStroke (transparency 0.2) + drop shadow
+7. Corner: modal = `CORNER_LG`, panel/card = `CORNER_MD`, button = `CORNER_SM`
+8. Stroke glow: `STROKE_BOLD` (thickness 4) สำหรับ modal หลัก, `STROKE_MED` (2.5) สำหรับ panel ย่อย
+9. **Emoji ใน Luau**: ใช้ unicode escape `\u{1F381}` แทน emoji ตรงๆ ใน string literals เพื่อหลีกเลี่ยง encoding issues
 
 ### Checklist สำหรับ UI ใหม่
 
 - [ ] `local Theme = require(ReplicatedStorage.Shared.ThemeConfig)`
 - [ ] background ใช้ `BG_BASE` / `BG_SURFACE` / `BG_ELEVATED`
-- [ ] ปุ่มหลัก = `PRIMARY` (yellow), success = `SUCCESS`, danger = `DANGER`
+- [ ] UIGradient (BG_SURFACE → BG_BASE, 135°) บน main container
+- [ ] Glow UIStroke (ACCENT_CYAN, STROKE_BOLD, transparency 0.2) บน main container
+- [ ] Drop shadow Frame (Size +6px, Position -3/+4, transparency 0.6) บน main container
+- [ ] Title UIStroke (HUD_SCORE_END, 1.5, 0.4) บน header label
+- [ ] ปุ่มหลัก = gradient (contextual → BG_ELEVATED, 90°) + glow stroke
 - [ ] text = `TEXT_PRIMARY` หรือ `TEXT_MUTED`
-- [ ] UICorner: panel = `CORNER_MD`, button = `CORNER_SM`, modal = `CORNER_LG`
+- [ ] UICorner: modal = `CORNER_LG`, panel = `CORNER_MD`, button = `CORNER_SM`
 - [ ] ลงทะเบียนใน `MainUI.luau` ถ้าเป็น popup
 
 ---
@@ -1759,5 +1821,8 @@ end)
 100. **TotalCount vs SelectionCount**: `Config.Stages.TotalCount` = pool size (7), `Config.Stages.SelectionCount` = per-run size (5)
 101. **Stage Tab Filter**: `switchTab(diff)` → `refreshStageButtons()` จัด `Visible`+`Position` บน buttonContainer; `show()` ต้องเรียก switchTab หลัง loop ที่ set Visible=true
 102. **Tab Selection Global**: selectedStages ไม่ reset เมื่อเปลี่ยน tab — selection ข้าม tab ได้, max = SelectionCount รวม
-98. **MapManager internal**: ฟังก์ชัน `_xxxInternal()` เป็น internal helpers สำหรับ global/per-match deduplication — ห้ามเรียกจากนอก MapManager
-99. **Config.Timing / Config.Map**: Magic numbers เวลาและ map ทั้งหมดอยู่ใน Config แล้ว — ไม่ hardcode ค่าใหม่
+103. **MapManager internal**: ฟังก์ชัน `_xxxInternal()` เป็น internal helpers สำหรับ global/per-match deduplication — ห้ามเรียกจากนอก MapManager
+104. **Config.Timing / Config.Map**: Magic numbers เวลาและ map ทั้งหมดอยู่ใน Config แล้ว — ไม่ hardcode ค่าใหม่
+105. **Vivid Gradient Theme (Feb 2026)**: UI ทั้งหมด 14 ไฟล์ถูก refactor ให้ใช้ gradient + glow stroke + drop shadow pattern ตาม Colorful Youth theme — ดู UI Design System section สำหรับ pattern ล่าสุด
+106. **Emoji Unicode Escapes**: ใน Luau string literals ให้ใช้ `\u{1F381}` แทน emoji ตรงๆ (เช่น 🎁) เพื่อหลีกเลี่ยง encoding issues บาง environment
+107. **Light Theme UIs ถูก Dark-theme แล้ว**: ClassSelectionUI (main panel), TitleCollectionUI, TitleHUDUI ถูกปรับจาก light palette เป็น dark gradient เพื่อ visual consistency — ไม่ต้อง maintain light theme แยกแล้ว
