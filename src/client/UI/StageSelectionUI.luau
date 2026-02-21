@@ -422,30 +422,24 @@ function StageSelectionUI:createUI()
 	randomButton.Name = "RandomButton"
 	randomButton.Size = UDim2.new(0, 170, 0, 50)
 	randomButton.Position = UDim2.new(0, 20, 0, 410)
-	randomButton.BackgroundColor3 = Color3.fromRGB(255, 100, 90)
+	randomButton.BackgroundColor3 = Color3.fromRGB(255, 95, 85)
 	randomButton.BackgroundTransparency = 0
 	randomButton.BorderSizePixel = 0
 	randomButton.Text = "\u{1F3B2} RANDOM"
 	randomButton.TextColor3 = Theme.TEXT_PRIMARY
 	randomButton.TextSize = 20
 	randomButton.Font = Enum.Font.GothamBold
-	randomButton.TextStrokeTransparency = 0.5
-	randomButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	randomButton.TextStrokeTransparency = 0.3
+	randomButton.TextStrokeColor3 = Color3.fromRGB(120, 30, 30)
 	randomButton.ZIndex = 10
 	randomButton.Parent = mainFrame
 
-	-- Bright coral gradient (subtle, stays readable)
-	local randomGradient = createGradient(randomButton, Color3.fromRGB(255, 110, 120), Color3.fromRGB(240, 80, 100))
-	self.randomGradient = randomGradient
-
-	local randomCorner = Instance.new("UICorner")
-	randomCorner.CornerRadius = Theme.CORNER_SM
-	randomCorner.Parent = randomButton
+	Theme.applyCorner(randomButton, "sm")
 
 	local randomStroke = Instance.new("UIStroke")
-	randomStroke.Color = Color3.fromRGB(255, 130, 130)
+	randomStroke.Color = Color3.fromRGB(255, 140, 130)
 	randomStroke.Thickness = Theme.STROKE_MED
-	randomStroke.Transparency = 0.2
+	randomStroke.Transparency = 0.1
 	randomStroke.Parent = randomButton
 
 	randomButton.MouseButton1Click:Connect(function()
@@ -457,26 +451,20 @@ function StageSelectionUI:createUI()
 	startButton.Name = "StartButton"
 	startButton.Size = UDim2.new(0, 170, 0, 50)
 	startButton.Position = UDim2.new(1, -190, 0, 410)
-	startButton.BackgroundColor3 = Color3.fromRGB(50, 200, 90)
+	startButton.BackgroundColor3 = Color3.fromRGB(55, 195, 95)
 	startButton.BackgroundTransparency = 0
 	startButton.BorderSizePixel = 0
 	startButton.Text = "\u{1F680} START"
 	startButton.TextColor3 = Theme.TEXT_PRIMARY
 	startButton.TextSize = 20
 	startButton.Font = Enum.Font.GothamBold
-	startButton.TextStrokeTransparency = 0.5
-	startButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	startButton.TextStrokeTransparency = 0.3
+	startButton.TextStrokeColor3 = Color3.fromRGB(15, 80, 30)
 	startButton.ZIndex = 10
 	startButton.Parent = mainFrame
 	self.startButton = startButton
 
-	-- Bright green gradient (subtle, stays readable)
-	local startGradient = createGradient(startButton, Color3.fromRGB(70, 210, 100), Color3.fromRGB(40, 180, 70))
-	self.startGradient = startGradient
-
-	local startCorner = Instance.new("UICorner")
-	startCorner.CornerRadius = Theme.CORNER_SM
-	startCorner.Parent = startButton
+	Theme.applyCorner(startButton, "sm")
 
 	local startStroke = Instance.new("UIStroke")
 	startStroke.Color = Theme.SUCCESS
@@ -485,10 +473,10 @@ function StageSelectionUI:createUI()
 	startStroke.Parent = startButton
 	self.startStroke = startStroke
 
-	-- เริ่มต้น disable ปุ่ม Start
+	-- เริ่มต้น disable ปุ่ม Start — ใช้สีเข้มแทน transparency เพื่อไม่ให้พื้นหลังม่วงทะลุ
 	startButton.Active = false
-	startButton.BackgroundTransparency = 0.6
-	startButton.TextTransparency = 0.6
+	startButton.BackgroundColor3 = Color3.fromRGB(40, 80, 50)
+	startButton.TextTransparency = 0.4
 	if startStroke then
 		startStroke.Transparency = 0.8
 	end
@@ -763,6 +751,7 @@ function StageSelectionUI:updateStartButtonState()
 
 		-- Animation - enable button
 		local enableTween = TweenService:Create(self.startButton, TweenInfo.new(0.2), {
+			BackgroundColor3 = Color3.fromRGB(55, 195, 95),
 			BackgroundTransparency = 0,
 			TextTransparency = 0
 		})
@@ -776,13 +765,13 @@ function StageSelectionUI:updateStartButtonState()
 			strokeTween:Play()
 		end
 	else
-		-- Disable ปุ่ม Start
+		-- Disable ปุ่ม Start — ใช้สีเข้มแทน transparency
 		self.startButton.Active = false
 
-		-- Animation - disable button
+		-- Animation - disable button (เปลี่ยนสีเป็นเขียวเข้ม)
 		local disableTween = TweenService:Create(self.startButton, TweenInfo.new(0.2), {
-			BackgroundTransparency = 0.6,
-			TextTransparency = 0.6
+			BackgroundColor3 = Color3.fromRGB(40, 80, 50),
+			TextTransparency = 0.4
 		})
 		disableTween:Play()
 
