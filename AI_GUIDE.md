@@ -1355,7 +1355,7 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 |--------|---------|-------------|
 | `ScoreUI` | มุมบนซ้าย | ⭐ คะแนน + 🏆 High Score + 🚩 Progress Bar |
 | `CurrencyUI` | มุมบนซ้าย (ใต้ StageFrame) | 💰 แสดงเงิน |
-| `ClassSelectionUI` | มุมบนซ้าย (ใต้ Currency) | 🎭 แสดง Class indicator + คลิกเปิด modal เลือก Class (light theme) |
+| `ClassSelectionUI` | มุมบนซ้าย (ใต้ Currency) | 🎭 Class indicator HUD + modal เลือก Class (dark theme, 720×480) |
 | `TitleHUDUI` | มุมบนซ้าย (ใต้ Class) | 🏷️ แสดง Active Title + ปุ่ม 📋 เปิด Collection |
 | `TitleCollectionUI` | กลางจอ (modal) | 🏷️ หน้ารวม Title ทั้งหมด + filter/search/equip |
 | `TutorialUI` | มุมบนซ้าย (Y=240) + กลางจอ (popup) | ❓ ปุ่ม "?" + Game Guide 5 tabs (RichText) |
@@ -1381,7 +1381,33 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 - **Countdown**: แสดง 3, 2, 1 ก่อน teleport
 - **Stage Reward**: แสดง `💰 +X` บนแต่ละปุ่มด่าน (รางวัลเมื่อผ่าน)
 
-> ⚠️ **UIGradient gotcha**: `UIGradient.Color` คูณกับ `BackgroundColor3` แบบ multiplicative — ถ้าต้องการสีสด ต้องใช้ solid `BackgroundColor3` โดยตรง ไม่ใส่ UIGradient ในปุ่มที่ต้องการสีชัด
+> ⚠️ **UIGradient gotcha (2 กรณี)**:
+> 1. `UIGradient.Color` **คูณกับ `BackgroundColor3`** — ใส่ gradient บน TextButton ที่มี `BackgroundColor3` ไม่ใช่ขาว จะได้สีมืดกว่าที่ตั้ง → ใช้ solid color แทน หรือตั้ง `BackgroundColor3 = Color3.new(1,1,1)` แล้วให้ gradient เป็นสีจริง
+> 2. `UIGradient` บน **TextButton ทำให้ตัวหนังสือหาย** AND **child Frame render ทับ text** → pattern ที่ถูกต้องสำหรับ gradient button: `TextButton (transparent, Text="")` → `Frame (gradient bg)` → `TextLabel (text, ZIndex สูงกว่า Frame)`
+
+### ClassSelectionUI:
+- **Modal size**: 720×480px, dark theme (BG_SURFACE→BG_BASE gradient, 135°), cyan glow stroke
+- **Class cards** (4 cards, 160×270px, `UIListLayout` horizontal, 12px gap):
+  - Icon emoji (36px), class name (17px, class color)
+  - Stat bars: 78px wide, 10px height; label 46px left; percentage 12px right of bar
+    - Green = buff (+), Red = nerf (−), Light purple = neutral (0%)
+    - KB Resist bar (Tank only): yellow `MASTERY_MAX` color
+  - Passive ability name (11px, PRIMARY_DARK)
+  - Mastery label (11px): `"Lv.20 ⚡ Double Jump"` หรือ `"Mastery Lv.5  124/244"`
+  - XP bar (5px thin, cyan)
+  - Reward icons: 🏷️✨🏅🖼️ (dim=locked, vivid=unlocked)
+  - CardFrame Mastery stroke: แสดงเมื่อ CardFrame reward unlocked
+- **Hover animation**: card scale `160×270 → 168×278` (0.15s Quad), stroke เปลี่ยนเป็น class color
+- **Selection**: card selected → ขนาดใหญ่ถาวร (168×278), stroke = class color 3px
+- **Inner glow**: bottom shadow vignette (Frame transparent gradient 0→0.3) + top 3px class-color edge accent
+- **Confirm button** (full-width, `1,-48 × 50`): TextButton(transparent) + Frame(gradient bg) + TextLabel(text)
+  - EQUIPPED → purple `RGB(140,80,220)→RGB(90,50,170)` (styled disabled)
+  - EQUIP → green `RGB(60,200,100)→RGB(40,170,70)`
+  - BUY & EQUIP → yellow `RGB(255,220,0)→RGB(220,175,0)`
+  - NOT ENOUGH → dark gray `RGB(85,68,135)→RGB(55,40,90)`
+- **Mastery Rewards bar**: `"🏆 MASTERY REWARDS (X/4)"` + next reward หรือ "All mastery rewards unlocked!"
+- **Class indicator HUD** (175×42px, bottom-left): icon + name + mini XP bar + Lv badge + chevron, คลิก toggle modal
+- **Mastery unlock levels**: 5=Title, 10=Trail, 15=Badge, 20=CardFrame + Ultimate skill
 
 ### SummaryUI (Game Complete):
 - **แสดงเมื่อ**: จบเกม (finish)

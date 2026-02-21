@@ -500,31 +500,58 @@ function ClassSelectionUI:createUI()
 		end
 	end)
 
-	-- Confirm button
+	-- Confirm button (full-width purple gradient)
+	-- Structure: TextButton (click handler, no text) > Frame (gradient bg) + TextLabel (text on top)
 	local confirmBtn = Instance.new("TextButton")
 	confirmBtn.Name = "ConfirmButton"
-	confirmBtn.Size = UDim2.new(0, 280, 0, 46)
+	confirmBtn.Size = UDim2.new(1, -48, 0, 50)
 	confirmBtn.Position = UDim2.new(0.5, 0, 1, -56)
 	confirmBtn.AnchorPoint = Vector2.new(0.5, 0)
-	confirmBtn.BackgroundColor3 = COLORS.BTN_EQUIP
+	confirmBtn.BackgroundTransparency = 1
 	confirmBtn.BorderSizePixel = 0
-	confirmBtn.Text = "EQUIP"
-	confirmBtn.TextColor3 = Theme.TEXT_PRIMARY
-	confirmBtn.TextSize = 18
-	confirmBtn.Font = Enum.Font.GothamBold
+	confirmBtn.Text = ""
 	confirmBtn.Parent = container
 	self.confirmButton = confirmBtn
 
-	local confirmCorner = Instance.new("UICorner")
-	confirmCorner.CornerRadius = Theme.CORNER_SM
-	confirmCorner.Parent = confirmBtn
+	-- Gradient background frame
+	local confirmBg = Instance.new("Frame")
+	confirmBg.Name = "ConfirmBg"
+	confirmBg.Size = UDim2.new(1, 0, 1, 0)
+	confirmBg.BackgroundColor3 = Color3.new(1, 1, 1)
+	confirmBg.BorderSizePixel = 0
+	confirmBg.Parent = confirmBtn
+	self.confirmBg = confirmBg
+
+	Theme.applyCorner(confirmBg, "md")
+
+	local confirmGradient = Instance.new("UIGradient")
+	confirmGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 80, 220)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 50, 170)),
+	})
+	confirmGradient.Rotation = 0
+	confirmGradient.Parent = confirmBg
+	self.confirmGradient = confirmGradient
 
 	local confirmStroke = Instance.new("UIStroke")
-	confirmStroke.Color = Theme.SUCCESS
+	confirmStroke.Color = Color3.fromRGB(160, 100, 240)
 	confirmStroke.Thickness = Theme.STROKE_THIN
-	confirmStroke.Transparency = 0.5
-	confirmStroke.Parent = confirmBtn
+	confirmStroke.Transparency = 0.3
+	confirmStroke.Parent = confirmBg
 	self.confirmStroke = confirmStroke
+
+	-- Text label on top of gradient (ZIndex higher so it renders above bg Frame)
+	local confirmText = Instance.new("TextLabel")
+	confirmText.Name = "ConfirmText"
+	confirmText.Size = UDim2.new(1, 0, 1, 0)
+	confirmText.BackgroundTransparency = 1
+	confirmText.Text = "EQUIP"
+	confirmText.TextColor3 = Theme.TEXT_PRIMARY
+	confirmText.TextSize = 18
+	confirmText.Font = Enum.Font.GothamBold
+	confirmText.ZIndex = confirmBg.ZIndex + 1
+	confirmText.Parent = confirmBtn
+	self.confirmText = confirmText
 
 	confirmBtn.MouseButton1Click:Connect(function()
 		self:confirmSelection()
@@ -559,6 +586,38 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 	cardStroke.Color = COLORS.STROKE_DEFAULT
 	cardStroke.Thickness = Theme.STROKE_MED
 	cardStroke.Parent = card
+
+	-- Bottom inner shadow/vignette
+	local innerGlow = Instance.new("Frame")
+	innerGlow.Name = "InnerGlow"
+	innerGlow.Size = UDim2.new(1, 0, 0.35, 0)
+	innerGlow.Position = UDim2.new(0, 0, 0.65, 0)
+	innerGlow.BackgroundColor3 = Color3.new(0, 0, 0)
+	innerGlow.BackgroundTransparency = 0.7
+	innerGlow.BorderSizePixel = 0
+	innerGlow.ZIndex = card.ZIndex + 1
+	innerGlow.Parent = card
+	Theme.applyCorner(innerGlow, "md")
+
+	local innerGradient = Instance.new("UIGradient")
+	innerGradient.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	innerGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(1, 0.3),
+	})
+	innerGradient.Rotation = 180
+	innerGradient.Parent = innerGlow
+
+	-- Class-colored top edge accent
+	local topGlow = Instance.new("Frame")
+	topGlow.Name = "TopGlow"
+	topGlow.Size = UDim2.new(1, 0, 0, 3)
+	topGlow.Position = UDim2.new(0, 0, 0, 0)
+	topGlow.BackgroundColor3 = classDef.color
+	topGlow.BackgroundTransparency = 0.5
+	topGlow.BorderSizePixel = 0
+	topGlow.ZIndex = card.ZIndex + 1
+	topGlow.Parent = card
 
 	-- Icon
 	local icon = Instance.new("TextLabel")
@@ -595,7 +654,7 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 		barLabel.Parent = card
 
 		local barBg = Instance.new("Frame")
-		barBg.Size = UDim2.new(0, 68, 0, 10)
+		barBg.Size = UDim2.new(0, 78, 0, 10)
 		barBg.Position = UDim2.new(0, 56, 0, yPos + 2)
 		barBg.BackgroundColor3 = COLORS.BAR_BG
 		barBg.BorderSizePixel = 0
@@ -627,12 +686,12 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 		end
 
 		local pctLabel = Instance.new("TextLabel")
-		pctLabel.Size = UDim2.new(0, 30, 0, 14)
-		pctLabel.Position = UDim2.new(0, 126, 0, yPos)
+		pctLabel.Size = UDim2.new(0, 36, 0, 14)
+		pctLabel.Position = UDim2.new(0, 138, 0, yPos)
 		pctLabel.BackgroundTransparency = 1
 		pctLabel.Text = pctText
 		pctLabel.TextColor3 = barColor
-		pctLabel.TextSize = 10
+		pctLabel.TextSize = 12
 		pctLabel.Font = Enum.Font.GothamBold
 		pctLabel.TextXAlignment = Enum.TextXAlignment.Left
 		pctLabel.Parent = card
@@ -657,7 +716,7 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 		kbLabel.Parent = card
 
 		local kbBg = Instance.new("Frame")
-		kbBg.Size = UDim2.new(0, 68, 0, 10)
+		kbBg.Size = UDim2.new(0, 78, 0, 10)
 		kbBg.Position = UDim2.new(0, 56, 0, kbY + 2)
 		kbBg.BackgroundColor3 = COLORS.BAR_BG
 		kbBg.BorderSizePixel = 0
@@ -678,12 +737,12 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 		kbFillCorner.Parent = kbFill
 
 		local kbPct = Instance.new("TextLabel")
-		kbPct.Size = UDim2.new(0, 30, 0, 14)
-		kbPct.Position = UDim2.new(0, 126, 0, kbY)
+		kbPct.Size = UDim2.new(0, 36, 0, 14)
+		kbPct.Position = UDim2.new(0, 138, 0, kbY)
 		kbPct.BackgroundTransparency = 1
 		kbPct.Text = string.format("%d%%", math.floor(classDef.knockbackResistance * 100))
 		kbPct.TextColor3 = COLORS.MASTERY_MAX
-		kbPct.TextSize = 10
+		kbPct.TextSize = 12
 		kbPct.Font = Enum.Font.GothamBold
 		kbPct.TextXAlignment = Enum.TextXAlignment.Left
 		kbPct.Parent = card
@@ -823,6 +882,9 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 
 	card.MouseEnter:Connect(function()
 		if self.selectedClass ~= classId then
+			TweenService:Create(card, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, 168, 0, 278),
+			}):Play()
 			TweenService:Create(cardStroke, TweenInfo.new(0.12), {
 				Color = classDef.color,
 			}):Play()
@@ -831,6 +893,9 @@ function ClassSelectionUI:createClassCard(parent: Frame, classId: string)
 
 	card.MouseLeave:Connect(function()
 		if self.selectedClass ~= classId then
+			TweenService:Create(card, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, 160, 0, 270),
+			}):Play()
 			local isUnlocked = self:isClassUnlocked(classId)
 			local isAffordable = self:isClassAffordable(classId)
 			local targetColor = COLORS.STROKE_DEFAULT
@@ -1028,21 +1093,54 @@ function ClassSelectionUI:setConfirmButtonState(text: string, isEnabled: boolean
 		return
 	end
 
-	self.confirmButton.Text = text
 	self.confirmButton.Active = isEnabled
-	self.confirmButton.AutoButtonColor = isEnabled
+	if self.confirmText then
+		self.confirmText.Text = text
+		self.confirmText.TextColor3 = Theme.TEXT_PRIMARY
+	end
 
-	if isEnabled then
-		self.confirmButton.BackgroundColor3 = btnColor or COLORS.BTN_EQUIP
-		self.confirmButton.TextColor3 = Theme.TEXT_PRIMARY
-		if self.confirmStroke then
-			self.confirmStroke.Transparency = 0.5
-		end
-	else
-		self.confirmButton.BackgroundColor3 = COLORS.BTN_DISABLED
-		self.confirmButton.TextColor3 = Theme.TEXT_PRIMARY
-		if self.confirmStroke then
-			self.confirmStroke.Transparency = 1
+	-- Gradient colors per state (BackgroundColor3 stays white, UIGradient does coloring)
+	if self.confirmGradient then
+		if isEnabled and btnColor == COLORS.BTN_PURCHASE then
+			-- BUY & EQUIP — yellow gradient
+			self.confirmGradient.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 0)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 175, 0)),
+			})
+			if self.confirmStroke then
+				self.confirmStroke.Color = Color3.fromRGB(255, 230, 80)
+				self.confirmStroke.Transparency = 0.3
+			end
+		elseif isEnabled then
+			-- EQUIP — green gradient
+			self.confirmGradient.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 200, 100)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 170, 70)),
+			})
+			if self.confirmStroke then
+				self.confirmStroke.Color = Color3.fromRGB(80, 220, 120)
+				self.confirmStroke.Transparency = 0.3
+			end
+		elseif text == "EQUIPPED" then
+			-- EQUIPPED — purple gradient (disabled but styled)
+			self.confirmGradient.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 80, 220)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 50, 170)),
+			})
+			if self.confirmStroke then
+				self.confirmStroke.Color = Color3.fromRGB(160, 100, 240)
+				self.confirmStroke.Transparency = 0.3
+			end
+		else
+			-- NOT ENOUGH — dark gray gradient
+			self.confirmGradient.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(85, 68, 135)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 40, 90)),
+			})
+			if self.confirmStroke then
+				self.confirmStroke.Color = COLORS.STROKE_DEFAULT
+				self.confirmStroke.Transparency = 0.6
+			end
 		end
 	end
 end
@@ -1224,7 +1322,7 @@ function ClassSelectionUI:updateRewardsPreview()
 	local rewards = self.classMasteryRewards[selectedClass] or {}
 
 	if #rewards == 0 then
-		self.rewardsTitle.Text = "MASTERY REWARDS"
+		self.rewardsTitle.Text = "\u{1F3C6} MASTERY REWARDS"
 		self.rewardsBody.Text = "No mastery rewards configured for this class."
 		return
 	end
@@ -1240,7 +1338,7 @@ function ClassSelectionUI:updateRewardsPreview()
 		end
 	end
 
-	self.rewardsTitle.Text = string.format("MASTERY REWARDS (%d/%d)", unlockedCount, #rewards)
+	self.rewardsTitle.Text = string.format("\u{1F3C6} MASTERY REWARDS (%d/%d)", unlockedCount, #rewards)
 
 	if firstLockedReward then
 		self.rewardsBody.Text = string.format("Next: Lv.%d %s \"%s\"", firstLockedReward.level, firstLockedReward.rewardType, firstLockedReward.name)
@@ -1392,24 +1490,19 @@ function ClassSelectionUI:selectClass(classId: string)
 	local prevSelected = self.selectedClass
 	self.selectedClass = classId
 
-	-- Animate selected card
+	-- Animate selected card — scale up and stay enlarged
 	local buttonData = self.classButtons[classId]
 	if buttonData then
-		TweenService:Create(buttonData.button, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
-			Size = UDim2.new(0, 164, 0, 274),
+		TweenService:Create(buttonData.button, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 168, 0, 278),
 		}):Play()
-		task.delay(0.1, function()
-			TweenService:Create(buttonData.button, TweenInfo.new(0.15, Enum.EasingStyle.Back), {
-				Size = UDim2.new(0, 160, 0, 270),
-			}):Play()
-		end)
 	end
 
-	-- Shrink previous selection back
+	-- Shrink previous selection back to normal
 	if prevSelected ~= classId then
 		local prevData = self.classButtons[prevSelected]
 		if prevData then
-			TweenService:Create(prevData.button, TweenInfo.new(0.12), {
+			TweenService:Create(prevData.button, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Size = UDim2.new(0, 160, 0, 270),
 			}):Play()
 		end
