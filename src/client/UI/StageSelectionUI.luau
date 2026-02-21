@@ -422,20 +422,20 @@ function StageSelectionUI:createUI()
 	randomButton.Name = "RandomButton"
 	randomButton.Size = UDim2.new(0, 170, 0, 50)
 	randomButton.Position = UDim2.new(0, 20, 0, 410)
-	randomButton.BackgroundColor3 = Theme.ACCENT_PINK
+	randomButton.BackgroundColor3 = Color3.fromRGB(255, 100, 90)
 	randomButton.BackgroundTransparency = 0
 	randomButton.BorderSizePixel = 0
-	randomButton.Text = "🎲 RANDOM"
+	randomButton.Text = "\u{1F3B2} RANDOM"
 	randomButton.TextColor3 = Theme.TEXT_PRIMARY
 	randomButton.TextSize = 20
 	randomButton.Font = Enum.Font.GothamBold
-	randomButton.TextStrokeTransparency = 0.3
+	randomButton.TextStrokeTransparency = 0.5
 	randomButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	randomButton.ZIndex = 10
 	randomButton.Parent = mainFrame
 
-	-- Subtle same-hue gradient (pink → darker pink)
-	local randomGradient = createGradient(randomButton, Theme.ACCENT_PINK, Color3.fromRGB(200, 60, 140))
+	-- Bright coral gradient (subtle, stays readable)
+	local randomGradient = createGradient(randomButton, Color3.fromRGB(255, 110, 120), Color3.fromRGB(240, 80, 100))
 	self.randomGradient = randomGradient
 
 	local randomCorner = Instance.new("UICorner")
@@ -443,7 +443,7 @@ function StageSelectionUI:createUI()
 	randomCorner.Parent = randomButton
 
 	local randomStroke = Instance.new("UIStroke")
-	randomStroke.Color = Theme.ACCENT_PINK
+	randomStroke.Color = Color3.fromRGB(255, 130, 130)
 	randomStroke.Thickness = Theme.STROKE_MED
 	randomStroke.Transparency = 0.2
 	randomStroke.Parent = randomButton
@@ -457,21 +457,21 @@ function StageSelectionUI:createUI()
 	startButton.Name = "StartButton"
 	startButton.Size = UDim2.new(0, 170, 0, 50)
 	startButton.Position = UDim2.new(1, -190, 0, 410)
-	startButton.BackgroundColor3 = Theme.SUCCESS
+	startButton.BackgroundColor3 = Color3.fromRGB(50, 200, 90)
 	startButton.BackgroundTransparency = 0
 	startButton.BorderSizePixel = 0
-	startButton.Text = "🚀 START"
+	startButton.Text = "\u{1F680} START"
 	startButton.TextColor3 = Theme.TEXT_PRIMARY
 	startButton.TextSize = 20
 	startButton.Font = Enum.Font.GothamBold
-	startButton.TextStrokeTransparency = 0.3
+	startButton.TextStrokeTransparency = 0.5
 	startButton.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	startButton.ZIndex = 10
 	startButton.Parent = mainFrame
 	self.startButton = startButton
 
-	-- Subtle same-hue gradient (green → darker green)
-	local startGradient = createGradient(startButton, Theme.SUCCESS, Color3.fromRGB(40, 170, 70))
+	-- Bright green gradient (subtle, stays readable)
+	local startGradient = createGradient(startButton, Color3.fromRGB(70, 210, 100), Color3.fromRGB(40, 180, 70))
 	self.startGradient = startGradient
 
 	local startCorner = Instance.new("UICorner")
