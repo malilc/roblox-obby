@@ -270,8 +270,9 @@ function TitleCollectionUI:createUI()
 
 	local bannerStroke = Instance.new("UIStroke")
 	bannerStroke.Color = COLORS.STROKE_BANNER
-	bannerStroke.Thickness = 1
+	bannerStroke.Thickness = 1.5
 	bannerStroke.Parent = bannerFrame
+	self.bannerStroke = bannerStroke
 
 	local bannerPrefix = Instance.new("TextLabel")
 	bannerPrefix.Name = "BannerPrefix"
@@ -301,20 +302,24 @@ function TitleCollectionUI:createUI()
 
 	local unequipButton = Instance.new("TextButton")
 	unequipButton.Name = "UnequipButton"
-	unequipButton.Size = UDim2.new(0, 90, 0, 28)
-	unequipButton.Position = UDim2.new(1, -100, 0.5, -14)
+	unequipButton.Size = UDim2.new(0, 100, 0, 30)
+	unequipButton.Position = UDim2.new(1, -112, 0.5, -15)
 	unequipButton.BackgroundColor3 = COLORS.BG_UNEQUIP
 	unequipButton.BorderSizePixel = 0
 	unequipButton.Text = "UNEQUIP"
 	unequipButton.TextColor3 = COLORS.TEXT_WHITE
-	unequipButton.TextSize = 12
+	unequipButton.TextSize = 13
 	unequipButton.Font = Enum.Font.GothamBold
 	unequipButton.Parent = bannerFrame
 	self.unequipButton = unequipButton
 
-	local unequipCorner = Instance.new("UICorner")
-	unequipCorner.CornerRadius = UDim.new(0, 7)
-	unequipCorner.Parent = unequipButton
+	Theme.applyCorner(unequipButton, "sm")
+
+	local unequipStroke = Instance.new("UIStroke")
+	unequipStroke.Color = COLORS.BG_UNEQUIP
+	unequipStroke.Thickness = Theme.STROKE_THIN
+	unequipStroke.Transparency = 0.3
+	unequipStroke.Parent = unequipButton
 
 	-- ===== SEARCH + FILTER BAR =====
 	local searchBox = Instance.new("TextBox")
@@ -669,6 +674,12 @@ function TitleCollectionUI:updateActiveTitleBanner()
 		return
 	end
 
+	-- Stop existing pulse
+	if self._bannerPulseTween then
+		self._bannerPulseTween:Cancel()
+		self._bannerPulseTween = nil
+	end
+
 	if not self.activeTitle then
 		self.bannerTitleLabel.Text = "No Title"
 		self.bannerTitleLabel.TextColor3 = COLORS.TEXT_MUTED
@@ -676,6 +687,10 @@ function TitleCollectionUI:updateActiveTitleBanner()
 			self.unequipButton.Active = false
 			self.unequipButton.AutoButtonColor = false
 			self.unequipButton.BackgroundColor3 = COLORS.BG_LOCKED_BTN
+		end
+		if self.bannerStroke then
+			self.bannerStroke.Color = COLORS.STROKE_BANNER
+			self.bannerStroke.Transparency = 0
 		end
 		return
 	end
@@ -690,6 +705,17 @@ function TitleCollectionUI:updateActiveTitleBanner()
 		self.unequipButton.Active = true
 		self.unequipButton.AutoButtonColor = true
 		self.unequipButton.BackgroundColor3 = COLORS.BG_UNEQUIP
+	end
+
+	-- Banner stroke glow pulse with rarity color
+	if self.bannerStroke then
+		self.bannerStroke.Color = theme.frameColor
+		self.bannerStroke.Transparency = 0.2
+		self._bannerPulseTween = TweenService:Create(self.bannerStroke,
+			TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Transparency = 0.6 }
+		)
+		self._bannerPulseTween:Play()
 	end
 end
 
@@ -834,22 +860,29 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		cardStroke.Thickness = if isActive then 2 else 1
 		cardStroke.Parent = card
 
-		-- Rarity color strip (left border, 4px)
+		-- Rarity color strip (left border, 6px + rounded)
 		local rarityStrip = Instance.new("Frame")
 		rarityStrip.Name = "RarityStrip"
-		rarityStrip.Size = UDim2.new(0, 4, 1, 0)
+		rarityStrip.Size = UDim2.new(0, 6, 1, 0)
 		rarityStrip.Position = UDim2.new(0, 0, 0, 0)
 		rarityStrip.BackgroundColor3 = if entry.unlocked then rarityColor else Theme.BG_ELEVATED
 		rarityStrip.BackgroundTransparency = if entry.unlocked then 0 else 0.4
 		rarityStrip.BorderSizePixel = 0
 		rarityStrip.Parent = card
 
-		-- Title name (row 1)
+		local stripCorner = Instance.new("UICorner")
+		stripCorner.CornerRadius = UDim.new(0, 3)
+		stripCorner.Parent = rarityStrip
+
+		-- Title name (row 1) — with rarity emoji
+		local RARITY_EMOJI = {Common = "\u{26AA}", Uncommon = "\u{1F7E2}", Rare = "\u{1F535}", Epic = "\u{1F7E3}", Legendary = "\u{2B50}"}
+		local rarityEmoji = RARITY_EMOJI[entry.rarity] or ""
+
 		local titleLabel = Instance.new("TextLabel")
-		titleLabel.Size = UDim2.new(1, -150, 0, 24)
-		titleLabel.Position = UDim2.new(0, 14, 0, 8)
+		titleLabel.Size = UDim2.new(1, -160, 0, 24)
+		titleLabel.Position = UDim2.new(0, 16, 0, 8)
 		titleLabel.BackgroundTransparency = 1
-		titleLabel.Text = string.format("[%s] %s", entry.rarity, entry.name)
+		titleLabel.Text = string.format("%s [%s] %s", rarityEmoji, entry.rarity, entry.name)
 		titleLabel.TextColor3 = if entry.unlocked then theme.textColor else COLORS.TEXT_LOCKED
 		titleLabel.TextSize = 15
 		titleLabel.Font = Enum.Font.GothamBold
@@ -875,17 +908,19 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 
 		-- Action button (right side)
 		local actionButton = Instance.new("TextButton")
-		actionButton.Size = UDim2.new(0, 90, 0, 30)
-		actionButton.Position = UDim2.new(1, -100, 0.5, -15)
+		actionButton.Size = UDim2.new(0, 100, 0, 32)
+		actionButton.Position = UDim2.new(1, -112, 0.5, -16)
 		actionButton.BorderSizePixel = 0
 		actionButton.TextColor3 = COLORS.TEXT_WHITE
 		actionButton.TextSize = 13
 		actionButton.Font = Enum.Font.GothamBold
 		actionButton.Parent = card
 
-		local actionCorner = Instance.new("UICorner")
-		actionCorner.CornerRadius = UDim.new(0, 7)
-		actionCorner.Parent = actionButton
+		Theme.applyCorner(actionButton, "sm")
+
+		local actionStroke = Instance.new("UIStroke")
+		actionStroke.Thickness = Theme.STROKE_THIN
+		actionStroke.Parent = actionButton
 
 		if not entry.unlocked then
 			actionButton.Text = "LOCKED"
@@ -893,17 +928,24 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 			actionButton.AutoButtonColor = false
 			actionButton.BackgroundColor3 = COLORS.BG_LOCKED_BTN
 			actionButton.TextColor3 = COLORS.TEXT_MUTED
+			actionButton.TextTransparency = 0.3
+			actionStroke.Color = Theme.BG_ELEVATED
+			actionStroke.Transparency = 0.5
 		else
 			if isActive then
 				actionButton.Text = "EQUIPPED"
 				actionButton.Active = true
 				actionButton.AutoButtonColor = true
 				actionButton.BackgroundColor3 = COLORS.BG_UNEQUIP
+				actionStroke.Color = COLORS.BG_UNEQUIP
+				actionStroke.Transparency = 0.3
 			else
 				actionButton.Text = "EQUIP"
 				actionButton.Active = true
 				actionButton.AutoButtonColor = true
 				actionButton.BackgroundColor3 = COLORS.BG_EQUIP
+				actionStroke.Color = COLORS.BG_EQUIP
+				actionStroke.Transparency = 0.3
 			end
 
 			actionButton.MouseButton1Click:Connect(function()
@@ -914,6 +956,23 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 				end
 			end)
 		end
+
+		-- Row hover effect
+		local baseBg = card.BackgroundColor3
+		card.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement then
+				TweenService:Create(card, TweenInfo.new(0.12), {
+					BackgroundColor3 = Theme.BG_ELEVATED,
+				}):Play()
+			end
+		end)
+		card.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement then
+				TweenService:Create(card, TweenInfo.new(0.12), {
+					BackgroundColor3 = baseBg,
+				}):Play()
+			end
+		end)
 	end
 end
 

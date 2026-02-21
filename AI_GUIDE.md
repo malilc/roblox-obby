@@ -1067,6 +1067,23 @@ Client รับ DailyBonusClaimed:
 ### Testing:
 - กด **T** → Item Testing menu → "🎁 Reset Daily Login" → รีเซ็ต streak ทันที (debug only)
 
+### OBBY CHALLENGE Welcome Popup (`init.client.luau`):
+- **ตำแหน่ง**: `showWelcomeMessage()` ใน `src/client/init.client.luau` — แสดงครั้งแรกเมื่อ character spawn
+- **Panel size**: 480×240px, `AnchorPoint=(0.5,0.5)`, Position `(0.5,0,0.4,0)` (centered ด้านบน)
+- **Background**: `Theme.BG_SURFACE`, UIGradient `BG_SURFACE→BG_BASE` (135°), `BackgroundTransparency=0`
+- **Stroke**: `Theme.ACCENT_CYAN`, `STROKE_MED`, transparency=0.2
+- **Corner**: `Theme.CORNER_LG`
+- **Title**: "🏃 OBBY CHALLENGE 🏃", GothamBlack 36px, `Theme.ACCENT_CYAN`; UIStroke `HUD_SCORE_END` 1.5px (0.4 transparency)
+- **Info text** (RichText=true): colored keywords
+  - `BLUE ZONE` → `<font color="#50DCFF"><b>...</b></font>` (ACCENT_CYAN)
+  - `[1]` `[2]` → `<font color="#FFC800"><b>...</b></font>` (PRIMARY yellow)
+  - `win!` → `<font color="#50E678"><b>...</b></font>` (SUCCESS green)
+  - Body color: `Theme.TEXT_MUTED`
+- **GOT IT! button**: 300×45, 3-layer gradient pattern
+  - TextButton (transparent, Text="") + Frame (green gradient `RGB(60,200,100)→RGB(40,170,70)`) + TextLabel (white, ZIndex+1)
+  - UIStroke `Theme.SUCCESS`, `STROKE_THIN`, transparency=0.3; Corner `Theme.CORNER_MD`
+- **Auto close**: `task.delay(10)` ถ้าไม่กดปุ่ม
+
 ---
 
 ## 🏆 Global Leaderboard (Physical Board)
@@ -1408,6 +1425,23 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 - **Mastery Rewards bar**: `"🏆 MASTERY REWARDS (X/4)"` + next reward หรือ "All mastery rewards unlocked!"
 - **Class indicator HUD** (175×42px, bottom-left): icon + name + mini XP bar + Lv badge + chevron, คลิก toggle modal
 - **Mastery unlock levels**: 5=Title, 10=Trail, 15=Badge, 20=CardFrame + Ultimate skill
+
+### TitleCollectionUI:
+- **Modal size**: ~960×580px, dark gradient (BG_SURFACE→BG_BASE, 135°), ACCENT_CYAN glow stroke
+- **Active Title Banner** (top): shows equipped title name + rarity badge, UNEQUIP button
+  - Banner stroke color = rarity `frameColor` (ไม่ใช่ gray default)
+  - **Glow pulse animation**: TweenService Sine InOut, period 1.5s, repeat -1, reversing → stroke Transparency ไปมาระหว่าง 0.2–0.5
+  - หยุด pulse เมื่อ unequip (`:Cancel()` tween เก่า ก่อนสร้างใหม่)
+- **Title rows** (card per title, compact 62px height):
+  - **Rarity left border strip**: 6px wide (ขึ้นจาก 4px), UICorner(0,3) มน, สี = rarity `frameColor`
+  - **Rarity tag format**: `"⚪ [Common]"` / `"🔵 [Rare]"` / `"🟣 [Epic]"` / `"⭐ [Legendary]"` (emoji ก่อน bracket)
+  - **Button sizing** (ในแต่ละ row): 100×32 (ขึ้นจาก 90×30), font 13px GothamBold
+    - EQUIP (unlocked): SUCCESS bg + UIStroke SUCCESS 0.3 transparency
+    - EQUIPPED (active): SECONDARY (orange-red) + UIStroke SECONDARY 0.3 transparency
+    - LOCKED: BG_ELEVATED bg, TextTransparency=0.3 (dimmed look), no click
+  - **UNEQUIP button** (banner): 100×30, Theme.applyCorner("sm"), UIStroke
+  - **Row hover**: `InputBegan` (MouseMovement) → tween `BG_ELEVATED`; `InputEnded` → tween กลับ base color
+- **Filters**: All / Unlocked / Locked tab + search TextBox (ชื่อ/class/rarity) + Sort dropdown
 
 ### SummaryUI (Game Complete):
 - **แสดงเมื่อ**: จบเกม (finish)
@@ -1875,3 +1909,7 @@ end)
 105. **Vivid Gradient Theme (Feb 2026)**: UI ทั้งหมด 14 ไฟล์ถูก refactor ให้ใช้ gradient + glow stroke + drop shadow pattern ตาม Colorful Youth theme — ดู UI Design System section สำหรับ pattern ล่าสุด
 106. **Emoji Unicode Escapes**: ใน Luau string literals ให้ใช้ `\u{1F381}` แทน emoji ตรงๆ (เช่น 🎁) เพื่อหลีกเลี่ยง encoding issues บาง environment
 107. **Light Theme UIs ถูก Dark-theme แล้ว**: ClassSelectionUI (main panel), TitleCollectionUI, TitleHUDUI ถูกปรับจาก light palette เป็น dark gradient เพื่อ visual consistency — ไม่ต้อง maintain light theme แยกแล้ว
+108. **TitleCollectionUI rarity border**: strip width = 6px (ไม่ใช่ 4px), มี UICorner(0,3) มน; rarity tag ใช้ emoji prefix `"⚪ [Common]"` / `"🔵 [Rare]"` / `"🟣 [Epic]"` / `"⭐ [Legendary]"`
+109. **TitleCollectionUI banner pulse**: stroke color = rarity frameColor, TweenInfo Sine InOut, repeatCount=-1, reverses=true — `:Cancel()` เมื่อ unequip เพื่อไม่ให้ leak connection
+110. **Row hover บน Frame**: ใช้ `InputBegan`/`InputEnded` + check `UserInputType.MouseMovement` — MouseEnter/Leave ทำงานได้กับ Frame แต่ `InputBegan` สม่ำเสมอกว่าเมื่อมี child elements ทับ
+111. **OBBY CHALLENGE popup**: อยู่ใน `init.client.luau` ไม่ใช่ `TutorialUI` — migrate ให้ใช้ ThemeConfig + RichText keywords + 3-layer gradient GOT IT button (300×45)

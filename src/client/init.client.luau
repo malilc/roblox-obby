@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Logger = require(ReplicatedStorage.Shared.Logger)
+local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 Logger.info("Client", "Starting Obby Game Client...")
 
@@ -83,67 +84,116 @@ Logger.info("Client", "UI and Effects initialized!")
 -- Show welcome message
 local function showWelcomeMessage()
 	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-	
+
 	local welcomeGui = Instance.new("ScreenGui")
 	welcomeGui.Name = "WelcomeGui"
 	welcomeGui.Parent = playerGui
-	
+
+	-- B5: Panel 480×240, centered with AnchorPoint
 	local welcomeFrame = Instance.new("Frame")
-	welcomeFrame.Size = UDim2.new(0, 500, 0, 200)
-	welcomeFrame.Position = UDim2.new(0.5, -250, 0.3, 0)
-	welcomeFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	welcomeFrame.BackgroundTransparency = 0.2
+	welcomeFrame.Size = UDim2.new(0, 480, 0, 240)
+	welcomeFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	welcomeFrame.Position = UDim2.new(0.5, 0, 0.4, 0)
+	welcomeFrame.BackgroundColor3 = Theme.BG_SURFACE
+	welcomeFrame.BackgroundTransparency = 0
 	welcomeFrame.BorderSizePixel = 0
 	welcomeFrame.Parent = welcomeGui
-	
+
+	-- B1: Gradient overlay BG_SURFACE → BG_BASE
+	local bgGradient = Instance.new("UIGradient")
+	bgGradient.Color = ColorSequence.new(Theme.BG_SURFACE, Theme.BG_BASE)
+	bgGradient.Rotation = 135
+	bgGradient.Parent = welcomeFrame
+
+	-- B1: Corner + glow stroke
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 15)
+	corner.CornerRadius = Theme.CORNER_LG
 	corner.Parent = welcomeFrame
-	
+
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(100, 255, 150)
-	stroke.Thickness = 2
+	stroke.Color = Theme.ACCENT_CYAN
+	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.2
 	stroke.Parent = welcomeFrame
-	
+
+	-- B3: Title — GothamBlack 36px with UIStroke
 	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0, 50)
-	titleLabel.Position = UDim2.new(0, 0, 0, 20)
+	titleLabel.Size = UDim2.new(1, 0, 0, 55)
+	titleLabel.Position = UDim2.new(0, 0, 0, 18)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "🏃 OBBY CHALLENGE 🏃"
-	titleLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
-	titleLabel.TextSize = 32
-	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.TextColor3 = Theme.ACCENT_CYAN
+	titleLabel.TextSize = 36
+	titleLabel.Font = Enum.Font.GothamBlack
 	titleLabel.Parent = welcomeFrame
-	
+
+	local titleStroke = Instance.new("UIStroke")
+	titleStroke.Color = Theme.HUD_SCORE_END
+	titleStroke.Thickness = 1.5
+	titleStroke.Transparency = 0.4
+	titleStroke.Parent = titleLabel
+
+	-- B2: RichText info with colored keywords
 	local infoLabel = Instance.new("TextLabel")
-	infoLabel.Size = UDim2.new(1, -40, 0, 60)
-	infoLabel.Position = UDim2.new(0, 20, 0, 70)
+	infoLabel.Size = UDim2.new(1, -40, 0, 70)
+	infoLabel.Position = UDim2.new(0, 20, 0, 78)
 	infoLabel.BackgroundTransparency = 1
-	infoLabel.Text = "Step on the BLUE ZONE to select stages!\nUse [1][2] to use Items!\nComplete all stages to win!"
-	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	infoLabel.RichText = true
+	infoLabel.Text = 'Step on the <font color="#50DCFF"><b>BLUE ZONE</b></font> to select stages!\n'
+		.. 'Use <font color="#FFC800"><b>[1]</b></font> <font color="#FFC800"><b>[2]</b></font> to use Items!\n'
+		.. 'Complete all stages to <font color="#50E678"><b>win!</b></font>'
+	infoLabel.TextColor3 = Theme.TEXT_MUTED
 	infoLabel.TextSize = 16
 	infoLabel.Font = Enum.Font.Gotham
 	infoLabel.TextWrapped = true
 	infoLabel.Parent = welcomeFrame
-	
+
+	-- B4: GOT IT! button — 3-layer gradient pattern (TextButton + Frame + TextLabel)
 	local closeButton = Instance.new("TextButton")
-	closeButton.Size = UDim2.new(0, 100, 0, 35)
-	closeButton.Position = UDim2.new(0.5, -50, 1, -50)
-	closeButton.BackgroundColor3 = Color3.fromRGB(100, 255, 150)
-	closeButton.Text = "GOT IT!"
-	closeButton.TextColor3 = Color3.fromRGB(30, 30, 40)
-	closeButton.TextSize = 16
-	closeButton.Font = Enum.Font.GothamBold
+	closeButton.Size = UDim2.new(0, 300, 0, 45)
+	closeButton.AnchorPoint = Vector2.new(0.5, 0)
+	closeButton.Position = UDim2.new(0.5, 0, 1, -58)
+	closeButton.BackgroundTransparency = 1
+	closeButton.Text = ""
 	closeButton.Parent = welcomeFrame
-	
+
+	local buttonBg = Instance.new("Frame")
+	buttonBg.Size = UDim2.new(1, 0, 1, 0)
+	buttonBg.BackgroundColor3 = Color3.new(1, 1, 1)
+	buttonBg.BorderSizePixel = 0
+	buttonBg.Parent = closeButton
+
+	local buttonGradient = Instance.new("UIGradient")
+	buttonGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 200, 100)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 170, 70)),
+	})
+	buttonGradient.Parent = buttonBg
+
 	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 8)
-	buttonCorner.Parent = closeButton
-	
+	buttonCorner.CornerRadius = Theme.CORNER_MD
+	buttonCorner.Parent = buttonBg
+
+	local buttonStroke = Instance.new("UIStroke")
+	buttonStroke.Color = Theme.SUCCESS
+	buttonStroke.Thickness = Theme.STROKE_THIN
+	buttonStroke.Transparency = 0.3
+	buttonStroke.Parent = buttonBg
+
+	local buttonText = Instance.new("TextLabel")
+	buttonText.Size = UDim2.new(1, 0, 1, 0)
+	buttonText.BackgroundTransparency = 1
+	buttonText.Text = "GOT IT!"
+	buttonText.TextColor3 = Theme.TEXT_PRIMARY
+	buttonText.TextSize = 18
+	buttonText.Font = Enum.Font.GothamBold
+	buttonText.ZIndex = buttonBg.ZIndex + 1
+	buttonText.Parent = closeButton
+
 	closeButton.MouseButton1Click:Connect(function()
 		welcomeGui:Destroy()
 	end)
-	
+
 	-- Auto close after 10 seconds
 	task.delay(10, function()
 		if welcomeGui.Parent then
