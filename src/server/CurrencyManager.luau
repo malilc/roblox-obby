@@ -62,6 +62,8 @@ export type TitleCatalogEntry = {
 
 export type PlayerCurrencyData = {
 	currency: number,
+	gems: number,
+	wins: number,
 	unlockedClasses: {[string]: boolean},
 	equippedClass: string,
 	classMastery: {[string]: ClassMasteryData},
@@ -398,6 +400,7 @@ function CurrencyManager.new()
 	self.titleUpdateRemote = ReplicatedStorage.Remotes:WaitForChild("TitleUpdate")
 	self.setActiveTitleRemote = ReplicatedStorage.Remotes:WaitForChild("SetActiveTitle")
 	self.dailyBonusRemote = ReplicatedStorage.Remotes:WaitForChild("DailyBonusClaimed")
+	self.updateGemRemote = ReplicatedStorage.Remotes:WaitForChild("UpdateGems")
 
 	self:setupRemotes()
 
@@ -425,7 +428,7 @@ function CurrencyManager:setupRemotes()
 	end
 
 	-- Setup testing remotes if in debug mode
-	if Config.Debug and Config.Debug.MasteryTesting then
+	if Config.Debug and Config.Debug.ItemTesting then
 		self.setupMasteryLevelRemote = ReplicatedStorage.Remotes:FindFirstChild("SetMasteryLevel")
 		if self.setupMasteryLevelRemote then
 			self.setupMasteryLevelRemote.OnServerEvent:Connect(function(player, data)
@@ -455,7 +458,7 @@ end
 
 -- Handle set mastery level request (testing only)
 function CurrencyManager:handleSetMasteryLevelRequest(player: Player, data: {[string]: any})
-	if not Config.Debug or not Config.Debug.MasteryTesting then
+	if not Config.Debug or not Config.Debug.ItemTesting then
 		Logger.warn("CurrencyManager", "handleSetMasteryLevelRequest is only available in testing mode")
 		return
 	end
@@ -484,6 +487,8 @@ function CurrencyManager:initPlayer(player: Player)
 	local defaultMasteryData = buildMasteryData(nil)
 	self.playerData[player] = {
 		currency = Config.Currency.StartingAmount,
+		gems = 0,
+		wins = 0,
 		unlockedClasses = buildUnlockedClasses(nil),
 		equippedClass = defaultClass,
 		classMastery = defaultMasteryData,
@@ -504,6 +509,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 		-- Send update even if no DataStore
 		self:checkDailyLogin(player)
 		self:sendCurrencyUpdate(player)
+		self:sendGemUpdate(player)
 		self:sendMasteryUpdate(player)
 		self:sendTitleUpdate(player)
 		self:applyActiveTitleToCharacter(player)
@@ -523,11 +529,13 @@ function CurrencyManager:loadPlayerData(player: Player)
 		playerData.classMastery = buildMasteryData(data.classMastery)
 		playerData.masteryRewards = buildMasteryRewardUnlocks(data.masteryRewards, playerData.classMastery)
 		playerData.activeTitle = sanitizeActiveTitle(data.activeTitle, playerData.masteryRewards)
+		playerData.gems = math.max(0, tonumber(data.gems) or 0)
+		playerData.wins = math.max(0, tonumber(data.wins) or 0)
 		playerData.hasSeenTutorial = data.hasSeenTutorial == true
 		playerData.lastLoginTime = tonumber(data.lastLoginTime) or nil
 		playerData.loginStreak = tonumber(data.loginStreak) or 0
 
-		Logger.debug("CurrencyManager", "Loaded profile for", player.Name, "- Currency:", playerData.currency, "- Equipped:", playerData.equippedClass)
+		Logger.debug("CurrencyManager", "Loaded profile for", player.Name, "- Currency:", playerData.currency, "- Gems:", playerData.gems, "- Wins:", playerData.wins, "- Equipped:", playerData.equippedClass)
 	else
 		Logger.debug("CurrencyManager", "No saved currency for", player.Name, "- Using starting amount")
 	end
@@ -537,6 +545,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 
 	-- Update client
 	self:sendCurrencyUpdate(player)
+	self:sendGemUpdate(player)
 	self:sendMasteryUpdate(player)
 	self:sendTitleUpdate(player)
 	self:applyActiveTitleToCharacter(player)
@@ -561,13 +570,16 @@ function CurrencyManager:checkDailyLogin(player: Player)
 		local allRewards = {}
 		local cfgRewards = cfg.Rewards or {}
 		for day = 1, 7 do allRewards[day] = cfgRewards[day] or 25 end
+		local gemCfgNotClaimed = Config.Gems and Config.Gems.DailyLoginGems or {}
 		task.delay(2, function()
 			if player.Parent then
 				self.dailyBonusRemote:FireClient(player, {
 					claimed = false,
 					day     = playerData.loginStreak or 1,
 					amount  = 0,
+					gemAmount = 0,
 					rewards = allRewards,
+					gemRewards = gemCfgNotClaimed,
 					lastLoginTime = playerData.lastLoginTime,
 					cooldownHours = cfg.CooldownHours or 20,
 				})
@@ -588,12 +600,19 @@ function CurrencyManager:checkDailyLogin(player: Player)
 	local rewards = cfg.Rewards or {}
 	local amount = rewards[streak] or 25
 
+	-- Gem daily reward
+	local gemCfg = Config.Gems and Config.Gems.DailyLoginGems or {}
+	local gemAmount = gemCfg[streak] or 0
+
 	playerData.currency   = playerData.currency + amount
+	if gemAmount > 0 then
+		playerData.gems = playerData.gems + gemAmount
+	end
 	playerData.lastLoginTime = now
 	playerData.loginStreak   = streak
 	self.pendingSaves[player] = true
 
-	Logger.info("CurrencyManager", player.Name, "claimed login day", streak, "reward:", amount)
+	Logger.info("CurrencyManager", player.Name, "claimed login day", streak, "reward:", amount, "coins +", gemAmount, "gems")
 
 	-- Build full rewards table for UI
 	local allRewards = {}
@@ -608,10 +627,13 @@ function CurrencyManager:checkDailyLogin(player: Player)
 				claimed = true,
 				day     = streak,
 				amount  = amount,
+				gemAmount = gemAmount,
 				rewards = allRewards,
+				gemRewards = gemCfg,
 				lastLoginTime = now,
 				cooldownHours = cfg.CooldownHours or 20,
 			})
+			self:sendGemUpdate(player)
 		end
 	end)
 end
@@ -629,6 +651,8 @@ function CurrencyManager:savePlayerData(player: Player)
 				existingData = {}
 			end
 			existingData.currency = playerData.currency
+			existingData.gems = playerData.gems
+			existingData.wins = playerData.wins
 			existingData.unlockedClasses = self:getUnlockedClasses(player)
 			existingData.equippedClass = playerData.equippedClass
 			existingData.classMastery = self:getClassMasteryData(player)
@@ -1335,6 +1359,85 @@ function CurrencyManager:getCurrency(player: Player): number
 	return playerData and playerData.currency or 0
 end
 
+-- ============================================
+-- GEM & WIN METHODS
+-- ============================================
+
+-- Get player gems
+function CurrencyManager:getGems(player: Player): number
+	local playerData = self.playerData[player]
+	return playerData and playerData.gems or 0
+end
+
+-- Add gems to player
+function CurrencyManager:addGems(player: Player, amount: number, reason: string?)
+	local playerData = self.playerData[player]
+	if not playerData then return end
+	if amount <= 0 then return end
+
+	playerData.gems = playerData.gems + amount
+	self.pendingSaves[player] = true
+
+	Logger.debug("CurrencyManager", player.Name, "gained", amount, "gems - Total:", playerData.gems, if reason then "(" .. reason .. ")" else "")
+
+	self:sendGemUpdate(player)
+end
+
+-- Spend gems
+function CurrencyManager:spendGems(player: Player, amount: number, reason: string?): boolean
+	local playerData = self.playerData[player]
+	if not playerData then return false end
+	if amount <= 0 then return false end
+	if playerData.gems < amount then return false end
+
+	playerData.gems = playerData.gems - amount
+	self.pendingSaves[player] = true
+
+	Logger.debug("CurrencyManager", player.Name, "spent", amount, "gems - Total:", playerData.gems, if reason then "(" .. reason .. ")" else "")
+
+	self:sendGemUpdate(player)
+	return true
+end
+
+-- Get player wins
+function CurrencyManager:getWins(player: Player): number
+	local playerData = self.playerData[player]
+	return playerData and playerData.wins or 0
+end
+
+-- Add a win
+function CurrencyManager:addWin(player: Player)
+	local playerData = self.playerData[player]
+	if not playerData then return end
+
+	playerData.wins = playerData.wins + 1
+	self.pendingSaves[player] = true
+
+	Logger.debug("CurrencyManager", player.Name, "won! Total wins:", playerData.wins)
+
+	self:sendGemUpdate(player)
+end
+
+-- Send gem + wins update to client
+function CurrencyManager:sendGemUpdate(player: Player)
+	local playerData = self.playerData[player]
+	if not playerData then return end
+
+	self.updateGemRemote:FireClient(player, {
+		gems = playerData.gems,
+		wins = playerData.wins,
+	})
+
+	-- Keep leaderstats in sync
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local gemsVal = leaderstats:FindFirstChild("Gems")
+		if gemsVal then gemsVal.Value = playerData.gems end
+		local winsVal = leaderstats:FindFirstChild("Wins")
+		if winsVal then winsVal.Value = playerData.wins end
+	end
+end
+
 -- Send currency update to client
 function CurrencyManager:sendCurrencyUpdate(player: Player)
 	local playerData = self.playerData[player]
@@ -1344,6 +1447,13 @@ function CurrencyManager:sendCurrencyUpdate(player: Player)
 		currency = playerData.currency,
 		hasSeenTutorial = playerData.hasSeenTutorial,
 	})
+
+	-- Keep leaderstats in sync
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local currencyVal = leaderstats:FindFirstChild("Currency")
+		if currencyVal then currencyVal.Value = playerData.currency end
+	end
 end
 
 -- Remove player data
@@ -1364,7 +1474,7 @@ end
 
 -- Set mastery level for a specific class (testing only)
 function CurrencyManager:setMasteryLevel(player: Player, classId: string, level: number)
-	if not Config.Debug or not Config.Debug.MasteryTesting then
+	if not Config.Debug or not Config.Debug.ItemTesting then
 		Logger.warn("CurrencyManager", "setMasteryLevel is only available in testing mode")
 		return false
 	end
@@ -1403,7 +1513,7 @@ end
 
 -- Set all mastery levels to same level (testing only)
 function CurrencyManager:setAllMasteryLevels(player: Player, level: number)
-	if not Config.Debug or not Config.Debug.MasteryTesting then
+	if not Config.Debug or not Config.Debug.ItemTesting then
 		Logger.warn("CurrencyManager", "setAllMasteryLevels is only available in testing mode")
 		return false
 	end

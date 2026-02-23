@@ -1,4 +1,4 @@
--- ScoreUI: แสดงคะแนนแบบ Colorful Youth Style (Vivid Gradient)
+-- ScoreUI: HUD displays for Gems, Stage Progress, and Match Timer
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -33,11 +33,9 @@ function ScoreUI.new(parent: ScreenGui)
 	local self = setmetatable({}, ScoreUI)
 
 	self.parent = parent
-	self.roundScore = 0
+	self.gems = 0
 	self.currentStage = 0
 	self.totalStages = 5
-	self.highScore = 0
-	self.totalScore = 0
 
 	self:createUI()
 
@@ -45,173 +43,107 @@ function ScoreUI.new(parent: ScreenGui)
 end
 
 function ScoreUI:createUI()
-	-- === SCORE FRAME (มุมบนซ้าย) - Vivid Cyan Gradient ===
-	local scoreFrame = UIFactory.createPanel(self.parent, {
-		name = "ScoreFrame",
+	-- === GEM FRAME (top-left corner) - Purple Gradient ===
+	local gemFrame = UIFactory.createPanel(self.parent, {
+		name = "GemFrame",
 		size = UDim2.new(0, 130, 0, 44),
 		position = UDim2.new(0, 10, 0, 10),
-		bgColor = Theme.HUD_SCORE_START,
+		bgColor = Theme.HUD_GEM_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",
-		strokeColor = Theme.HUD_GLOW_CYAN,
+		strokeColor = Theme.HUD_GLOW_GEM,
 		strokeWeight = "med",
 		strokeTransparency = 0.2,
 	})
-	self.scoreFrame = scoreFrame
-	self.frameStroke = scoreFrame:FindFirstChildOfClass("UIStroke")
+	self.gemFrame = gemFrame
+	self.gemFrameStroke = gemFrame:FindFirstChildOfClass("UIStroke")
 
-	-- Vivid cyan→blue gradient
+	-- Purple gradient
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.HUD_SCORE_START),
-		ColorSequenceKeypoint.new(1, Theme.HUD_SCORE_END)
+		ColorSequenceKeypoint.new(0, Theme.HUD_GEM_START),
+		ColorSequenceKeypoint.new(1, Theme.HUD_GEM_END)
 	})
 	gradient.Rotation = 135
-	gradient.Parent = scoreFrame
+	gradient.Parent = gemFrame
 
 	-- Drop shadow
-	createDropShadow(scoreFrame)
+	createDropShadow(gemFrame)
 
-	-- Score Icon Container
+	-- Gem Icon Container
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
 	iconContainer.Size = UDim2.new(0, 36, 0, 36)
 	iconContainer.Position = UDim2.new(0, 4, 0.5, -18)
 	iconContainer.BackgroundTransparency = 1
-	iconContainer.Parent = scoreFrame
-	self.iconContainer = iconContainer
+	iconContainer.Parent = gemFrame
+	self.gemIconContainer = iconContainer
 
-	-- Score Icon Background (star circle)
-	local scoreIcon = Instance.new("Frame")
-	scoreIcon.Name = "ScoreIcon"
-	scoreIcon.Size = UDim2.new(1, 0, 1, 0)
-	scoreIcon.Position = UDim2.new(0, 0, 0, 0)
-	scoreIcon.BackgroundColor3 = Theme.ACCENT_CYAN
-	scoreIcon.BorderSizePixel = 0
-	scoreIcon.Parent = iconContainer
-	self.scoreIcon = scoreIcon
+	-- Gem Icon Background (circular gradient)
+	local gemIcon = Instance.new("Frame")
+	gemIcon.Name = "GemIcon"
+	gemIcon.Size = UDim2.new(1, 0, 1, 0)
+	gemIcon.Position = UDim2.new(0, 0, 0, 0)
+	gemIcon.BackgroundColor3 = Theme.HUD_GEM_START
+	gemIcon.BorderSizePixel = 0
+	gemIcon.Parent = iconContainer
 
 	local iconCorner = Instance.new("UICorner")
 	iconCorner.CornerRadius = Theme.CORNER_FULL
-	iconCorner.Parent = scoreIcon
+	iconCorner.Parent = gemIcon
 
-	-- Icon gradient (vivid 3D)
+	-- Icon gradient (purple tones 3D)
 	local iconGradient = Instance.new("UIGradient")
 	iconGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 250, 255)),
-		ColorSequenceKeypoint.new(0.5, Theme.ACCENT_CYAN),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 100, 220))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(230, 180, 255)),
+		ColorSequenceKeypoint.new(0.5, Theme.HUD_GEM_START),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 30, 160))
 	})
 	iconGradient.Rotation = 135
-	iconGradient.Parent = scoreIcon
+	iconGradient.Parent = gemIcon
 
-	-- Star symbol
-	local starSymbol = Instance.new("TextLabel")
-	starSymbol.Name = "StarSymbol"
-	starSymbol.Size = UDim2.new(1, 0, 1, 0)
-	starSymbol.Position = UDim2.new(0, 0, 0, 0)
-	starSymbol.BackgroundTransparency = 1
-	starSymbol.Text = "⭐"
-	starSymbol.TextSize = 20
-	starSymbol.Parent = scoreIcon
+	-- Diamond symbol
+	local diamondSymbol = Instance.new("TextLabel")
+	diamondSymbol.Name = "DiamondSymbol"
+	diamondSymbol.Size = UDim2.new(1, 0, 1, 0)
+	diamondSymbol.Position = UDim2.new(0, 0, 0, 0)
+	diamondSymbol.BackgroundTransparency = 1
+	diamondSymbol.Text = "\xF0\x9F\x92\x8E"
+	diamondSymbol.TextSize = 20
+	diamondSymbol.Parent = gemIcon
 
-	-- Icon stroke (vivid glow)
+	-- Icon stroke (purple glow)
 	local iconStroke = Instance.new("UIStroke")
-	iconStroke.Color = Color3.fromRGB(30, 80, 200)
+	iconStroke.Color = Color3.fromRGB(90, 30, 160)
 	iconStroke.Thickness = Theme.STROKE_MED
-	iconStroke.Parent = scoreIcon
+	iconStroke.Parent = gemIcon
 
-	-- Score Number
-	local scoreLabel = Instance.new("TextLabel")
-	scoreLabel.Name = "ScoreLabel"
-	scoreLabel.Size = UDim2.new(1, -48, 1, 0)
-	scoreLabel.Position = UDim2.new(0, 44, 0, 0)
-	scoreLabel.BackgroundTransparency = 1
-	scoreLabel.Text = "0"
-	scoreLabel.TextColor3 = Theme.TEXT_PRIMARY
-	scoreLabel.TextSize = 22
-	scoreLabel.Font = Enum.Font.GothamBlack
-	scoreLabel.TextXAlignment = Enum.TextXAlignment.Left
-	scoreLabel.Parent = scoreFrame
-	self.roundScoreLabel = scoreLabel
+	-- Gem Count Label
+	local gemLabel = Instance.new("TextLabel")
+	gemLabel.Name = "GemLabel"
+	gemLabel.Size = UDim2.new(1, -48, 1, 0)
+	gemLabel.Position = UDim2.new(0, 44, 0, 0)
+	gemLabel.BackgroundTransparency = 1
+	gemLabel.Text = "0"
+	gemLabel.TextColor3 = Theme.TEXT_PRIMARY
+	gemLabel.TextSize = 22
+	gemLabel.Font = Enum.Font.GothamBlack
+	gemLabel.TextXAlignment = Enum.TextXAlignment.Left
+	gemLabel.Parent = gemFrame
+	self.gemLabel = gemLabel
 
 	-- Bold text stroke for visibility
 	local textStroke = Instance.new("UIStroke")
-	textStroke.Color = Color3.fromRGB(15, 50, 150)
+	textStroke.Color = Color3.fromRGB(60, 20, 120)
 	textStroke.Thickness = 2
 	textStroke.Transparency = 0.3
-	textStroke.Parent = scoreLabel
+	textStroke.Parent = gemLabel
 
-	-- === HIGH SCORE FRAME (ข้าง Score) - Purple→Pink Gradient ===
-	local highScoreFrame = Instance.new("Frame")
-	highScoreFrame.Name = "HighScoreFrame"
-	highScoreFrame.Size = UDim2.new(0, 100, 0, 32)
-	highScoreFrame.Position = UDim2.new(0, 145, 0, 16)
-	highScoreFrame.BackgroundColor3 = Theme.ACCENT_PINK
-	highScoreFrame.BackgroundTransparency = 0.15
-	highScoreFrame.BorderSizePixel = 0
-	highScoreFrame.Parent = self.parent
-	self.highScoreFrame = highScoreFrame
-
-	local hsCorner = Instance.new("UICorner")
-	hsCorner.CornerRadius = Theme.CORNER_LG
-	hsCorner.Parent = highScoreFrame
-
-	-- Purple→Pink Gradient
-	local hsGradient = Instance.new("UIGradient")
-	hsGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 80, 200)),
-		ColorSequenceKeypoint.new(1, Theme.ACCENT_PINK)
-	})
-	hsGradient.Rotation = 135
-	hsGradient.Parent = highScoreFrame
-
-	-- High Score Glow Stroke
-	local hsStroke = Instance.new("UIStroke")
-	hsStroke.Color = Theme.ACCENT_PINK
-	hsStroke.Thickness = Theme.STROKE_MED
-	hsStroke.Transparency = 0.3
-	hsStroke.Parent = highScoreFrame
-
-	-- Drop shadow
-	createDropShadow(highScoreFrame)
-
-	-- Trophy Icon
-	local trophyIcon = Instance.new("TextLabel")
-	trophyIcon.Name = "TrophyIcon"
-	trophyIcon.Size = UDim2.new(0, 28, 1, 0)
-	trophyIcon.Position = UDim2.new(0, 4, 0, 0)
-	trophyIcon.BackgroundTransparency = 1
-	trophyIcon.Text = "🏆"
-	trophyIcon.TextSize = 16
-	trophyIcon.Parent = highScoreFrame
-
-	-- High Score Number
-	local highScoreLabel = Instance.new("TextLabel")
-	highScoreLabel.Name = "HighScoreLabel"
-	highScoreLabel.Size = UDim2.new(1, -36, 1, 0)
-	highScoreLabel.Position = UDim2.new(0, 32, 0, 0)
-	highScoreLabel.BackgroundTransparency = 1
-	highScoreLabel.Text = "0"
-	highScoreLabel.TextColor3 = Theme.TEXT_PRIMARY
-	highScoreLabel.TextSize = 16
-	highScoreLabel.Font = Enum.Font.GothamBold
-	highScoreLabel.TextXAlignment = Enum.TextXAlignment.Left
-	highScoreLabel.Parent = highScoreFrame
-	self.highScoreLabel = highScoreLabel
-
-	-- HS text stroke
-	local hsTextStroke = Instance.new("UIStroke")
-	hsTextStroke.Color = Color3.fromRGB(80, 30, 120)
-	hsTextStroke.Thickness = 1.5
-	hsTextStroke.Transparency = 0.3
-	hsTextStroke.Parent = highScoreLabel
-
-	-- === STAGE PROGRESS (ใต้ Score) ===
+	-- === STAGE PROGRESS (below CurrencyUI area) ===
 	local stageFrame = Instance.new("Frame")
 	stageFrame.Name = "StageFrame"
 	stageFrame.Size = UDim2.new(0, 160, 0, 28)
-	stageFrame.Position = UDim2.new(0, 10, 0, 58)
+	stageFrame.Position = UDim2.new(0, 10, 0, 106)
 	stageFrame.BackgroundColor3 = Theme.BG_OVERLAY
 	stageFrame.BackgroundTransparency = 0.3
 	stageFrame.BorderSizePixel = 0
@@ -244,7 +176,7 @@ function ScoreUI:createUI()
 	stageIcon.Size = UDim2.new(0, 24, 1, 0)
 	stageIcon.Position = UDim2.new(0, 4, 0, 0)
 	stageIcon.BackgroundTransparency = 1
-	stageIcon.Text = "🚩"
+	stageIcon.Text = "\xF0\x9F\x9A\xA9"
 	stageIcon.TextSize = 14
 	stageIcon.Parent = stageFrame
 
@@ -267,7 +199,7 @@ function ScoreUI:createUI()
 	progressBgCorner.CornerRadius = Theme.CORNER_SM
 	progressBgCorner.Parent = progressBg
 
-	-- Stage Progress Bar Fill (vivid green→lime gradient)
+	-- Stage Progress Bar Fill (vivid green->lime gradient)
 	local progressFill = Instance.new("Frame")
 	progressFill.Name = "ProgressFill"
 	progressFill.Size = UDim2.new(0, 0, 1, 0)
@@ -281,7 +213,7 @@ function ScoreUI:createUI()
 	progressFillCorner.CornerRadius = Theme.CORNER_SM
 	progressFillCorner.Parent = progressFill
 
-	-- Vivid green→lime gradient
+	-- Vivid green->lime gradient
 	local progressGradient = Instance.new("UIGradient")
 	progressGradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 255, 150)),
@@ -304,7 +236,7 @@ function ScoreUI:createUI()
 	stageLabel.Parent = stageFrame
 	self.stageLabel = stageLabel
 
-	-- === MATCH TIMER (บนกลางหน้าจอ) - Gradient ===
+	-- === MATCH TIMER (top-center) - Gradient ===
 	local timerFrame = Instance.new("Frame")
 	timerFrame.Name = "TimerFrame"
 	timerFrame.Size = UDim2.new(0, 120, 0, 40)
@@ -344,7 +276,7 @@ function ScoreUI:createUI()
 	timerIcon.Size = UDim2.new(0, 28, 1, 0)
 	timerIcon.Position = UDim2.new(0, 4, 0, 0)
 	timerIcon.BackgroundTransparency = 1
-	timerIcon.Text = "⏱"
+	timerIcon.Text = "\xE2\x8F\xB1"
 	timerIcon.TextSize = 20
 	timerIcon.Parent = timerFrame
 
@@ -369,23 +301,80 @@ function ScoreUI:createUI()
 	timerTextStroke.Parent = timerLabel
 end
 
-function ScoreUI:updateScore(data: {[string]: any})
-	if data.roundScore then
-		local oldScore = self.roundScore
-		self.roundScore = data.roundScore
-		self.roundScoreLabel.Text = tostring(self.roundScore)
+function ScoreUI:updateGems(data: {gems: number, wins: number?})
+	if data.gems ~= nil then
+		local oldGems = self.gems
+		self.gems = data.gems
+		self.gemLabel.Text = tostring(self.gems)
 
-		-- Score pop animation
-		if data.roundScore > oldScore then
-			self:playScoreAnimation()
+		-- Gem bounce + flash animation when count changes
+		if data.gems > oldGems then
+			self:playGemAnimation()
 		end
 	end
+end
 
-	if data.currentStage then
+function ScoreUI:playGemAnimation()
+	-- Scale up gem frame
+	local originalSize = UDim2.new(0, 130, 0, 44)
+
+	-- Frame scale animation
+	local scaleUp = TweenService:Create(self.gemFrame, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+		Size = UDim2.new(0, 145, 0, 50)
+	})
+	scaleUp:Play()
+
+	-- Glow effect (brighter)
+	local glowUp = TweenService:Create(self.gemFrameStroke, TweenInfo.new(0.1), {
+		Transparency = 0,
+		Thickness = Theme.STROKE_BOLD
+	})
+	glowUp:Play()
+
+	scaleUp.Completed:Connect(function()
+		local scaleDown = TweenService:Create(self.gemFrame, TweenInfo.new(0.15, Enum.EasingStyle.Bounce), {
+			Size = originalSize
+		})
+		scaleDown:Play()
+
+		local glowDown = TweenService:Create(self.gemFrameStroke, TweenInfo.new(0.2), {
+			Transparency = 0.2,
+			Thickness = Theme.STROKE_MED
+		})
+		glowDown:Play()
+	end)
+
+	-- Flash gem label color
+	self.gemLabel.TextColor3 = Color3.fromRGB(255, 220, 255)
+	task.delay(0.15, function()
+		local colorTween = TweenService:Create(self.gemLabel, TweenInfo.new(0.25), {
+			TextColor3 = Theme.TEXT_PRIMARY
+		})
+		colorTween:Play()
+	end)
+
+	-- Icon bounce animation
+	local iconBounce = TweenService:Create(self.gemIconContainer, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+		Size = UDim2.new(0, 42, 0, 42),
+		Position = UDim2.new(0, 1, 0.5, -21)
+	})
+	iconBounce:Play()
+
+	iconBounce.Completed:Connect(function()
+		local iconReturn = TweenService:Create(self.gemIconContainer, TweenInfo.new(0.15, Enum.EasingStyle.Bounce), {
+			Size = UDim2.new(0, 36, 0, 36),
+			Position = UDim2.new(0, 4, 0.5, -18)
+		})
+		iconReturn:Play()
+	end)
+end
+
+function ScoreUI:updateScore(data: {[string]: any})
+	if data.currentStage ~= nil then
 		self.currentStage = data.currentStage
 
 		-- Update total stages if provided
-		if data.totalStages then
+		if data.totalStages ~= nil then
 			self.totalStages = data.totalStages
 		end
 
@@ -408,69 +397,9 @@ function ScoreUI:updateScore(data: {[string]: any})
 		tween:Play()
 	end
 
-	if data.highScore then
-		self.highScore = data.highScore
-		self.highScoreLabel.Text = tostring(self.highScore)
+	if data.totalStages ~= nil then
+		self.totalStages = data.totalStages
 	end
-
-	if data.totalScore then
-		self.totalScore = data.totalScore
-	end
-end
-
-function ScoreUI:playScoreAnimation()
-	-- Scale up score frame
-	local originalSize = UDim2.new(0, 130, 0, 44)
-
-	-- Frame scale animation
-	local scaleUp = TweenService:Create(self.scoreFrame, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
-		Size = UDim2.new(0, 145, 0, 50)
-	})
-	scaleUp:Play()
-
-	-- Glow effect (brighter)
-	local glowUp = TweenService:Create(self.frameStroke, TweenInfo.new(0.1), {
-		Transparency = 0,
-		Thickness = Theme.STROKE_BOLD
-	})
-	glowUp:Play()
-
-	scaleUp.Completed:Connect(function()
-		local scaleDown = TweenService:Create(self.scoreFrame, TweenInfo.new(0.15, Enum.EasingStyle.Bounce), {
-			Size = originalSize
-		})
-		scaleDown:Play()
-
-		local glowDown = TweenService:Create(self.frameStroke, TweenInfo.new(0.2), {
-			Transparency = 0.2,
-			Thickness = Theme.STROKE_MED
-		})
-		glowDown:Play()
-	end)
-
-	-- Flash score color
-	self.roundScoreLabel.TextColor3 = Color3.fromRGB(255, 255, 200)
-	task.delay(0.15, function()
-		local colorTween = TweenService:Create(self.roundScoreLabel, TweenInfo.new(0.25), {
-			TextColor3 = Theme.TEXT_PRIMARY
-		})
-		colorTween:Play()
-	end)
-
-	-- Icon bounce animation
-	local iconBounce = TweenService:Create(self.iconContainer, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
-		Size = UDim2.new(0, 42, 0, 42),
-		Position = UDim2.new(0, 1, 0.5, -21)
-	})
-	iconBounce:Play()
-
-	iconBounce.Completed:Connect(function()
-		local iconReturn = TweenService:Create(self.iconContainer, TweenInfo.new(0.15, Enum.EasingStyle.Bounce), {
-			Size = UDim2.new(0, 36, 0, 36),
-			Position = UDim2.new(0, 4, 0.5, -18)
-		})
-		iconReturn:Play()
-	end)
 end
 
 function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
@@ -516,7 +445,7 @@ function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
 	text.Parent = notification
 
 	if isFinished then
-		icon.Text = "🎉"
+		icon.Text = "\xF0\x9F\x8E\x89"
 		text.Text = "FINISH!"
 		text.TextColor3 = Theme.PRIMARY
 
@@ -527,7 +456,7 @@ function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
 		stroke.Transparency = 0.2
 		stroke.Parent = notification
 	else
-		icon.Text = "✅"
+		icon.Text = "\xE2\x9C\x85"
 		text.Text = "STAGE " .. stageIndex .. " CLEAR!"
 		text.TextColor3 = Theme.SUCCESS
 
@@ -653,7 +582,7 @@ function ScoreUI:updateTimer(seconds: number)
 	local secs = totalSecs % 60
 	self.timerLabel.Text = string.format("%d:%02d", mins, secs)
 
-	-- Pulse red when ≤ 30 seconds
+	-- Pulse red when <= 30 seconds
 	if totalSecs <= 30 then
 		self.timerLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
 		self.timerStroke.Color = Color3.fromRGB(255, 80, 80)

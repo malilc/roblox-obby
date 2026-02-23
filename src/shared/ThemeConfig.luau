@@ -71,8 +71,11 @@ Theme.HUD_SCORE_START    = Color3.fromRGB(40, 180, 255)   -- bright cyan
 Theme.HUD_SCORE_END      = Color3.fromRGB(20, 80, 200)    -- deep blue
 Theme.HUD_CURRENCY_START = Color3.fromRGB(255, 210, 50)   -- bright gold
 Theme.HUD_CURRENCY_END   = Color3.fromRGB(230, 150, 0)    -- deep amber
-Theme.HUD_GLOW_CYAN      = Color3.fromRGB(100, 230, 255)  -- score glow
+Theme.HUD_GLOW_CYAN      = Color3.fromRGB(100, 230, 255)  -- timer glow
 Theme.HUD_GLOW_GOLD      = Color3.fromRGB(255, 230, 100)  -- currency glow
+Theme.HUD_GEM_START      = Color3.fromRGB(180,  80, 255)  -- bright purple (gem gradient)
+Theme.HUD_GEM_END        = Color3.fromRGB(120,  40, 200)  -- deep purple (gem gradient)
+Theme.HUD_GLOW_GEM       = Color3.fromRGB(200, 120, 255)  -- gem glow
 
 -- ============================================================
 -- STRUCTURE TOKENS

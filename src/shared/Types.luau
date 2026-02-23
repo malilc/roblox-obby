@@ -2,11 +2,10 @@
 
 export type PlayerData = {
 	UserId: number,
-	RoundScore: number,
-	TotalScore: number,
-	HighScore: number,
 	CurrentStage: number,
 	Currency: number,
+	Gems: number,
+	Wins: number,
 	LastCheckpoint: Vector3?,
 	IsPlaying: boolean,
 }

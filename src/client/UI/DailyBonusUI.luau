@@ -16,6 +16,7 @@ local COLORS = {
 	FUTURE_TEXT = Theme.TEXT_MUTED,
 	CARD_BADGE  = Color3.fromRGB(80, 180, 110),
 	DAY7_SPECIAL = Color3.fromRGB(120, 80, 180),
+	GEM          = Color3.fromRGB(200, 120, 255),
 }
 
 local DailyBonusUI = {}
@@ -114,7 +115,7 @@ function DailyBonusUI:_createHudButton()
 
 	btn.MouseButton1Click:Connect(function()
 		if self._calendarOpen then return end
-		local data = self.lastData or { claimed = false, day = 1, rewards = {25,50,75,100,150,200,500} }
+		local data = self.lastData or { claimed = false, day = 1, rewards = {25,50,75,100,150,200,500}, gemRewards = {1,1,2,2,3,3,5} }
 		self:showCalendar(data)
 	end)
 
@@ -137,6 +138,7 @@ function DailyBonusUI:showCalendar(data)
 	local claimedDay  = data.day or 1
 	local isClaim     = data.claimed == true
 	local rewards     = data.rewards or {25, 50, 75, 100, 150, 200, 500}
+	local gemRewards  = data.gemRewards or {1, 1, 2, 2, 3, 3, 5}
 
 	-- === MODAL SCREENGUI (own layer so it covers all HUD elements) ===
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -160,7 +162,7 @@ function DailyBonusUI:showCalendar(data)
 	-- === MAIN PANEL ===
 	local panel = Instance.new("Frame")
 	panel.Name = "DailyLoginPanel"
-	panel.Size = UDim2.new(0, 500, 0, 360)
+	panel.Size = UDim2.new(0, 500, 0, 380)
 	panel.Position = UDim2.new(0.5, -250, 0.5, -110)
 	panel.BackgroundColor3 = Theme.BG_BASE
 	panel.BorderSizePixel = 0
@@ -247,7 +249,7 @@ function DailyBonusUI:showCalendar(data)
 
 	local subText = Instance.new("TextLabel")
 	subText.BackgroundTransparency = 1
-	subText.Text = isClaim and ("Day " .. claimedDay .. " / 7  \u{2022}  +" .. tostring(rewards[claimedDay] or 0) .. " \u{1FA99}") or ("Day " .. claimedDay .. " / 7  \u{2022}  Already Claimed \u{2713}")
+	subText.Text = isClaim and ("Day " .. claimedDay .. " / 7  \u{2022}  +" .. tostring(rewards[claimedDay] or 0) .. " \u{1FA99} + " .. tostring(gemRewards[claimedDay] or 0) .. " \u{1F48E}") or ("Day " .. claimedDay .. " / 7  \u{2022}  Already Claimed \u{2713}")
 	subText.TextSize = 13
 	subText.Font = Enum.Font.GothamBold
 	subText.TextColor3 = COLORS.SUBTITLE
@@ -259,7 +261,7 @@ function DailyBonusUI:showCalendar(data)
 
 	-- === 7 DAY CARDS ===
 	local cardW = 62
-	local cardH = 120
+	local cardH = 140
 	local cardSpacing = 6
 	local cardsStartX = (500 - (7 * cardW + 6 * cardSpacing)) / 2
 	local cardsY = 68
@@ -339,9 +341,9 @@ function DailyBonusUI:showCalendar(data)
 		iconLbl.ZIndex = 63
 		iconLbl.Parent = card
 
-		-- Amount label
+		-- Coin amount label
 		local reward = rewards[day] or 0
-		local amtText = isPast and "" or ("+" .. reward)
+		local amtText = isPast and "" or ("\u{1FA99} +" .. reward)
 		local amtLbl = Instance.new("TextLabel")
 		amtLbl.BackgroundTransparency = 1
 		amtLbl.Text = amtText
@@ -349,10 +351,25 @@ function DailyBonusUI:showCalendar(data)
 		amtLbl.Font = Enum.Font.GothamBold
 		amtLbl.TextColor3 = isToday and Theme.TEXT_DARK or Theme.TEXT_MUTED
 		amtLbl.TextXAlignment = Enum.TextXAlignment.Center
-		amtLbl.Size = UDim2.new(1, 0, 0, 20)
+		amtLbl.Size = UDim2.new(1, 0, 0, 16)
 		amtLbl.Position = UDim2.new(0, 0, 0, 62)
 		amtLbl.ZIndex = 63
 		amtLbl.Parent = card
+
+		-- Gem amount label
+		local gemReward = gemRewards[day] or 0
+		local gemText = isPast and "" or ("\u{1F48E} +" .. gemReward)
+		local gemLbl = Instance.new("TextLabel")
+		gemLbl.BackgroundTransparency = 1
+		gemLbl.Text = gemText
+		gemLbl.TextSize = 11
+		gemLbl.Font = Enum.Font.GothamBold
+		gemLbl.TextColor3 = isPast and Theme.TEXT_MUTED or (isToday and Theme.TEXT_DARK or COLORS.GEM)
+		gemLbl.TextXAlignment = Enum.TextXAlignment.Center
+		gemLbl.Size = UDim2.new(1, 0, 0, 16)
+		gemLbl.Position = UDim2.new(0, 0, 0, 78)
+		gemLbl.ZIndex = 63
+		gemLbl.Parent = card
 
 		-- "CLAIMED" or "TODAY" badge
 		if isToday or isPast then
@@ -480,8 +497,8 @@ function DailyBonusUI:showCalendar(data)
 	-- === ACTION BUTTON ===
 	local actionBtn = Instance.new("TextButton")
 	actionBtn.Name            = "ActionButton"
-	actionBtn.Size            = UDim2.new(0, 160, 0, 40)
-	actionBtn.Position        = UDim2.new(0.5, -80, 1, -52)
+	actionBtn.Size            = UDim2.new(0, 220, 0, 40)
+	actionBtn.Position        = UDim2.new(0.5, -110, 1, -52)
 	actionBtn.BackgroundColor3 = isClaim and COLORS.GOLD or Theme.BG_ELEVATED
 	actionBtn.BorderSizePixel = 0
 	actionBtn.Text            = isClaim and "\u{2728}  CLAIM!" or "OK"
@@ -539,8 +556,10 @@ function DailyBonusUI:showCalendar(data)
 
 	actionBtn.MouseButton1Click:Connect(function()
 		if isClaim then
-			-- Flash button green
-			actionBtn.Text = "\u{2713}  CLAIMED!"
+			-- Flash button green with both reward amounts
+			local coinAmt = rewards[claimedDay] or 0
+			local gemAmt = gemRewards[claimedDay] or 0
+			actionBtn.Text = "You earned " .. coinAmt .. " \u{1FA99} + " .. gemAmt .. " \u{1F48E}!"
 			TweenService:Create(actionBtn, TweenInfo.new(0.2), {
 				BackgroundColor3 = COLORS.GREEN,
 				TextColor3       = Theme.TEXT_DARK,

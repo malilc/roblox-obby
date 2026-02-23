@@ -46,7 +46,7 @@ function CurrencyUI:createUI()
 	local currencyFrame = UIFactory.createPanel(self.parent, {
 		name = "CurrencyFrame",
 		size = UDim2.new(0, 140, 0, 44),
-		position = UDim2.new(0, 10, 0, 90),
+		position = UDim2.new(0, 10, 0, 58),
 		bgColor = Theme.HUD_CURRENCY_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",
@@ -278,7 +278,7 @@ function CurrencyUI:showFloatingText(text: string, color: Color3?)
 	local floatText = Instance.new("TextLabel")
 	floatText.Name = "FloatingText"
 	floatText.Size = UDim2.new(0, 60, 0, 30)
-	floatText.Position = UDim2.new(0, 100, 0, 90)
+	floatText.Position = UDim2.new(0, 100, 0, 58)
 	floatText.BackgroundTransparency = 1
 	floatText.Text = text
 	floatText.TextColor3 = color or Theme.SUCCESS

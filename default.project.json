@@ -127,6 +127,12 @@
         },
         "ResetDailyLogin": {
           "$className": "RemoteEvent"
+        },
+        "UpdateGems": {
+          "$className": "RemoteEvent"
+        },
+        "ToggleSoloWins": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

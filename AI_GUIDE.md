@@ -10,12 +10,12 @@ src/
 │   ├── init.server.luau         # Entry point - สร้าง GameManager
 │   ├── GameManager.luau         # ควบคุมเกมทั้งหมด (orchestrator)
 │   ├── MapManager.luau          # จัดการ map/stages + animations + per-match instancing
-│   ├── ScoreManager.luau        # ระบบคะแนน + DataStore (ผ่าน DataStoreHelper)
+│   ├── StageTracker.luau         # ⭐ Lightweight stage tracking (per-round, no DataStore)
 │   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + Daily Login + DataStore
 │   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Mario Kart
 │   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race + Stage Voting
 │   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
-│   ├── LeaderboardManager.luau  # 🏆 Global Leaderboard (OrderedDataStore + Physical Board)
+│   ├── LeaderboardManager.luau  # 🏆 Dual Leaderboards: Gems + Wins (2 OrderedDataStores + 2 Physical Boards)
 │   ├── SpectatorManager.luau    # 👁️ ระบบ Spectator Mode (แยกจาก GameManager)
 │   ├── SelectionZoneManager.luau # ⭐ ระบบ SelectionZone detection + stage confirm (แยกจาก GameManager)
 │   ├── DataStoreHelper.luau     # 💾 Centralized DataStore utilities + retry logic + schema versioning
@@ -32,11 +32,10 @@ src/
 │   └── UI/
 │       ├── MainUI.luau          # Controller หลัก (popup mutual exclusion)
 │       ├── UIFactory.luau       # 🏗️ Reusable UI component factory (createPanel/Button/Label/Modal)
-│       ├── ScoreUI.luau         # แสดงคะแนน
+│       ├── ScoreUI.luau         # 💎 แสดง Gems + Stage Progress + Timer
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # 🎯 แสดง Item (2 slots) + Tooltip
-│       ├── ItemTestingUI.luau   # 🧪 UI ทดสอบ Item (กด T)
-│       ├── MasteryTestingUI.luau # 🧪 UI ทดสอบ Mastery (กด M)
+│       ├── ItemTestingUI.luau   # 🧪 Testing Menu (items, mastery, solo start, solo wins) — toggle button มุมบนขวา
 │       ├── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
 │       ├── SummaryUI.luau       # 🏆 แสดง Summary จบเกม
 │       ├── MatchLobbyUI.luau    # 🏁 UI Matchmaking lobby
@@ -77,7 +76,8 @@ Workspace/
 │   ├── GridH_1-4          # เส้น Grid แนวนอน บนพื้น (Neon น้ำเงินจาง)
 │   ├── GridV_1-4          # เส้น Grid แนวตั้ง บนพื้น (Neon น้ำเงินจาง)
 │   └── SelectionZone      # ⭐ Zone เลือกด่าน (Neon Magenta)
-├── GlobalLeaderboard      # 🏆 Part สำหรับ physical leaderboard board (สร้างอัตโนมัติถ้าไม่มี)
+├── GemLeaderboard         # 💎 Physical gem leaderboard board (สร้างอัตโนมัติ, X=22)
+├── WinLeaderboard         # 🏆 Physical win leaderboard board (สร้างอัตโนมัติ, X=-22)
 ├── Stages/                # Folder เก็บด่านที่ generate
 └── KillBrick              # พื้นที่ตายเมื่อตก
 ```
@@ -85,7 +85,7 @@ Workspace/
 **สำคัญ**: 
 - `SpawnLocation` ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
 - `SelectionZone` ใช้ loop-based detection (เสถียรกว่า Touched events)
-- `GlobalLeaderboard` ถ้าวาง Part ไว้ใน workspace ก่อน จะใช้ตำแหน่งนั้น (ไม่สร้างใหม่)
+- `GemLeaderboard` + `WinLeaderboard` สร้างอัตโนมัติโดย LeaderboardManager (X=±22, Z=30)
 
 ---
 
@@ -462,12 +462,6 @@ local Config = {
         },
     },
 
-    -- Score Settings
-    Score = {
-        PerStage = 10,          -- คะแนนต่อด่าน
-        FinishBonus = 50,       -- โบนัสจบเกม
-    },
-
     -- Currency Settings
     Currency = {
         PerStage = 5,           -- 💰 Stage Clear bonus (คงที่ต่อด่าน)
@@ -475,6 +469,13 @@ local Config = {
         FinishBonus = 25,       -- 💰 โบนัสเงินเมื่อเข้าเส้นชัย
         StartingAmount = 0,     -- 💰 เงินเริ่มต้นของผู้เล่นใหม่
         -- 🎯 Stage Rewards อยู่ใน StageInfo.luau (StageInfo.getStage(id).reward)
+    },
+
+    -- 💎 Gems (rare premium currency) + 🏆 Wins
+    Gems = {
+        FinishRace = 1,         -- +1 gem เมื่อเข้าเส้นชัย
+        Top30Bonus = 5,         -- +5 gems ถ้าจบ top 30% (multiplayer)
+        DailyLoginGems = { [1]=1, [2]=1, [3]=2, [4]=2, [5]=3, [6]=3, [7]=5 },
     },
 
     -- Push Item Settings
@@ -489,9 +490,7 @@ local Config = {
     -- DataStore
     DataStore = {
         Name = "ObbyGameData_v1",
-        ScoreKey = "PlayerScore",
-        HighScoreKey = "HighScore",
-        CurrencyKey = "PlayerCurrency", -- 💰 Key สำหรับเก็บเงิน
+        CurrencyKey = "PlayerCurrency", -- 💰 Key สำหรับเก็บเงิน (gems/wins ก็อยู่ใน profile เดียวกัน)
     },
 
     KillZoneY = -120,            -- ความสูงที่ตาย
@@ -530,8 +529,7 @@ local Config = {
     Debug = {
         Enabled = true,          -- Master toggle: set false for production
         FlyMode = true,          -- Press F to fly (client)
-        ItemTesting = true,      -- Press T for item test menu (client + server remotes)
-        MasteryTesting = true,   -- Press M for mastery test menu
+        ItemTesting = true,      -- Toggle button for testing menu (items, mastery, solo start)
     },
 }
 ```
@@ -644,13 +642,13 @@ itemBox.Parent = itemPickups
 | Swap Teleport | rbxassetid://93826112721753 |
 | Lightning Zap | rbxassetid://8952019380 |
 
-### Item Testing UI (Development):
-- กด **T** เพื่อเปิด/ปิดเมนูทดสอบ
-- เลือก item ที่ต้องการให้ตัวเอง
-- กด **"Spawn Test Dummy"** เพื่อสร้าง Dummy สำหรับทดสอบ Missile/Swap/Lightning
-- กด **"Remove All Dummies"** เพื่อลบ Dummies ทั้งหมด
-- กด "Clear All Items" เพื่อล้าง
-- แบ่งกลุ่มตาม rarity
+### Testing Menu (Development):
+- กด **toggle button** มุมบนขวา (ไม่มี keyboard shortcut) เพื่อเปิด/ปิด
+- **Items**: เลือก item ที่ต้องการให้ตัวเอง (แบ่งกลุ่มตาม rarity)
+- **Tools**: Spawn Test Dummy, Remove All Dummies, Clear All Items
+- **Daily Login**: Reset Daily Login streak
+- **Game Testing**: Solo Wins toggle (ON/OFF), Solo Start (Random)
+- **Mastery**: Per-class level controls (+/-/MAX), Set All Lv 20, Reset All Lv 1
 
 ### Weighted Random Item:
 - คนอันดับท้ายมีโอกาสได้ item หายากมากกว่า (catch-up mechanic)
@@ -884,10 +882,11 @@ Mastery = {
 
 ### Testing:
 
-1. กด **M** เพื่อเปิด Mastery Testing UI
-2. กด **MAX** หรือ **SET ALL LV 20** เพื่อปลดล็อก ultimate
-3. เลือก class ที่มี LV 20 แล้ว
-4. ทดสอบ ultimate skill:
+1. เปิด **Testing Menu** (toggle button มุมบนขวา)
+2. เลื่อนลงไปที่ section **Mastery**
+3. กด **Set All Lv 20** เพื่อปลดล็อก ultimate ทุก class
+4. เลือก class ที่ต้องการทดสอบ
+5. ทดสอบ ultimate skill:
    - **Runner**: กด Shift ขณะวิ่ง
    - **Jumper**: กระโดดแล้วกด Space ในอากาศ
    - **Tank**: โดน Banana/Missile → จะไม่ถูก stun
@@ -898,8 +897,7 @@ Mastery = {
 Debug = {
     Enabled = true,
     FlyMode = true,
-    ItemTesting = true,
-    MasteryTesting = true,  -- ⚡ Press M for mastery test menu
+    ItemTesting = true,      -- Toggle button for testing menu (items, mastery, solo start)
 },
 ```
 
@@ -1065,7 +1063,7 @@ Client รับ DailyBonusClaimed:
 - **Server payload** (CurrencyManager): `FireClient` ส่ง `lastLoginTime` + `cooldownHours` เพื่อให้ client คำนวณ countdown
 
 ### Testing:
-- กด **T** → Item Testing menu → "🎁 Reset Daily Login" → รีเซ็ต streak ทันที (debug only)
+- เปิด Testing Menu (toggle button มุมบนขวา) → "🎁 Reset Daily Login" → รีเซ็ต streak ทันที (debug only)
 
 ### OBBY CHALLENGE Welcome Popup (`init.client.luau`):
 - **ตำแหน่ง**: `showWelcomeMessage()` ใน `src/client/init.client.luau` — แสดงครั้งแรกเมื่อ character spawn
@@ -1086,32 +1084,36 @@ Client รับ DailyBonusClaimed:
 
 ---
 
-## 🏆 Global Leaderboard (Physical Board)
+## 🏆 Dual Leaderboards (Gems + Wins)
 
 ### ไฟล์ที่เกี่ยวข้อง:
-- `src/server/LeaderboardManager.luau` — สร้าง board + OrderedDataStore
-- `src/server/GameManager.luau` — เรียก `updateScore()` เมื่อผู้เล่นจบเกม + `sendToPlayer()` เมื่อ join
-- `src/client/UI/LeaderboardUI.luau` — **stub เท่านั้น** (ลบ screen toggle แล้ว)
+- `src/server/LeaderboardManager.luau` — สร้าง 2 boards + 2 OrderedDataStores
+- `src/server/GameManager.luau` — เรียก `updateGems()`/`updateWins()` เมื่อผู้เล่นจบเกม + `sendToPlayer()` เมื่อ join
+- `src/client/UI/LeaderboardUI.luau` — **stub เท่านั้น** (physical boards สร้างโดย LeaderboardManager)
 
-### Physical Board:
+### Physical Boards:
 ```lua
--- LeaderboardManager สร้าง Part ชื่อ "GlobalLeaderboard" ใน workspace
--- ถ้ามี Part อยู่แล้วจะใช้ตำแหน่งนั้น (ย้าย Part ใน Studio ได้)
-BOARD_POSITION = Vector3.new(22, 109, 12)  -- ขวาของ stage select, lobby floor Y~102
-BOARD_SIZE     = Vector3.new(10, 14, 0.5)  -- กว้าง × สูง × บาง
--- หันเฉียงไปทาง SpawnLocation (0, y, -8) ~42° จาก west → southwest
--- CFrame.new(BOARD_POSITION, Vector3.new(0, BOARD_POSITION.Y, -8))
+-- LeaderboardManager สร้าง 2 boards อัตโนมัติใน workspace
+-- 💎 GemLeaderboard: X=22, Z=30 (ขวาของ SelectionZone, purple theme)
+-- 🏆 WinLeaderboard: X=-22, Z=30 (ซ้ายของ SelectionZone, gold theme)
+GEM_BOARD_POS = Vector3.new(22, 109, 30)   -- ขวาของ SelectionZone
+WIN_BOARD_POS = Vector3.new(-22, 109, 30)  -- ซ้ายของ SelectionZone
+BOARD_SIZE    = Vector3.new(10, 14, 0.5)   -- กว้าง × สูง × บาง
 -- SurfaceGui: PixelsPerStud=80, Face=Front, Top 10 rows
--- Colors: ใช้ ThemeConfig tokens (PRIMARY, BG_SURFACE, BG_OVERLAY, etc.)
--- UIStroke border: สีเหลือง Theme.PRIMARY, Thickness=4
+-- Colors: ใช้ ThemeConfig tokens
+-- Gem board: purple theme, Win board: gold theme
 ```
+
+### OrderedDataStores:
+- `"ObbyLeaderboard_Gems_v1"` — ranks by total gems
+- `"ObbyLeaderboard_Wins_v1"` — ranks by total wins
 
 ### Key Functions:
 | Function | Description |
 |----------|-------------|
-| `updateScore(player, score)` | บันทึก high score ลง OrderedDataStore |
-| `fetchTopScores()` | ดึง Top 10 จาก OrderedDataStore |
-| `broadcast()` | fetch → อัพเดท physical board UI + fire LeaderboardUpdate |
+| `updateGems(player, gems)` | บันทึก gems ลง OrderedDataStore |
+| `updateWins(player, wins)` | บันทึก wins ลง OrderedDataStore |
+| `broadcast()` | fetch → อัพเดท 2 physical boards + fire LeaderboardUpdate |
 | `sendToPlayer(player)` | ส่ง cached top ให้ผู้เล่นที่เพิ่งเข้า |
 | `startRefreshLoop()` | refresh ทุก 60 วินาที |
 
@@ -1185,6 +1187,9 @@ local SOUNDS = {
 | `SpectatorLeave` | Client → Server | 👁️ ออกจาก Spectator mode |
 | `DailyBonusClaimed` | Server → Client | 🎁 Daily Login status/claim `{ claimed, day, amount, rewards }` |
 | `LeaderboardUpdate` | Server → Client | 🏆 Top 10 scores `{ top: [{rank,name,score}] }` |
+| `UpdateGems` | Server → Client | 💎 อัพเดท gems + wins `{ gems, wins }` |
+| `ToggleSoloWins` | Client → Server | 🧪 เปิด/ปิด solo wins (debug mode, payload: boolean) |
+| `SetMasteryLevel` | Client → Server | 🧪 ตั้ง mastery level `{ classId, level }` or `{ setAll, level }` |
 | `ResetDailyLogin` | Client → Server | 🧪 รีเซ็ต daily login streak (debug mode เท่านั้น) |
 
 **ClassUpdate Payload (สำคัญ):**
@@ -1295,70 +1300,20 @@ end)
 
 ## 📊 Roblox Leaderstats
 
-### ไฟล์: `src/server/ScoreManager.luau`
+### ไฟล์: `src/server/GameManager.luau` (setupLeaderstats inline)
 
 Leaderstats เป็น built-in UI ของ Roblox ที่แสดงสถิติผู้เล่นอัตโนมัติ (แสดงใน PlayerList ด้านขวาของหน้าจอ)
 
 ### การทำงาน:
 
-1. **สร้าง leaderstats folder** ใน Player object (ฝั่ง Server)
-2. **เพิ่ม IntValue** ลงใน folder (ชื่อจะเป็นชื่อคอลัมน์ใน UI)
+1. **สร้าง leaderstats folder** ใน Player object (ฝั่ง Server, ใน GameManager:onPlayerAdded)
+2. **เพิ่ม IntValue** ลงใน folder: `Gems`, `Wins`, `Currency`
 3. **Roblox แสดง UI อัตโนมัติ** เมื่อมี leaderstats folder
-
-### ฟังก์ชันที่เกี่ยวข้อง:
-
-**`setupLeaderstats(player)`** - สร้าง leaderstats folder และ IntValues:
-- `HighScore`: คะแนนสูงสุด
-- `RoundScore`: คะแนนรอบปัจจุบัน
-- `Currency`: เงิน (💰)
-
-**`updateLeaderstats(player)`** - อัพเดทค่าใน leaderstats:
-- อัพเดท HighScore จาก playerData
-- อัพเดท RoundScore จาก playerData
-- อัพเดท Currency จาก CurrencyManager
-
-### ตัวอย่างการใช้งาน:
-
-```lua
--- ใน ScoreManager.luau
-function ScoreManager:setupLeaderstats(player: Player)
-    local leaderstats = Instance.new("Folder")
-    leaderstats.Name = "leaderstats"
-    leaderstats.Parent = player
-    
-    -- HighScore
-    local highScore = Instance.new("IntValue")
-    highScore.Name = "HighScore"
-    highScore.Value = 0
-    highScore.Parent = leaderstats
-    
-    -- RoundScore
-    local roundScore = Instance.new("IntValue")
-    roundScore.Name = "RoundScore"
-    roundScore.Value = 0
-    roundScore.Parent = leaderstats
-    
-    -- Currency
-    local currency = Instance.new("IntValue")
-    currency.Name = "Currency"
-    currency.Value = 0
-    currency.Parent = leaderstats
-end
-```
+4. **Sync อัตโนมัติ**: CurrencyManager:sendGemUpdate() และ sendCurrencyUpdate() อัพเดท leaderstats ทุกครั้งที่ค่าเปลี่ยน
 
 ### ข้อควรระวัง:
-
-- **ชื่อ IntValue** จะเป็นชื่อคอลัมน์ใน UI (เช่น "HighScore", "RoundScore", "Currency")
-- **ต้องเป็น IntValue หรือ NumberValue** เท่านั้น (StringValue จะไม่แสดง)
-- **ต้องอยู่ใน folder ชื่อ "leaderstats"** เท่านั้น (case-sensitive)
-- **ต้องอยู่ใน Player object** (ไม่ใช่ Character)
-- **อัพเดทค่า**: เรียก `updateLeaderstats()` เมื่อต้องการอัพเดทค่า (เช่น เมื่อ HighScore เปลี่ยน)
-
-### การอัพเดท Currency:
-
-Currency จะอัพเดทอัตโนมัติเมื่อ:
-- เรียก `updateLeaderstats()` (เช่น เมื่ออัพเดท HighScore)
-- CurrencyManager จะดึงค่า currency ปัจจุบันมาแสดง
+- Leaderstats IntValues ต้อง sync ทุกครั้งที่ gems/wins/currency เปลี่ยน (อยู่ใน sendGemUpdate/sendCurrencyUpdate)
+- **ต้องเป็น IntValue** และอยู่ใน folder ชื่อ `"leaderstats"` (case-sensitive)
 
 ---
 
@@ -1370,14 +1325,14 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 
 | Module | ตำแหน่ง | Description |
 |--------|---------|-------------|
-| `ScoreUI` | มุมบนซ้าย | ⭐ คะแนน + 🏆 High Score + 🚩 Progress Bar |
-| `CurrencyUI` | มุมบนซ้าย (ใต้ StageFrame) | 💰 แสดงเงิน |
+| `ScoreUI` | มุมบนซ้าย | 💎 Gems (purple HUD) + 🚩 Stage Progress + ⏱ Timer |
+| `CurrencyUI` | มุมบนซ้าย (ใต้ Gems) | 💰 แสดงเงิน (gold HUD) |
 | `ClassSelectionUI` | มุมบนซ้าย (ใต้ Currency) | 🎭 Class indicator HUD + modal เลือก Class (dark theme, 720×480) |
 | `TitleHUDUI` | มุมบนซ้าย (ใต้ Class) | 🏷️ แสดง Active Title + ปุ่ม 📋 เปิด Collection |
 | `TitleCollectionUI` | กลางจอ (modal) | 🏷️ หน้ารวม Title ทั้งหมด + filter/search/equip |
 | `TutorialUI` | มุมบนซ้าย (Y=240) + กลางจอ (popup) | ❓ ปุ่ม "?" + Game Guide 5 tabs (RichText) |
 | `ItemUI` | มุมล่างขวา | 🎯 2 Item slots (horizontal) + Tooltip |
-| `ItemTestingUI` | มุมบนขวา (toggle) | 🧪 เมนูทดสอบ Item (กด T) |
+| `ItemTestingUI` | มุมบนขวา (toggle button) | 🧪 Testing Menu (items, mastery, solo start, solo wins) |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
 | `StageSelectionUI` | กลางจอ | ⭐ เลือกลำดับด่าน + Countdown |
 | `SummaryUI` | กลางจอ (popup) | 🏆 Summary เมื่อจบเกม |
@@ -1447,20 +1402,20 @@ Currency จะอัพเดทอัตโนมัติเมื่อ:
 - **แสดงเมื่อ**: จบเกม (finish)
 - **Overlay**: dark semi-transparent overlay ด้านหลัง popup (ZIndex 49, ทำตาม DailyBonusUI pattern)
 - **Header Section** (100px, แยกออกมาชัดเจน):
-  - Trophy emoji 🏆 (TextSize 36) + "GAME COMPLETE!" (GothamBlack, MEDAL_GOLD)
+  - Gem emoji 💎 (TextSize 36) + "GAME COMPLETE!" (GothamBlack, MEDAL_GOLD)
   - Gold divider line ใต้ header
   - Top-rounded corners เท่านั้น (fill-rect trick)
 - **STAGES PLAYED**: badge แต่ละด่านที่เล่น + รางวัล
-- **STATS**: Score + Time
+- **STATS**: Gems Earned + Time + "1ST PLACE!" indicator (isWin) + "TOP 30%" indicator (isTop30)
 - **CURRENCY EARNED** (breakdown):
   - Coins (X × 1) = +X
   - Stage Clear (X × 5) = +X
   - Stage Rewards = +X
   - Finish Bonus = +25
   - **TOTAL EARNED** = รวมทั้งหมด (highlight frame + gold border stroke)
-- **OK Button**: ✅ OK (กว้าง 180px, centered, ปิด popup)
+- **OK Button**: ✅ OK — ใช้ Frame+TextLabel pattern (แยก UIGradient ออกจาก text)
 - **Auto teleport**: กลับ Lobby หลัง 5 วินาที
-- **Popup size**: 400 × 560 (เพิ่มจาก 380×510)
+- **Popup size**: 400 × 560
 
 ---
 
@@ -1639,7 +1594,7 @@ Spawn at Lobby (Config.Lobby.SpawnPosition = 0, 103, 0)
     ↓
 GameManager:onPlayerAdded()
     ↓
-ScoreManager:initPlayer() + CurrencyManager:initPlayer() + ItemManager:initPlayer()
+StageTracker:initPlayer() + CurrencyManager:initPlayer() + ItemManager:initPlayer()
     ↓
 เดินเข้า SelectionZone (สี Magenta)
     ↓
@@ -1656,7 +1611,7 @@ Teleport to Stage 1 (หันไปทาง +X)
 Playing (checkPlayerPosition loop ทุก 0.5 วินาที)
     ↓
 Pass Checkpoint → onStageComplete():
-  - ScoreManager:addStageScore()
+  - StageTracker:advanceStage()
   - CurrencyManager:addCurrency(PerStage) ← Stage Clear bonus
   - CurrencyManager:addCurrency(StageReward) ← Stage Reward ตามด่าน
     ↓
@@ -1668,8 +1623,11 @@ Give bonuses for LAST stage:
   - Stage Clear bonus (PerStage)
   - Stage Reward (ตามด่านสุดท้าย)
   - Finish Bonus
+  - +1 gem (FinishRace)
+  - +5 gems if top 30% (multiplayer)
+  - +1 win if 1st place (multiplayer)
     ↓
-Show SummaryUI popup (Currency breakdown)
+Show SummaryUI popup (Currency breakdown + gems earned)
     ↓
 Wait 5 seconds
     ↓
@@ -1692,11 +1650,14 @@ Back to Lobby (State = "Lobby")
 - **Space** ขึ้น, **Shift/Ctrl** ลง
 - ปุ่ม **+/-** ปรับความเร็ว (25-200)
 
-### Item Testing - ต้อง `Config.Debug.ItemTesting = true`:
-- กด **T** เพื่อเปิด/ปิดเมนูทดสอบ Item
+### Testing Menu - ต้อง `Config.Debug.ItemTesting = true`:
+- กด **toggle button** มุมบนขวา เพื่อเปิด/ปิด Testing Menu
 - เลือก item ที่ต้องการ (แบ่งกลุ่มตาม rarity)
 - กด "Clear All Items" เพื่อล้าง items ทั้งหมด
 - กด **"🎁 Reset Daily Login"** เพื่อรีเซ็ต streak + รับรางวัลวันที่ 1 ทันที (debug only)
+- **Solo Wins** toggle: เปิด/ปิด solo wins สำหรับทดสอบ
+- **Solo Start (Random)**: เริ่มเกมทันทีด้วย stages สุ่ม
+- **Mastery**: ตั้ง level per-class (+/-/MAX), Set All Lv 20, Reset All Lv 1
 
 ### Item Controls:
 - กด **1** = ใช้ item ช่องซ้าย
@@ -1774,7 +1735,7 @@ end)
 
 ### 💾 DataStore (Auto-save)
 8. **DataStore Name**: `ObbyGameData_v1` - เปลี่ยนชื่อถ้าต้องการ reset
-9. **Auto-save**: ทั้ง ScoreManager และ CurrencyManager save ทุก 30 วินาที (ลด request)
+9. **Auto-save**: CurrencyManager saves ทุก 30 วินาที (ลด request)
 10. **Pending Saves**: ใช้ `pendingSaves` flag เพื่อ track ว่าต้อง save หรือไม่
 11. **On Leave**: Save ทันทีเมื่อผู้เล่นออก (ถ้ามี pending)
 12. **Shared Player Key**: ใช้ key เดียว `Player_<UserId>` และ save ด้วย `UpdateAsync` (atomic, ป้องกัน race condition)
@@ -1789,7 +1750,7 @@ end)
 17. **Item Tooltip**: คลิกที่ item เพื่อดู description (auto-hide 6 วินาที)
 18. **Rarity Colors**: Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง
 19. **Item Icons**: ใช้ emoji (🚀🍌🛡️⚡🔄⚡🌩️)
-20. **Item Testing**: กด T เปิดเมนูทดสอบ + Spawn Dummy สำหรับทดสอบ
+20. **Testing Menu**: toggle button มุมบนขวา เปิดเมนูทดสอบ (items, mastery, solo start, solo wins)
 21. **Banana Slip**: ล้มไปข้างหลัง + กระโดดไม่ได้ + เจ้าของก็ลื่นได้
 22. **Swap**: สลับกับคนที่อยู่ **ข้างหน้า** เท่านั้น (ไม่ใช่ข้างหลัง)
 23. **Shield Aura**: มี particles ลอยขึ้น + หมุนรอบตัว + กระพริบเรืองแสง
@@ -1814,23 +1775,24 @@ end)
 36. **Time Limit**: 15 นาทีต่อ match พร้อมแจ้งเตือน
 37. **Rankings**: คำนวณจาก stage + distance ใน stage
 
-### 💰 Currency System
+### 💰 Currency + 💎 Gems + 🏆 Wins
 38. **Stage Rewards**: อยู่ใน `StageInfo.luau` → `StageInfo.getStage(id).reward` (S1=3, S2=4, S3=4, S4=5, S5=6, S6=6, S7=7)
 39. **Currency Breakdown**: Stage Clear (5) + Stage Rewards + Finish Bonus (25)
-40. **CurrencyUI**: มุมบนซ้าย (ใต้ StageFrame)
+40. **Gems**: +1 finish race, +5 top 30% (multiplayer), daily login gems
+41. **Wins**: +1 when finishing 1st (multiplayer only, or with Solo Wins debug toggle)
+42. **CurrencyUI**: มุมบนซ้าย Y=58 (ใต้ GemFrame)
 
 ### 🖥️ UI Layout (มุมบนซ้าย จากบนลงล่าง)
-41. **Y=10**: Score Frame (⭐ คะแนน)
-42. **Y=16**: High Score (🏆)
-43. **Y=58**: Stage Frame (🚩 Progress)
-44. **Y=92**: Currency Frame (💰 เงิน)
-45. **Y=140**: Class Indicator (🎭 Class - light pill 168x40 + mastery badge + chevron)
-46. **Y=186**: Active Title HUD (🏷️ light bar 220x36 + ปุ่ม 📋 เปิด Collection)
-47. **Y=240**: Tutorial "?" Button (❓ วงกลม 40x40 + hint label ข้างๆ)
+41. **Y=10**: Gem Frame (💎 gems, purple gradient)
+42. **Y=58**: Currency Frame (💰 coins, gold gradient)
+43. **Y=106**: Stage Frame (🚩 Progress, only during race)
+44. **Y=140**: Class Indicator (🎭 Class - light pill 168x40 + mastery badge + chevron)
+45. **Y=186**: Active Title HUD (🏷️ light bar 220x36 + ปุ่ม 📋 เปิด Collection)
+46. **Y=240**: Tutorial "?" Button (❓ วงกลม 40x40 + hint label ข้างๆ)
 
 ### 📊 Leaderstats
-47. **Built-in UI**: แสดง HighScore, RoundScore, Currency
-48. **Update**: เรียก `updateLeaderstats()` เมื่อค่าเปลี่ยน
+47. **Built-in UI**: แสดง Gems, Wins, Currency
+48. **Update**: CurrencyManager sync leaderstats อัตโนมัติใน sendGemUpdate/sendCurrencyUpdate
 
 ### 📈 Class Mastery
 49. **Mastery Data**: เก็บใน profile key เดียวกับ score/currency ที่ field `classMastery`
@@ -1869,12 +1831,12 @@ end)
 74. **Popup Guard**: `_calendarOpen` flag ป้องกัน calendar popup ซ้อน
 75. **Modal ScreenGui**: popup สร้างใน ScreenGui แยก `DisplayOrder=100` เพื่อ overlay ครอบเหนือ HUD ทั้งหมด — `IgnoreGuiInset=true` ครอบทั้งหน้าจอ
 77. **lastData.claimed**: หลังปิด claim popup จะเซ็ตเป็น `false` เสมอ (ป้องกัน re-claim บน HUD)
-78. **Testing**: ใช้ "🎁 Reset Daily Login" ใน Item Testing menu (T) — ต้อง `Config.Debug.Enabled = true`
+78. **Testing**: ใช้ "🎁 Reset Daily Login" ใน Testing Menu (toggle button มุมบนขวา) — ต้อง `Config.Debug.ItemTesting = true`
 
-### 🏆 Global Leaderboard
-77. **DataStore**: ใช้ `OrderedDataStore` แยกต่างหาก (`ObbyLeaderboard_v1`)
-78. **Physical Board**: Part ชื่อ `GlobalLeaderboard` ใน workspace — วางเองใน Studio ได้ (จะใช้ตำแหน่งนั้น)
-79. **Default Position**: `(22, 109, 12)` หันหน้า -X ขวาของ stage select area
+### 🏆 Dual Leaderboards (Gems + Wins)
+77. **DataStore**: ใช้ `OrderedDataStore` แยก 2 ตัว (`ObbyLeaderboard_Gems_v1`, `ObbyLeaderboard_Wins_v1`)
+78. **Physical Boards**: 2 boards สร้างอัตโนมัติ — 💎 GemLeaderboard (X=22) + 🏆 WinLeaderboard (X=-22)
+79. **Positions**: Flanking SelectionZone at Z=30, Y=109
 80. **Refresh**: broadcast ทุก 60 วินาที + เมื่อผู้เล่นจบเกม
 
 ### 🔊 Sound Manager
@@ -1882,7 +1844,7 @@ end)
 82. **Safe**: ตรวจสอบ SoundId ก่อนเล่น ไม่ error ถ้า ID ว่าง
 
 ### 🔧 Code Quality (Audit Feb 2026)
-83. **Debug Flags**: `Config.Debug.Enabled`, `FlyMode`, `ItemTesting`, `MasteryTesting` - ต้อง set `false` ก่อน production
+83. **Debug Flags**: `Config.Debug.Enabled`, `FlyMode`, `ItemTesting` - ต้อง set `false` ก่อน production
 84. **Logger**: `src/shared/Logger.luau` - ใช้ `Logger.debug/info/warn/error(tag, ...)` แทน `print("[Tag]", ...)`
 85. **os.clock()**: ใช้ `os.clock()` แทน `tick()` ทั้ง project (tick deprecated)
 86. **LinearVelocity/AngularVelocity**: ใช้ constraint-based แทน BodyVelocity/BodyAngularVelocity (deprecated)

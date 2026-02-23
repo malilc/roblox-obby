@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local MapManager = require(script.Parent.MapManager)
-local ScoreManager = require(script.Parent.ScoreManager)
+local StageTracker = require(script.Parent.StageTracker)
 local ItemManager = require(script.Parent.ItemManager)
 local CurrencyManager = require(script.Parent.CurrencyManager)
 local MatchManager = require(script.Parent.MatchManager)
@@ -27,7 +27,7 @@ function GameManager.new()
 	-- Managers
 	self.mapManager = MapManager.new()
 	self.currencyManager = CurrencyManager.new()
-	self.scoreManager = ScoreManager.new(self.currencyManager) -- Pass CurrencyManager to ScoreManager
+	self.stageTracker = StageTracker.new()
 	self.matchManager = MatchManager.new(self) -- Pass GameManager to MatchManager (create before ItemManager)
 	self.leaderboardManager = LeaderboardManager.new()
 	self.classManager = ClassManager.new(self.currencyManager, function(player: Player)
@@ -42,6 +42,9 @@ function GameManager.new()
 	
 	-- Per-player match tracking (for instanced maps)
 	self.playerMatchIds = {} :: {[Player]: string} -- Player -> MatchId mapping
+
+	-- Debug: solo wins flag per player
+	self.soloWinsEnabled = {} :: {[Player]: boolean}
 	
 	-- Round statistics for summary
 	self.playerRoundStats = {} :: {[Player]: {
@@ -101,6 +104,38 @@ function GameManager:canPlayerChangeClass(player: Player): boolean
 	return self.playerStates[player] == "Lobby"
 end
 
+-- Setup leaderstats (Gems, Wins, Currency)
+function GameManager:setupLeaderstats(player: Player)
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+
+	local gems = Instance.new("IntValue")
+	gems.Name = "Gems"
+	gems.Value = 0
+	gems.Parent = leaderstats
+
+	local wins = Instance.new("IntValue")
+	wins.Name = "Wins"
+	wins.Value = 0
+	wins.Parent = leaderstats
+
+	local currency = Instance.new("IntValue")
+	currency.Name = "Currency"
+	currency.Value = 0
+	currency.Parent = leaderstats
+
+	-- Update values after data loads
+	task.spawn(function()
+		task.wait(Config.Timing.LeaderstatsLoadDelay)
+		if player.Parent then
+			gems.Value = self.currencyManager:getGems(player)
+			wins.Value = self.currencyManager:getWins(player)
+			currency.Value = self.currencyManager:getCurrency(player)
+		end
+	end)
+end
+
 -- Get match ID for a player (returns nil if not in a match / solo play)
 function GameManager:getMatchIdForPlayer(player: Player): string?
 	return self.playerMatchIds[player]
@@ -139,6 +174,17 @@ function GameManager:setupRemotes()
 			self.spectatorManager:onSpectatorLeave(player)
 		end)
 	end
+
+	-- Debug: toggle solo wins
+	if Config.Debug and Config.Debug.Enabled then
+		local toggleSoloWins = ReplicatedStorage.Remotes:FindFirstChild("ToggleSoloWins")
+		if toggleSoloWins then
+			toggleSoloWins.OnServerEvent:Connect(function(player, enabled)
+				self.soloWinsEnabled[player] = enabled == true
+				Logger.debug("GameManager", player.Name, "solo wins:", tostring(self.soloWinsEnabled[player]))
+			end)
+		end
+	end
 end
 
 -- Setup player events
@@ -163,11 +209,13 @@ function GameManager:onPlayerAdded(player: Player)
 	self.playerConnections[player] = {}
 
 	-- Initialize managers
-	self.scoreManager:initPlayer(player)
-	self.scoreManager:setupLeaderstats(player)
+	self.stageTracker:initPlayer(player)
 	self.currencyManager:initPlayer(player)
 	self.itemManager:initPlayer(player)
 	self.classManager:initPlayer(player)
+
+	-- Setup leaderstats
+	self:setupLeaderstats(player)
 
 	-- Send cached leaderboard to new player
 	task.delay(Config.Timing.LeaderboardSendDelay, function()
@@ -207,9 +255,10 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.playerCheckpoints[player] = nil
 	self.selectionZoneManager:removePlayer(player)
 	self.teleportingToLobby[player] = nil
+	self.soloWinsEnabled[player] = nil
 	self.playerRoundStats[player] = nil
 
-	self.scoreManager:removePlayer(player)
+	self.stageTracker:removePlayer(player)
 	self.currencyManager:removePlayer(player)
 	self.itemManager:removePlayer(player)
 	self.matchManager:removePlayer(player)
@@ -278,7 +327,7 @@ function GameManager:checkPlayerPosition(player: Player)
 		-- Use per-match map functions
 		local currentStageIndex = self.mapManager:getStageIndexFromPositionForMatch(matchId, position)
 		if currentStageIndex then
-			local playerCurrentStage = self.scoreManager:getCurrentStage(player)
+			local playerCurrentStage = self.stageTracker:getCurrentStage(player)
 			
 			if currentStageIndex > playerCurrentStage then
 				self:onStageComplete(player, currentStageIndex)
@@ -293,7 +342,7 @@ function GameManager:checkPlayerPosition(player: Player)
 		-- Use global map (backwards compatibility)
 		local currentStageIndex = self.mapManager:getStageIndexFromPosition(position)
 		if currentStageIndex then
-			local playerCurrentStage = self.scoreManager:getCurrentStage(player)
+			local playerCurrentStage = self.stageTracker:getCurrentStage(player)
 			
 			if currentStageIndex > playerCurrentStage then
 				self:onStageComplete(player, currentStageIndex)
@@ -324,9 +373,9 @@ end
 
 -- On stage complete
 function GameManager:onStageComplete(player: Player, stageIndex: number)
-	self.scoreManager:addStageScore(player, stageIndex)
-	self.scoreManager:updateLeaderstats(player)
-	
+	local advanced = self.stageTracker:advanceStage(player, stageIndex)
+	if not advanced then return end
+
 	-- Get stage order based on player's match
 	local matchId = self:getMatchIdForPlayer(player)
 	local stageOrder = if matchId 
@@ -401,14 +450,11 @@ function GameManager:onPlayerFinished(player: Player)
 	
 	-- Notify MatchManager that player finished
 	self.matchManager:playerFinished(player)
-	
-	self.scoreManager:addFinishBonus(player)
-	self.scoreManager:updateLeaderstats(player)
-	
+
 	-- Get stage order based on player's match
 	local matchId = self:getMatchIdForPlayer(player)
-	local stageOrder = if matchId 
-		then self.mapManager:getStageOrderForMatch(matchId) 
+	local stageOrder = if matchId
+		then self.mapManager:getStageOrderForMatch(matchId)
 		else self.mapManager.globalMap.stageOrder
 
 	-- Get dynamic total stages
@@ -419,14 +465,14 @@ function GameManager:onPlayerFinished(player: Player)
 	if totalStages > 0 then
 		-- Stage Clear bonus for last stage
 		self.currencyManager:addCurrency(player, Config.Currency.PerStage)
-		
+
 		-- Stage Reward for last stage
 		local lastStageNum = stageOrder[totalStages]
 		local lastStageData = StageInfo.getStage(lastStageNum)
 		local lastStageReward = if lastStageData then lastStageData.reward else 0
 		if lastStageReward > 0 then
 			self.currencyManager:addCurrency(player, lastStageReward)
-			
+
 			-- Track stage rewards total
 			local roundStats = self.playerRoundStats[player]
 			if roundStats then
@@ -434,12 +480,51 @@ function GameManager:onPlayerFinished(player: Player)
 			end
 		end
 	end
-	
+
 	-- Give currency bonus for finishing
 	self.currencyManager:addCurrency(player, Config.Currency.FinishBonus)
 
 	local finishMasteryXP = (Config.Mastery and Config.Mastery.FinishBonusXP) or 0
 	self:addMasteryXP(player, finishMasteryXP, "Finish")
+
+	-- Award gems for finishing race
+	local gemsConfig = Config.Gems or {}
+	self.currencyManager:addGems(player, gemsConfig.FinishRace or 1, "FinishRace")
+
+	-- Check finish position for top 30% bonus and win
+	local matchRoom = self.matchManager:getPlayerRoom(player)
+	local isTop30 = false
+	local isWin = false
+	local finishPosition = 0
+	local totalPlayers = 1
+
+	if matchRoom and #matchRoom.players > 1 then
+		for i, p in ipairs(matchRoom.finishOrder) do
+			if p == player then
+				finishPosition = i
+				break
+			end
+		end
+		totalPlayers = #matchRoom.players
+
+		-- Win = 1st place
+		if finishPosition == 1 then
+			isWin = true
+			self.currencyManager:addWin(player)
+		end
+	elseif self.soloWinsEnabled[player] then
+		-- Debug: solo wins mode — treat finish as a win
+		finishPosition = 1
+		isWin = true
+		self.currencyManager:addWin(player)
+
+		-- Top 30% bonus (denominator = all players in match)
+		local cutoff = math.max(1, math.ceil(totalPlayers * 0.30))
+		isTop30 = finishPosition <= cutoff
+		if isTop30 then
+			self.currencyManager:addGems(player, gemsConfig.Top30Bonus or 5, "Top30Bonus")
+		end
+	end
 
 	-- Calculate summary data
 	local roundStats = self.playerRoundStats[player]
@@ -451,8 +536,10 @@ function GameManager:onPlayerFinished(player: Player)
 	local stagesCleared = totalStages
 
 	-- Check if player is in an active match (for spectator support)
-	local matchRoom = self.matchManager:getPlayerRoom(player)
 	local canSpectate = matchRoom ~= nil and matchRoom.state == "Racing"
+
+	-- Calculate gems earned this round
+	local gemsEarned = (gemsConfig.FinishRace or 1) + (if isTop30 then (gemsConfig.Top30Bonus or 5) else 0)
 
 	-- Notify client with summary data
 	self.stageCompleteRemote:FireClient(player, {
@@ -460,26 +547,36 @@ function GameManager:onPlayerFinished(player: Player)
 		stageIndex = totalStages,
 		totalStages = totalStages,
 		summary = {
-			-- Stats
-			scoreEarned = self.scoreManager:getRoundScore(player),
+			-- Gems & Wins
+			gemsEarned = gemsEarned,
+			gemsTotal = self.currencyManager:getGems(player),
+			isTop30 = isTop30,
+			isWin = isWin,
+			finishPosition = finishPosition,
+			totalRacers = totalPlayers,
+			winsTotal = self.currencyManager:getWins(player),
 			timeSpent = elapsedTime,
 			-- Currency breakdown
-			coinsCollected = coinsCollected, -- จำนวนเหรียญที่เก็บได้
-			coinValue = Config.Currency.PerCoin, -- มูลค่าต่อเหรียญ
-			stagesCleared = stagesCleared, -- จำนวนด่านที่ผ่าน
-			stageValue = Config.Currency.PerStage, -- มูลค่าต่อด่าน (Stage Clear bonus)
-			stageRewardsTotal = stageRewardsTotal, -- รางวัลตามด่านรวม
-			finishBonus = Config.Currency.FinishBonus, -- โบนัสจบเกม
+			coinsCollected = coinsCollected,
+			coinValue = Config.Currency.PerCoin,
+			stagesCleared = stagesCleared,
+			stageValue = Config.Currency.PerStage,
+			stageRewardsTotal = stageRewardsTotal,
+			finishBonus = Config.Currency.FinishBonus,
 			totalCurrency = self.currencyManager:getCurrency(player),
-			stageOrder = stageOrder, -- Stage ที่เลือกเล่น
-			canSpectate = canSpectate, -- Can spectate other racers
+			stageOrder = stageOrder,
+			canSpectate = canSpectate,
 		},
 	})
 
-	-- Update global leaderboard
-	local totalScore = self.scoreManager:getTotalScore(player)
-	if totalScore and totalScore > 0 then
-		self.leaderboardManager:updateScore(player, totalScore)
+	-- Update global leaderboards (gems + wins)
+	local totalGems = self.currencyManager:getGems(player)
+	if totalGems and totalGems > 0 then
+		self.leaderboardManager:updateGems(player, totalGems)
+	end
+	local totalWins = self.currencyManager:getWins(player)
+	if totalWins and totalWins > 0 then
+		self.leaderboardManager:updateWins(player, totalWins)
 	end
 
 	Logger.debug("GameManager", player.Name, "FINISHED THE OBBY!")
@@ -506,7 +603,7 @@ function GameManager:teleportToStart(player: Player)
 	self.playerStates[player] = "Playing"
 	
 	-- Reset scores for new round
-	self.scoreManager:resetRoundScore(player)
+	self.stageTracker:resetRound(player)
 	self.itemManager:resetPlayer(player)
 	
 	-- Clear checkpoint
@@ -673,7 +770,7 @@ function GameManager:startGameForPlayer(player: Player)
 	end
 	
 	-- Reset scores
-	self.scoreManager:resetRoundScore(player)
+	self.stageTracker:resetRound(player)
 	self.itemManager:resetPlayer(player)
 	
 	-- Initialize round stats for summary
@@ -717,7 +814,7 @@ function GameManager:teleportToLobby(player: Player)
 	self.playerStates[player] = "Lobby"
 
 	-- Reset scores for next round
-	self.scoreManager:resetRoundScore(player)
+	self.stageTracker:resetRound(player)
 	self.itemManager:resetPlayer(player)
 
 	-- Clear checkpoint

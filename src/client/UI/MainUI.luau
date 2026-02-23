@@ -149,6 +149,11 @@ function MainUI:setupRemotes()
 		self:showTimeWarning(data.message, data.isCritical)
 	end)
 
+	-- Update gems + wins
+	RemoteRegistry.get("UpdateGems").OnClientEvent:Connect(function(data)
+		self.scoreUI:updateGems(data)
+	end)
+
 	-- Hide timer when returning to lobby
 	RemoteRegistry.get("ReturnToLobby").OnClientEvent:Connect(function()
 		self.scoreUI:hideTimer()

@@ -28,10 +28,19 @@ local Config = {
 		},
 	},
 
-	-- Score Settings
-	Score = {
-		PerStage = 10, -- คะแนนต่อด่าน
-		FinishBonus = 50, -- โบนัสเมื่อเข้าเส้นชัย
+	-- Gem Settings (premium currency)
+	Gems = {
+		FinishRace = 1,      -- +1 gem เมื่อเข้าเส้นชัย
+		Top30Bonus = 5,      -- +5 gems เมื่อจบ top 30%
+		DailyLoginGems = {   -- gem rewards ต่อวัน (ควบคู่กับ coins)
+			[1] = 1,
+			[2] = 1,
+			[3] = 2,
+			[4] = 2,
+			[5] = 3,
+			[6] = 3,
+			[7] = 5,
+		},
 	},
 
 	-- Currency Settings
@@ -146,8 +155,6 @@ local Config = {
 	-- DataStore
 	DataStore = {
 		Name = "ObbyGameData_v1",
-		ScoreKey = "PlayerScore",
-		HighScoreKey = "HighScore",
 		CurrencyKey = "PlayerCurrency",
 	},
 
@@ -213,8 +220,7 @@ local Config = {
 	Debug = {
 		Enabled = true,    -- Master toggle: set false for production
 		FlyMode = true,    -- Press F to fly (client)
-		ItemTesting = true, -- Press T for item test menu (client + server remotes)
-		MasteryTesting = true, -- Press M for mastery test menu (client + server remotes)
+		ItemTesting = true, -- Toggle button for testing menu (items, mastery, solo start)
 	},
 }
 

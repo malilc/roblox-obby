@@ -46,7 +46,7 @@ function SummaryUI:createUI()
 	-- Main Frame (centered popup)
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "SummaryFrame"
-	mainFrame.Size = UDim2.new(0, 400, 0, 560)
+	mainFrame.Size = UDim2.new(0, 400, 0, 600)
 	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	mainFrame.BackgroundColor3 = Theme.BG_BASE
@@ -128,17 +128,17 @@ function SummaryUI:createUI()
 	})
 	fillGrad.Parent = headerFill
 
-	-- Trophy icon
-	local trophyLabel = Instance.new("TextLabel")
-	trophyLabel.Name = "Trophy"
-	trophyLabel.Size = UDim2.new(1, 0, 0, 44)
-	trophyLabel.Position = UDim2.new(0, 0, 0, 6)
-	trophyLabel.BackgroundTransparency = 1
-	trophyLabel.Text = "\u{1F3C6}"
-	trophyLabel.TextSize = 36
-	trophyLabel.Font = Enum.Font.GothamBold
-	trophyLabel.ZIndex = 52
-	trophyLabel.Parent = headerFrame
+	-- Gem icon
+	local gemLabel = Instance.new("TextLabel")
+	gemLabel.Name = "GemIcon"
+	gemLabel.Size = UDim2.new(1, 0, 0, 44)
+	gemLabel.Position = UDim2.new(0, 0, 0, 6)
+	gemLabel.BackgroundTransparency = 1
+	gemLabel.Text = "\u{1F48E}"
+	gemLabel.TextSize = 36
+	gemLabel.Font = Enum.Font.GothamBold
+	gemLabel.ZIndex = 52
+	gemLabel.Parent = headerFrame
 
 	-- Title
 	local titleLabel = Instance.new("TextLabel")
@@ -223,7 +223,7 @@ function SummaryUI:createUI()
 	-- ==================== STATS SECTION ====================
 	local statsContainer = Instance.new("Frame")
 	statsContainer.Name = "StatsContainer"
-	statsContainer.Size = UDim2.new(1, -40, 0, 70)
+	statsContainer.Size = UDim2.new(1, -40, 0, 110)
 	statsContainer.Position = UDim2.new(0, 20, 0, 178)
 	statsContainer.BackgroundColor3 = Theme.BG_SURFACE
 	statsContainer.BackgroundTransparency = 0.5
@@ -259,7 +259,7 @@ function SummaryUI:createUI()
 	-- Stats rows
 	self.statsRows = {}
 	local statsConfig = {
-		{name = "Score", icon = "\u{2B50}", key = "scoreEarned", color = Theme.ACCENT_CYAN},
+		{name = "Gems", icon = "\u{1F48E}", key = "gemsEarned", color = Color3.fromRGB(200, 120, 255)},
 		{name = "Time", icon = "\u{23F1}\u{FE0F}", key = "timeSpent", color = Theme.TEXT_MUTED, isTime = true},
 	}
 
@@ -268,11 +268,45 @@ function SummaryUI:createUI()
 		self.statsRows[config.key] = row
 	end
 
+	-- "1ST PLACE!" indicator (hidden by default, shown when isWin)
+	local winLabel = Instance.new("TextLabel")
+	winLabel.Name = "WinLabel"
+	winLabel.Size = UDim2.new(1, -20, 0, 26)
+	winLabel.Position = UDim2.new(0, 10, 0, 70)
+	winLabel.BackgroundTransparency = 1
+	winLabel.Text = "\u{1F451} 1ST PLACE!"
+	winLabel.TextColor3 = Theme.MEDAL_GOLD
+	winLabel.TextSize = 18
+	winLabel.Font = Enum.Font.GothamBlack
+	winLabel.TextStrokeColor3 = Color3.fromRGB(100, 70, 0)
+	winLabel.TextStrokeTransparency = 0.4
+	winLabel.TextXAlignment = Enum.TextXAlignment.Center
+	winLabel.ZIndex = 52
+	winLabel.Visible = false
+	winLabel.Parent = statsContainer
+	self.winLabel = winLabel
+
+	-- "TOP 30%" indicator (hidden by default, shown when isTop30)
+	local top30Label = Instance.new("TextLabel")
+	top30Label.Name = "Top30Label"
+	top30Label.Size = UDim2.new(1, -20, 0, 20)
+	top30Label.Position = UDim2.new(0, 10, 0, 88)
+	top30Label.BackgroundTransparency = 1
+	top30Label.Text = "\u{1F48E} TOP 30%"
+	top30Label.TextColor3 = Color3.fromRGB(200, 120, 255)
+	top30Label.TextSize = 13
+	top30Label.Font = Enum.Font.GothamBold
+	top30Label.TextXAlignment = Enum.TextXAlignment.Center
+	top30Label.ZIndex = 52
+	top30Label.Visible = false
+	top30Label.Parent = statsContainer
+	self.top30Label = top30Label
+
 	-- ==================== CURRENCY SECTION ====================
 	local currencyContainer = Instance.new("Frame")
 	currencyContainer.Name = "CurrencyContainer"
 	currencyContainer.Size = UDim2.new(1, -40, 0, 215)
-	currencyContainer.Position = UDim2.new(0, 20, 0, 258)
+	currencyContainer.Position = UDim2.new(0, 20, 0, 298)
 	currencyContainer.BackgroundColor3 = Theme.BG_SURFACE
 	currencyContainer.BackgroundTransparency = 0.5
 	currencyContainer.BorderSizePixel = 0
@@ -374,40 +408,55 @@ function SummaryUI:createUI()
 	self.totalValueLabel = totalValue
 
 	-- ==================== OK BUTTON ====================
+	-- Use TextButton(transparent) + Frame(gradient bg) + TextLabel so gradient doesn't tint text
 	local okButton = Instance.new("TextButton")
 	okButton.Name = "OKButton"
 	okButton.Size = UDim2.new(0, 180, 0, 44)
-	okButton.Position = UDim2.new(0.5, 0, 0, 505)
+	okButton.Position = UDim2.new(0.5, 0, 0, 545)
 	okButton.AnchorPoint = Vector2.new(0.5, 0)
-	okButton.BackgroundColor3 = Theme.SUCCESS
+	okButton.BackgroundTransparency = 1
 	okButton.BorderSizePixel = 0
-	okButton.Text = "\u{2705} OK"
-	okButton.TextColor3 = Theme.TEXT_PRIMARY
-	okButton.TextSize = 18
-	okButton.Font = Enum.Font.GothamBold
+	okButton.Text = ""
 	okButton.ZIndex = 51
 	okButton.Parent = mainFrame
 	self.okButton = okButton
 
+	local okBg = Instance.new("Frame")
+	okBg.Name = "OKBg"
+	okBg.Size = UDim2.new(1, 0, 1, 0)
+	okBg.BackgroundColor3 = Color3.new(1, 1, 1)
+	okBg.BorderSizePixel = 0
+	okBg.ZIndex = 51
+	okBg.Parent = okButton
+
 	local okCorner = Instance.new("UICorner")
 	okCorner.CornerRadius = Theme.CORNER_MD
-	okCorner.Parent = okButton
+	okCorner.Parent = okBg
 
-	-- OK Button gradient
 	local okGradient = Instance.new("UIGradient")
 	okGradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Theme.SUCCESS),
-		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED)
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 150, 60))
 	})
 	okGradient.Rotation = 90
-	okGradient.Parent = okButton
+	okGradient.Parent = okBg
 
-	-- OK Button stroke
 	local okStroke = Instance.new("UIStroke")
 	okStroke.Color = Theme.SUCCESS
 	okStroke.Thickness = Theme.STROKE_MED
 	okStroke.Transparency = 0.3
-	okStroke.Parent = okButton
+	okStroke.Parent = okBg
+
+	local okLabel = Instance.new("TextLabel")
+	okLabel.Name = "OKLabel"
+	okLabel.Size = UDim2.new(1, 0, 1, 0)
+	okLabel.BackgroundTransparency = 1
+	okLabel.Text = "\u{2705} OK"
+	okLabel.TextColor3 = Theme.TEXT_PRIMARY
+	okLabel.TextSize = 18
+	okLabel.Font = Enum.Font.GothamBold
+	okLabel.ZIndex = 52
+	okLabel.Parent = okButton
 
 	-- Button click
 	okButton.MouseButton1Click:Connect(function()
@@ -589,7 +638,7 @@ function SummaryUI:createStageTag(stageNum: number, index: number): Frame
 	return tag
 end
 
-function SummaryUI:show(data: {scoreEarned: number, timeSpent: number, coinsCollected: number, coinValue: number, stagesCleared: number, stageValue: number, finishBonus: number, totalCurrency: number, stageOrder: {number}?})
+function SummaryUI:show(data: {gemsEarned: number, timeSpent: number, coinsCollected: number, coinValue: number, stagesCleared: number, stageValue: number, finishBonus: number, totalCurrency: number, stageOrder: {number}?, isWin: boolean?, isTop30: boolean?})
 	if self.isVisible then return end
 	self.isVisible = true
 
@@ -607,6 +656,10 @@ function SummaryUI:show(data: {scoreEarned: number, timeSpent: number, coinsColl
 		tag.Parent = self.stagesList
 	end
 
+	-- Show/hide win and top30 indicators
+	self.winLabel.Visible = data.isWin == true
+	self.top30Label.Visible = data.isTop30 == true
+
 	-- Show and animate overlay
 	self.overlay.BackgroundTransparency = 1
 	self.overlay.Visible = true
@@ -620,7 +673,7 @@ function SummaryUI:show(data: {scoreEarned: number, timeSpent: number, coinsColl
 
 	-- Scale in animation
 	local scaleIn = TweenService:Create(self.mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-		Size = UDim2.new(0, 400, 0, 560)
+		Size = UDim2.new(0, 400, 0, 600)
 	})
 	scaleIn:Play()
 
@@ -689,14 +742,14 @@ function SummaryUI:animateStageTags()
 	end
 end
 
-function SummaryUI:animateStats(data: {scoreEarned: number, timeSpent: number})
-	-- Score
+function SummaryUI:animateStats(data: {gemsEarned: number, timeSpent: number, isWin: boolean?, isTop30: boolean?})
+	-- Gems
 	task.delay(0, function()
-		local row = self.statsRows.scoreEarned
+		local row = self.statsRows.gemsEarned
 		if row then
 			local valueLabel = row:FindFirstChild("Value")
 			if valueLabel then
-				valueLabel.Text = tostring(data.scoreEarned or 0)
+				valueLabel.Text = tostring(data.gemsEarned or 0)
 				valueLabel.TextSize = 10
 				TweenService:Create(valueLabel, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
 					TextSize = 14
@@ -719,6 +772,44 @@ function SummaryUI:animateStats(data: {scoreEarned: number, timeSpent: number})
 			end
 		end
 	end)
+
+	-- Animate "1ST PLACE!" label with gold glow pulse
+	if data.isWin then
+		task.delay(0.2, function()
+			if self.winLabel.Visible then
+				self.winLabel.TextSize = 12
+				TweenService:Create(self.winLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+					TextSize = 18
+				}):Play()
+
+				-- Glow pulse loop
+				task.spawn(function()
+					while self.isVisible and self.winLabel.Visible do
+						TweenService:Create(self.winLabel, TweenInfo.new(0.6), {
+							TextStrokeTransparency = 0.2
+						}):Play()
+						task.wait(0.6)
+						TweenService:Create(self.winLabel, TweenInfo.new(0.6), {
+							TextStrokeTransparency = 0.6
+						}):Play()
+						task.wait(0.6)
+					end
+				end)
+			end
+		end)
+	end
+
+	-- Animate "TOP 30%" label
+	if data.isTop30 then
+		task.delay(0.3, function()
+			if self.top30Label.Visible then
+				self.top30Label.TextSize = 9
+				TweenService:Create(self.top30Label, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
+					TextSize = 13
+				}):Play()
+			end
+		end)
+	end
 end
 
 function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: number, stagesCleared: number, stageValue: number, stageRewardsTotal: number, finishBonus: number})

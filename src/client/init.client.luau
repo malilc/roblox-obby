@@ -38,34 +38,6 @@ if Config.Debug and Config.Debug.ItemTesting then
 	local itemTestingUI = ItemTestingUI.new()
 end
 
--- Mastery Testing UI (Press M to toggle)
-if Config.Debug and Config.Debug.MasteryTesting then
-	local UserInputService = game:GetService("UserInputService")
-	local MasteryTestingUI = require(script.UI.MasteryTestingUI)
-	
-	-- Get PlayerGui
-	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-	local gameUI = playerGui:FindFirstChild("GameUI")
-	if not gameUI then
-		gameUI = Instance.new("ScreenGui")
-		gameUI.Name = "GameUI"
-		gameUI.ResetOnSpawn = false
-		gameUI.Parent = playerGui
-	end
-	
-	local masteryTestingUI = MasteryTestingUI.new(gameUI)
-	
-	-- Keybind M to toggle
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
-		
-		if input.KeyCode == Enum.KeyCode.M then
-			masteryTestingUI:toggle()
-		end
-	end)
-	
-	Logger.info("Client", "Mastery Testing UI enabled - Press M to toggle")
-end
 
 -- Initialize Ultimate Skill Controller (handles Sprint, Double Jump, Iron Will)
 local UltimateSkillController = require(script.UltimateSkillController)
