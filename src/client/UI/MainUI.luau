@@ -21,6 +21,7 @@ local TutorialUI = require(script.Parent.TutorialUI)
 local SpectatorUI = require(script.Parent.SpectatorUI)
 local DailyBonusUI = require(script.Parent.DailyBonusUI)
 local LeaderboardUI = require(script.Parent.LeaderboardUI)
+local ShopUI = require(script.Parent.ShopUI)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -63,6 +64,21 @@ function MainUI.new()
 	self.spectatorUI = SpectatorUI.new(screenGui)
 	self.dailyBonusUI = DailyBonusUI.new(screenGui)
 	self.leaderboardUI = LeaderboardUI.new(screenGui)
+
+	-- ShopUI with mutual exclusion
+	self.shopUI = ShopUI.new(screenGui, {
+		onShow = function()
+			if self.stageSelectionUI and self.stageSelectionUI.isVisible then
+				self.stageSelectionUI:hide()
+			end
+			if self.classSelectionUI and self.classSelectionUI.isVisible then
+				self.classSelectionUI:hide()
+			end
+			if self.titleCollectionUI and self.titleCollectionUI.isVisible then
+				self.titleCollectionUI:hide()
+			end
+		end,
+	})
 
 	-- ClassSelectionUI with cross-navigation callback
 	self.classSelectionUI = ClassSelectionUI.new(screenGui, {

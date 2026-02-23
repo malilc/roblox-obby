@@ -12,6 +12,7 @@ local ClassManager = require(script.Parent.ClassManager)
 local LeaderboardManager = require(script.Parent.LeaderboardManager)
 local SpectatorManager = require(script.Parent.SpectatorManager)
 local SelectionZoneManager = require(script.Parent.SelectionZoneManager)
+local ShopZoneManager = require(script.Parent.ShopZoneManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Logger = require(ReplicatedStorage.Shared.Logger)
@@ -61,6 +62,8 @@ function GameManager.new()
 	self.confirmStageSelectionRemote = ReplicatedStorage.Remotes.ConfirmStageSelection
 	self.countdownUpdateRemote = ReplicatedStorage.Remotes.CountdownUpdate
 	self.returnToLobbyRemote = ReplicatedStorage.Remotes.ReturnToLobby
+	self.showShopRemote = ReplicatedStorage.Remotes.ShowShop
+	self.hideShopRemote = ReplicatedStorage.Remotes.HideShop
 	
 	-- Spectator Manager
 	self.spectatorManager = SpectatorManager.new({
@@ -80,6 +83,13 @@ function GameManager.new()
 		startGameWithOrder = function(player, stageOrder) self:startGameWithOrder(player, stageOrder) end,
 	})
 
+	-- Shop Zone Manager
+	self.shopZoneManager = ShopZoneManager.new({
+		getPlayerState = function(player) return self.playerStates[player] end,
+		showShopRemote = self.showShopRemote,
+		hideShopRemote = self.hideShopRemote,
+	})
+
 	-- Player event connections (for cleanup on leave)
 	self.playerConnections = {} :: {[Player]: {RBXScriptConnection}}
 	self.playerDiedConnections = {} :: {[Player]: RBXScriptConnection?}
@@ -93,7 +103,8 @@ function GameManager.new()
 	self:setupPlayerEvents()
 	self:setupLobby()
 	self.selectionZoneManager:setup()
-	
+	self.shopZoneManager:setup()
+
 	-- ไม่สร้าง map ตอนเริ่ม - จะสร้างเมื่อผู้เล่นเลือกด่าน
 	-- self:generateNewMap()
 	
@@ -254,6 +265,7 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.playerStates[player] = nil
 	self.playerCheckpoints[player] = nil
 	self.selectionZoneManager:removePlayer(player)
+	self.shopZoneManager:removePlayer(player)
 	self.teleportingToLobby[player] = nil
 	self.soloWinsEnabled[player] = nil
 	self.playerRoundStats[player] = nil

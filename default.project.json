@@ -133,6 +133,12 @@
         },
         "ToggleSoloWins": {
           "$className": "RemoteEvent"
+        },
+        "ShowShop": {
+          "$className": "RemoteEvent"
+        },
+        "HideShop": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {
@@ -260,6 +266,18 @@
             "Material": "Neon",
             "Size": [20, 0.5, 20],
             "Position": [0, 101, 30],
+            "Transparency": 0.3,
+            "CanCollide": false
+          }
+        },
+        "ShopZone": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.2, 0.87, 1],
+            "Material": "Neon",
+            "Size": [16, 0.5, 16],
+            "Position": [30, 101, 15],
             "Transparency": 0.3,
             "CanCollide": false
           }

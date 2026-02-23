@@ -18,6 +18,7 @@ src/
 │   ├── LeaderboardManager.luau  # 🏆 Dual Leaderboards: Gems + Wins (2 OrderedDataStores + 2 Physical Boards)
 │   ├── SpectatorManager.luau    # 👁️ ระบบ Spectator Mode (แยกจาก GameManager)
 │   ├── SelectionZoneManager.luau # ⭐ ระบบ SelectionZone detection + stage confirm (แยกจาก GameManager)
+│   ├── ShopZoneManager.luau    # 🛒 ระบบ ShopZone detection + model placement (InsertService)
 │   ├── DataStoreHelper.luau     # 💾 Centralized DataStore utilities + retry logic + schema versioning
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
 │
@@ -46,6 +47,7 @@ src/
 │       ├── TutorialUI.luau      # ❓ Game Guide popup (ปุ่ม "?" + 5 tabs RichText)
 │       ├── SpectatorUI.luau     # 👁️ Spectator HUD + prompt + rankings
 │       ├── DailyBonusUI.luau    # 🎁 Daily Login 7-day calendar popup + HUD button
+│       ├── ShopUI.luau          # 🛒 Shop popup (skeleton — triggered by ShopZone)
 │       ├── LeaderboardUI.luau   # 🏆 Stub เท่านั้น (physical board สร้างโดย LeaderboardManager)
 │       └── MobileInputUI.luau   # 📱 Touch buttons สำหรับมือถือ (Item/Sprint/Jump)
 │
@@ -75,7 +77,9 @@ Workspace/
 │   ├── CeilLight_1/2/3    # แถบไฟ Neon Magenta ใต้เพดาน (3 เส้น)
 │   ├── GridH_1-4          # เส้น Grid แนวนอน บนพื้น (Neon น้ำเงินจาง)
 │   ├── GridV_1-4          # เส้น Grid แนวตั้ง บนพื้น (Neon น้ำเงินจาง)
-│   └── SelectionZone      # ⭐ Zone เลือกด่าน (Neon Magenta)
+│   ├── SelectionZone      # ⭐ Zone เลือกด่าน (Neon Yellow, center front)
+│   └── ShopZone           # 🛒 Zone เปิด Shop (Neon Cyan, right side X=30, Z=15)
+├── ShopModel              # 🛒 Loaded via InsertService (Asset 2310029676)
 ├── GemLeaderboard         # 💎 Physical gem leaderboard board (สร้างอัตโนมัติ, X=22)
 ├── WinLeaderboard         # 🏆 Physical win leaderboard board (สร้างอัตโนมัติ, X=-22)
 ├── Stages/                # Folder เก็บด่านที่ generate
@@ -85,6 +89,7 @@ Workspace/
 **สำคัญ**: 
 - `SpawnLocation` ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
 - `SelectionZone` ใช้ loop-based detection (เสถียรกว่า Touched events)
+- `ShopZone` ใช้ loop-based detection เหมือน SelectionZone (ShopZoneManager)
 - `GemLeaderboard` + `WinLeaderboard` สร้างอัตโนมัติโดย LeaderboardManager (X=±22, Z=30)
 
 ---
@@ -1119,6 +1124,44 @@ BOARD_SIZE    = Vector3.new(10, 14, 0.5)   -- กว้าง × สูง × �
 
 ---
 
+## 🛒 Shop System (Skeleton)
+
+### ไฟล์ที่เกี่ยวข้อง:
+- `src/server/ShopZoneManager.luau` — Zone detection + model placement (InsertService)
+- `src/server/GameManager.luau` — Wire ShopZoneManager + remotes + cleanup
+- `src/client/UI/ShopUI.luau` — Skeleton popup UI (Coming Soon)
+- `src/client/UI/MainUI.luau` — Require ShopUI + mutual exclusion
+
+### Lobby Position:
+```
+ShopZone: (30, 101, 15) — ขวามือของ lobby (ผู้เล่นหันหน้า +Z)
+Size: 16×0.5×16, Neon Cyan, CanCollide=false
+```
+
+### ShopZoneManager (Server):
+- ใช้ loop-based detection เหมือน SelectionZoneManager (reuse `Config.Timing.SelectionZoneInterval`)
+- `InsertService:LoadAsset(2310029676)` โหลด shop model → วางที่ ShopZone
+- Model position: ใช้ `GetBoundingBox()` คำนวณ Y ให้ฐานอยู่บนพื้น
+- Billboard label "SHOP" ลอยเหนือ zone
+- Enter zone (state == "Lobby") → fire `ShowShop`
+- Leave zone → fire `HideShop`
+
+### ShopUI (Client):
+- 600×450 popup, centered, BG_BASE gradient, cyan stroke
+- Title: "🛒 SHOP", Subtitle: "Coming Soon!"
+- ScrollingFrame placeholder (empty content area)
+- Close (X) button top-right
+- Show/Hide: 0.2s fade tween (same pattern as StageSelectionUI)
+- Mutual exclusion: onShow hides StageSelectionUI, ClassSelectionUI, TitleCollectionUI
+
+### RemoteEvents:
+| Event | Direction | Usage |
+|-------|-----------|-------|
+| `ShowShop` | Server → Client | เปิด ShopUI (เดินเข้า ShopZone) |
+| `HideShop` | Server → Client | ปิด ShopUI (ออกจาก ShopZone) |
+
+---
+
 ## 🔊 Sound Manager
 
 ### ไฟล์: `src/client/SoundManager.luau`
@@ -1191,6 +1234,8 @@ local SOUNDS = {
 | `ToggleSoloWins` | Client → Server | 🧪 เปิด/ปิด solo wins (debug mode, payload: boolean) |
 | `SetMasteryLevel` | Client → Server | 🧪 ตั้ง mastery level `{ classId, level }` or `{ setAll, level }` |
 | `ResetDailyLogin` | Client → Server | 🧪 รีเซ็ต daily login streak (debug mode เท่านั้น) |
+| `ShowShop` | Server → Client | 🛒 แสดง Shop popup (เดินเข้า ShopZone) |
+| `HideShop` | Server → Client | 🛒 ซ่อน Shop popup (ออกจาก ShopZone) |
 
 **ClassUpdate Payload (สำคัญ):**
 ```lua
@@ -1341,6 +1386,7 @@ Leaderstats เป็น built-in UI ของ Roblox ที่แสดงส�
 | `SpectatorUI` | กลางจอ (popup + HUD) | 👁️ Spectate prompt + rankings + camera controls |
 | `DailyBonusUI` | มุมล่างซ้าย (HUD btn) + กลางจอ (popup) | 🎁 Daily Login 7-day calendar + claim/view mode |
 | `LeaderboardUI` | — (stub) | 🏆 ไม่มี UI จริง — ดู Global Leaderboard ที่ป้ายกายภาพใน lobby |
+| `ShopUI` | กลางจอ (popup) | 🛒 Shop skeleton popup (triggered by ShopZone, Coming Soon) |
 | `MobileInputUI` | มุมล่าง (มือถือเท่านั้น) | 📱 Touch buttons: Item1/2, Sprint, Jump |
 
 ### StageSelectionUI:
@@ -1855,7 +1901,7 @@ end)
 91. **Race Direction**: Stages progress ตามแกน +X (ไม่ใช่ +Z) - "ahead" check ใช้ `Position.X`
 
 ### 🏗️ Architecture (Refactored Feb 2026)
-92. **GameManager split**: SpectatorManager + SelectionZoneManager แยกออกจาก GameManager ใช้ dependency injection pattern
+92. **GameManager split**: SpectatorManager + SelectionZoneManager + ShopZoneManager แยกออกจาก GameManager ใช้ dependency injection pattern
 93. **DataStoreHelper**: DataStore ทุก module ควรใช้ `DataStoreHelper.loadAsync()` + `DataStoreHelper.saveAsync()` (retry 3 ครั้ง, exponential backoff, schema versioning)
 94. **RemoteRegistry**: ใช้ `RemoteRegistry.get("EventName")` แทนการ WaitForChild ตรงๆ (cached, safe fallback)
 95. **TweenHelper**: Animation ซ้ำๆ ให้ใช้ `src/client/TweenHelper.luau` (pop, fadeIn, fadeOut, slideIn, glowStroke, colorFlash)
