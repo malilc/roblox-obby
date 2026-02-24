@@ -353,6 +353,76 @@ function ItemTestingUI:createItemButtons()
 		end
 	end)
 
+	-- === Gems Section ===
+	local gemSeparator = Instance.new("TextLabel")
+	gemSeparator.Name = "GemSeparator"
+	gemSeparator.Size = UDim2.new(1, 0, 0, 25)
+	gemSeparator.BackgroundTransparency = 1
+	gemSeparator.Text = "── Gems ──"
+	gemSeparator.TextColor3 = Theme.HUD_GEM_START or Color3.fromRGB(180, 100, 255)
+	gemSeparator.TextSize = 14
+	gemSeparator.Font = Enum.Font.GothamBold
+	gemSeparator.LayoutOrder = layoutOrder + 250
+	gemSeparator.Parent = self.scrollFrame
+
+	-- Gem display label
+	local gemDisplayLabel = Instance.new("TextLabel")
+	gemDisplayLabel.Name = "GemDisplayLabel"
+	gemDisplayLabel.Size = UDim2.new(1, 0, 0, 25)
+	gemDisplayLabel.BackgroundTransparency = 1
+	gemDisplayLabel.Text = "💎 Gems: 0"
+	gemDisplayLabel.TextColor3 = Theme.HUD_GEM_START or Color3.fromRGB(180, 100, 255)
+	gemDisplayLabel.TextSize = 16
+	gemDisplayLabel.Font = Enum.Font.GothamBold
+	gemDisplayLabel.LayoutOrder = layoutOrder + 251
+	gemDisplayLabel.Parent = self.scrollFrame
+	self.gemDisplayLabel = gemDisplayLabel
+
+	-- Gem amount buttons row
+	local gemAmounts = {10, 100, 1000}
+	for idx, amount in ipairs(gemAmounts) do
+		local addGemBtn = Instance.new("TextButton")
+		addGemBtn.Name = "AddGem" .. amount .. "Btn"
+		addGemBtn.Size = UDim2.new(1, 0, 0, 38)
+		addGemBtn.BackgroundColor3 = Theme.BG_ELEVATED
+		addGemBtn.Text = "💎 +" .. amount .. " Gems"
+		addGemBtn.TextColor3 = Theme.TEXT_PRIMARY
+		addGemBtn.TextSize = 15
+		addGemBtn.Font = Enum.Font.GothamBold
+		addGemBtn.LayoutOrder = layoutOrder + 252 + idx
+		addGemBtn.Parent = self.scrollFrame
+
+		local addGemCorner = Instance.new("UICorner")
+		addGemCorner.CornerRadius = Theme.CORNER_SM
+		addGemCorner.Parent = addGemBtn
+
+		addGemBtn.MouseButton1Click:Connect(function()
+			self:setTestGems("add", amount)
+			self:playClickEffect(addGemBtn)
+		end)
+	end
+
+	-- Reset gems button
+	local resetGemsBtn = Instance.new("TextButton")
+	resetGemsBtn.Name = "ResetGemsBtn"
+	resetGemsBtn.Size = UDim2.new(1, 0, 0, 38)
+	resetGemsBtn.BackgroundColor3 = Theme.BG_OVERLAY
+	resetGemsBtn.Text = "🔄 Reset Gems (0)"
+	resetGemsBtn.TextColor3 = Theme.TEXT_PRIMARY
+	resetGemsBtn.TextSize = 15
+	resetGemsBtn.Font = Enum.Font.GothamBold
+	resetGemsBtn.LayoutOrder = layoutOrder + 256
+	resetGemsBtn.Parent = self.scrollFrame
+
+	local resetGemsCorner = Instance.new("UICorner")
+	resetGemsCorner.CornerRadius = Theme.CORNER_SM
+	resetGemsCorner.Parent = resetGemsBtn
+
+	resetGemsBtn.MouseButton1Click:Connect(function()
+		self:setTestGems("set", 0)
+		self:playClickEffect(resetGemsBtn)
+	end)
+
 	-- === Mastery Section ===
 	local masterySeparator = Instance.new("TextLabel")
 	masterySeparator.Name = "MasterySeparator"
@@ -607,6 +677,29 @@ function ItemTestingUI:setupMasteryRemotes()
 				end
 			end
 		end)
+	end
+
+	-- Listen for gem updates to keep display in sync
+	local updateGems = remotes:FindFirstChild("UpdateGems")
+	if updateGems then
+		updateGems.OnClientEvent:Connect(function(data)
+			if data and data.gems ~= nil and self.gemDisplayLabel then
+				self.gemDisplayLabel.Text = "💎 Gems: " .. tostring(data.gems)
+			end
+		end)
+	end
+end
+
+function ItemTestingUI:setTestGems(action: string, amount: number)
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if remotes then
+		local setGemsRemote = remotes:FindFirstChild("SetTestGems")
+		if setGemsRemote then
+			setGemsRemote:FireServer({ action = action, amount = amount })
+			Logger.debug("ItemTestingUI", "SetTestGems:", action, amount)
+		else
+			Logger.warn("ItemTestingUI", "SetTestGems remote not found!")
+		end
 	end
 end
 

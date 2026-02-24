@@ -69,6 +69,29 @@ local Config = {
 		RequestCooldown = 0.25,
 	},
 
+	-- Shop Settings
+	Shop = {
+		-- Item prices by rarity (coins)
+		ItemPrices = {
+			Common = 15,
+			Uncommon = 35,
+			Rare = 75,
+			Epic = 150,
+		},
+		-- Gacha settings
+		Gacha = {
+			CostGems = 10,
+			DuplicateGemsBack = 3,
+		},
+		-- Gacha class weights (higher = more likely, Normal excluded)
+		GachaWeights = {
+			Runner = 35,
+			Jumper = 35,
+			Tank = 30,
+		},
+		RequestCooldown = 0.5,
+	},
+
 	-- Class Mastery Settings
 	Mastery = {
 		MaxLevel = 20,

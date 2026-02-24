@@ -436,6 +436,14 @@ function CurrencyManager:setupRemotes()
 			end)
 			Logger.info("CurrencyManager", "SetMasteryLevel remote initialized for testing")
 		end
+
+		local setTestGemsRemote = ReplicatedStorage.Remotes:FindFirstChild("SetTestGems")
+		if setTestGemsRemote then
+			setTestGemsRemote.OnServerEvent:Connect(function(player, data)
+				self:handleSetTestGemsRequest(player, data)
+			end)
+			Logger.info("CurrencyManager", "SetTestGems remote initialized for testing")
+		end
 	end
 
 	-- Reset daily login for testing
@@ -1509,6 +1517,34 @@ function CurrencyManager:setMasteryLevel(player: Player, classId: string, level:
 	
 	Logger.debug("CurrencyManager", "TEST: Set", player.Name, classId, "mastery to level", level)
 	return true
+end
+
+-- Handle set test gems request (testing only)
+function CurrencyManager:handleSetTestGemsRequest(player: Player, data: {[string]: any})
+	if not Config.Debug or not Config.Debug.ItemTesting then
+		Logger.warn("CurrencyManager", "handleSetTestGemsRequest is only available in testing mode")
+		return
+	end
+
+	if type(data) ~= "table" then return end
+
+	local playerData = self.playerData[player]
+	if not playerData then return end
+
+	local action = data.action
+	local amount = tonumber(data.amount) or 0
+
+	if action == "add" then
+		playerData.gems = playerData.gems + math.max(0, math.floor(amount))
+	elseif action == "set" then
+		playerData.gems = math.max(0, math.floor(amount))
+	else
+		return
+	end
+
+	self.pendingSaves[player] = true
+	self:sendGemUpdate(player)
+	Logger.debug("CurrencyManager", "TEST: Set", player.Name, "gems to", playerData.gems, "(action:", action, "amount:", amount, ")")
 end
 
 -- Set all mastery levels to same level (testing only)

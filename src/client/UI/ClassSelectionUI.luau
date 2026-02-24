@@ -1248,9 +1248,10 @@ function ClassSelectionUI:refreshClassStates()
 			buttonData.xpBarFill.BackgroundColor3 = if masteryIsMax then COLORS.MASTERY_MAX else COLORS.MASTERY_BAR
 		end
 
-		-- Cost label
-		if not isUnlocked and classCost > 0 then
-			buttonData.costLabel.Text = string.format("Cost: %d", classCost)
+		-- Cost label (gacha only — no coin purchase)
+		if not isUnlocked then
+			buttonData.costLabel.Text = "Get from Shop"
+			buttonData.costLabel.TextColor3 = Theme.HUD_GEM_START
 		else
 			buttonData.costLabel.Text = ""
 		end
@@ -1304,10 +1305,9 @@ function ClassSelectionUI:refreshClassStates()
 		else
 			self:setConfirmButtonState("EQUIP", true, COLORS.BTN_EQUIP)
 		end
-	elseif selectedAffordable then
-		self:setConfirmButtonState(string.format("BUY & EQUIP (%d)", selectedCost), true, COLORS.BTN_PURCHASE)
 	else
-		self:setConfirmButtonState(string.format("NOT ENOUGH (%d)", selectedCost), false)
+		-- Class locked — gacha only, no coin purchase
+		self:setConfirmButtonState("GACHA IN SHOP", false)
 	end
 
 	self:updateRewardsPreview()

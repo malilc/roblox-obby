@@ -18,6 +18,7 @@ src/
 │   ├── LeaderboardManager.luau  # 🏆 Dual Leaderboards: Gems + Wins (2 OrderedDataStores + 2 Physical Boards)
 │   ├── SpectatorManager.luau    # 👁️ ระบบ Spectator Mode (แยกจาก GameManager)
 │   ├── SelectionZoneManager.luau # ⭐ ระบบ SelectionZone detection + stage confirm (แยกจาก GameManager)
+│   ├── ShopManager.luau        # 🛒 ระบบ Shop purchases (item buy with coins + class gacha with gems) + rate limiting + state sync
 │   ├── ShopZoneManager.luau    # 🛒 ระบบ ShopZone detection + model placement (InsertService)
 │   ├── DataStoreHelper.luau     # 💾 Centralized DataStore utilities + retry logic + schema versioning
 │   └── StageTemplates.luau      # ⭐ สร้างด่าน obby ที่นี่
@@ -36,7 +37,7 @@ src/
 │       ├── ScoreUI.luau         # 💎 แสดง Gems + Stage Progress + Timer
 │       ├── CurrencyUI.luau      # 💰 แสดงเงิน
 │       ├── ItemUI.luau          # 🎯 แสดง Item (2 slots) + Tooltip
-│       ├── ItemTestingUI.luau   # 🧪 Testing Menu (items, mastery, solo start, solo wins) — toggle button มุมบนขวา
+│       ├── ItemTestingUI.luau   # 🧪 Testing Menu (items, gems, mastery, solo start, solo wins) — toggle button มุมบนขวา
 │       ├── StageSelectionUI.luau # ⭐ GUI เลือกลำดับด่าน
 │       ├── SummaryUI.luau       # 🏆 แสดง Summary จบเกม
 │       ├── MatchLobbyUI.luau    # 🏁 UI Matchmaking lobby
@@ -47,7 +48,7 @@ src/
 │       ├── TutorialUI.luau      # ❓ Game Guide popup (ปุ่ม "?" + 5 tabs RichText)
 │       ├── SpectatorUI.luau     # 👁️ Spectator HUD + prompt + rankings
 │       ├── DailyBonusUI.luau    # 🎁 Daily Login 7-day calendar popup + HUD button
-│       ├── ShopUI.luau          # 🛒 Shop popup (skeleton — triggered by ShopZone)
+│       ├── ShopUI.luau          # 🛒 Shop popup — 2 tabs: Items (buy with coins, 3-col card grid) + Classes (gacha with gems, lock/unlock)
 │       ├── LeaderboardUI.luau   # 🏆 Stub เท่านั้น (physical board สร้างโดย LeaderboardManager)
 │       └── MobileInputUI.luau   # 📱 Touch buttons สำหรับมือถือ (Item/Sprint/Jump)
 │
@@ -653,6 +654,7 @@ itemBox.Parent = itemPickups
 - **Tools**: Spawn Test Dummy, Remove All Dummies, Clear All Items
 - **Daily Login**: Reset Daily Login streak
 - **Game Testing**: Solo Wins toggle (ON/OFF), Solo Start (Random)
+- **Gems**: แสดงจำนวน gems ปัจจุบัน + ปุ่ม +10/+100/+1000 + Reset (0) — sync ผ่าน UpdateGems remote
 - **Mastery**: Per-class level controls (+/-/MAX), Set All Lv 20, Reset All Lv 1
 
 ### Weighted Random Item:
@@ -1124,18 +1126,31 @@ BOARD_SIZE    = Vector3.new(10, 14, 0.5)   -- กว้าง × สูง × �
 
 ---
 
-## 🛒 Shop System (Skeleton)
+## 🛒 Shop System (Items + Class Gacha)
 
 ### ไฟล์ที่เกี่ยวข้อง:
+- `src/server/ShopManager.luau` — Server purchase validation + class gacha logic
 - `src/server/ShopZoneManager.luau` — Zone detection + model placement (InsertService)
-- `src/server/GameManager.luau` — Wire ShopZoneManager + remotes + cleanup
-- `src/client/UI/ShopUI.luau` — Skeleton popup UI (Coming Soon)
+- `src/server/ItemManager.luau` — `setItemInSlot()` + `getPlayerSlots()` (used by ShopManager)
+- `src/server/GameManager.luau` — Wire ShopManager + ShopZoneManager + remotes + cleanup
+- `src/client/UI/ShopUI.luau` — Full 2-tab shop UI (Items + Classes gacha)
 - `src/client/UI/MainUI.luau` — Require ShopUI + mutual exclusion
+- `src/shared/Config.luau` — `Config.Shop` section (prices, gacha cost/weights)
 
 ### Lobby Position:
 ```
 ShopZone: (30, 101, 15) — ขวามือของ lobby (ผู้เล่นหันหน้า +Z)
 Size: 16×0.5×16, Neon Cyan, CanCollide=false
+```
+
+### Config.Shop:
+```lua
+Shop = {
+    ItemPrices = { Common = 15, Uncommon = 35, Rare = 75, Epic = 150 },
+    Gacha = { CostGems = 10, DuplicateGemsBack = 3 },
+    GachaWeights = { Runner = 35, Jumper = 35, Tank = 30 },
+    RequestCooldown = 0.5,
+},
 ```
 
 ### ShopZoneManager (Server):
@@ -1146,19 +1161,76 @@ Size: 16×0.5×16, Neon Cyan, CanCollide=false
 - Enter zone (state == "Lobby") → fire `ShowShop`
 - Leave zone → fire `HideShop`
 
-### ShopUI (Client):
-- 600×450 popup, centered, BG_BASE gradient, cyan stroke
-- Title: "🛒 SHOP", Subtitle: "Coming Soon!"
-- ScrollingFrame placeholder (empty content area)
-- Close (X) button top-right
-- Show/Hide: 0.2s fade tween (same pattern as StageSelectionUI)
-- Mutual exclusion: onShow hides StageSelectionUI, ClassSelectionUI, TitleCollectionUI
+### ShopManager (Server):
+- `ShopManager.new(currencyManager, itemManager, classManager, gameManager)`
+- **Item Purchase** (`handleBuyItem`): rate limit → validate item → check lobby state → check price by rarity → check currency → check empty slot → spendCurrency → setItemInSlot → fire ShopUpdate
+- **Class Gacha** (`handleGachaPull`): rate limit → check lobby → check gems (10) → spendGems → rollGachaClass (weighted random) → if new: unlockClass + fire ClassUpdate; if duplicate: refund 3 gems
+- **Weighted Random** (`rollGachaClass`): cumulative weight selection from `Config.Shop.GachaWeights`
+- **State Sync** (`sendStateSync`): fires on shop open, sends currency/gems/unlockedClasses/itemSlots
+- Cleanup: `removePlayer(player)` clears rate limit state
+
+### ShopUI (Client) — 780×560px:
+- **Header**: "🛒 SHOP" + coin pill (gold stroke) + gem pill (cyan stroke) + close (X) button
+- **Tab Bar**: 2 tabs with count badges — `🎯 Items (6)` / `⚔️ Classes (4)`
+  - Active: BackgroundTransparency=0.05; Inactive: 0.85
+- **Rarity Legend**: color dots + labels (Common/Uncommon/Rare/Epic) — visible only on Items tab
+
+#### Items Tab:
+- UIGridLayout 3 columns, 225×270 cards, centered, sorted by rarity
+- Per-rarity card backgrounds: `CARD_BG_COLORS` (dark tinted), `BADGE_BG_COLORS` (mid), `PRICE_BTN_COLORS` (button)
+- Each card: rarity badge (top-right pill), large icon (50px emoji), name (18px), description (12px wrapped), price button (pill with $ icon)
+- Hover effect: card stroke brightens (Transparency 0.6→0.1, Thickness 1.5→2.5)
+- `refreshItemAffordability()`: affordable=rarity color, not enough=gray+muted, no slot="NO SLOT" red
+- Buy → fire `BuyShopItem { itemId }`, disable button 0.6s
+
+#### Classes Tab (Gacha):
+- ScrollingFrame (CanvasSize 520px) with:
+  - "🎰 CLASS GACHA" title + "💎 10 gems per pull" subtitle
+  - Large mystery card (85% width, 230px tall) — starts with "?" icon
+  - PULL button (85% wide, 52px, purple gradient HUD_GEM_START→END)
+  - Banner (result text: "NEW CLASS UNLOCKED!" green / "DUPLICATE +3 gems" yellow)
+  - Owned Classes section: dark bg panel, header "🔓 คลาสที่ปลดล็อค" + "X/4" count, class icons (58×58) with lock/emoji/checkmark states
+
+#### Gacha Card Flip Animation:
+1. Show mystery card ("?") — 0.5s hold
+2. Flip out: width shrinks to 0 (0.3s, Quad In)
+3. At midpoint: swap to class icon/name/color/description
+4. Flip in: width expands back (0.3s, Back Out)
+5. Glow stroke: class color pulse (thickness 2→4→2)
+6. Banner fade in → fade out after 2.5s
+7. Re-enable PULL after 2s
 
 ### RemoteEvents:
 | Event | Direction | Usage |
 |-------|-----------|-------|
 | `ShowShop` | Server → Client | เปิด ShopUI (เดินเข้า ShopZone) |
 | `HideShop` | Server → Client | ปิด ShopUI (ออกจาก ShopZone) |
+| `BuyShopItem` | Client → Server | ซื้อ item `{ itemId }` |
+| `GachaClassPull` | Client → Server | สุ่มคลาส (ใช้ gems) |
+| `ShopUpdate` | Server → Client | State sync / purchase result / gacha result / error |
+
+### ShopUpdate Payload Types:
+```lua
+-- State sync (on shop open)
+{ type = "stateSync", currency = 100, gems = 15, unlockedClasses = {...}, itemSlots = {...} }
+
+-- Item purchase success
+{ type = "itemPurchase", success = true, itemId = "SpeedBoost", slot = 1, currency = 85 }
+
+-- Gacha result (new class)
+{ type = "gachaResult", isNew = true, classId = "Runner", gems = 5 }
+
+-- Gacha result (duplicate + partial refund)
+{ type = "gachaResult", isNew = false, classId = "Runner", gemsRefunded = 3, gems = 8 }
+
+-- Error
+{ type = "error", reason = "INSUFFICIENT_FUNDS" | "INSUFFICIENT_GEMS" | "NO_EMPTY_SLOT" | "NOT_IN_LOBBY" | "RATE_LIMIT" | "INVALID_ITEM" }
+```
+
+### Class Purchase Flow Change:
+- **ก่อน**: ClassSelectionUI ซื้อคลาสด้วย coins (BUY & EQUIP button)
+- **หลัง**: Gacha ใน ShopUI แทนที่การซื้อตรง — ClassSelectionUI แสดง "Get from Shop" สำหรับคลาสที่ล็อค, ปุ่ม confirm เป็น "GACHA IN SHOP" (disabled)
+- `ClassUpdate.classCosts` ยังส่งอยู่แต่ไม่ใช้ใน UI แล้ว
 
 ---
 
@@ -1236,6 +1308,9 @@ local SOUNDS = {
 | `ResetDailyLogin` | Client → Server | 🧪 รีเซ็ต daily login streak (debug mode เท่านั้น) |
 | `ShowShop` | Server → Client | 🛒 แสดง Shop popup (เดินเข้า ShopZone) |
 | `HideShop` | Server → Client | 🛒 ซ่อน Shop popup (ออกจาก ShopZone) |
+| `BuyShopItem` | Client → Server | 🛒 ซื้อ item ด้วย coins `{ itemId }` |
+| `GachaClassPull` | Client → Server | 🛒 สุ่มคลาสด้วย gems (10 gems per pull) |
+| `ShopUpdate` | Server → Client | 🛒 Shop state sync / purchase result / gacha result / error |
 
 **ClassUpdate Payload (สำคัญ):**
 ```lua
@@ -1243,7 +1318,7 @@ local SOUNDS = {
     classId = "Runner", -- currently equipped class
     classInfo = {...},  -- display info from ClassTypes
     unlockedClasses = { Normal = true, Runner = true },
-    classCosts = { Runner = 300, Jumper = 450, Tank = 600 },
+    classCosts = { Runner = 300, Jumper = 450, Tank = 600 }, -- ยังส่งอยู่แต่ไม่ใช้ใน UI (gacha แทน)
     currency = 512,
     classMastery = { -- optional fallback snapshot
         Normal = { level = 3, xp = 40, xpToNext = 156, isMax = false },
@@ -1253,11 +1328,10 @@ local SOUNDS = {
             { id = "normal_title_balanced_cadet", level = 5, rewardType = "Title", rarity = "Common", name = "Balanced Cadet", unlocked = false },
         },
     },
-    action = { -- optional
-        type = "equip" | "purchase" | "error",
+    action = { -- optional (equip only — purchase ถูกแทนที่โดย gacha ใน ShopManager)
+        type = "equip" | "error",
         classId = "Runner",
-        cost = 300?, -- only purchase/error where relevant
-        reason = "INSUFFICIENT_FUNDS" | "INVALID_CLASS" | "RATE_LIMIT" | "ALREADY_UNLOCKED" | "NOT_IN_LOBBY"?,
+        reason = "INVALID_CLASS" | "RATE_LIMIT" | "NOT_IN_LOBBY"?,
     }
 }
 ```
@@ -1386,7 +1460,7 @@ Leaderstats เป็น built-in UI ของ Roblox ที่แสดงส�
 | `SpectatorUI` | กลางจอ (popup + HUD) | 👁️ Spectate prompt + rankings + camera controls |
 | `DailyBonusUI` | มุมล่างซ้าย (HUD btn) + กลางจอ (popup) | 🎁 Daily Login 7-day calendar + claim/view mode |
 | `LeaderboardUI` | — (stub) | 🏆 ไม่มี UI จริง — ดู Global Leaderboard ที่ป้ายกายภาพใน lobby |
-| `ShopUI` | กลางจอ (popup) | 🛒 Shop skeleton popup (triggered by ShopZone, Coming Soon) |
+| `ShopUI` | กลางจอ (popup) | 🛒 Shop 2-tab: Items (buy with coins) + Classes (gacha with gems) — triggered by ShopZone |
 | `MobileInputUI` | มุมล่าง (มือถือเท่านั้น) | 📱 Touch buttons: Item1/2, Sprint, Jump |
 
 ### StageSelectionUI:
@@ -1421,8 +1495,8 @@ Leaderstats เป็น built-in UI ของ Roblox ที่แสดงส�
 - **Confirm button** (full-width, `1,-48 × 50`): TextButton(transparent) + Frame(gradient bg) + TextLabel(text)
   - EQUIPPED → purple `RGB(140,80,220)→RGB(90,50,170)` (styled disabled)
   - EQUIP → green `RGB(60,200,100)→RGB(40,170,70)`
-  - BUY & EQUIP → yellow `RGB(255,220,0)→RGB(220,175,0)`
-  - NOT ENOUGH → dark gray `RGB(85,68,135)→RGB(55,40,90)`
+  - GACHA IN SHOP → dark gray disabled (locked classes — gacha ใน ShopUI แทนการซื้อตรง)
+- **Locked class cost label**: แสดง "Get from Shop" (HUD_GEM_START color) แทนราคา coins
 - **Mastery Rewards bar**: `"🏆 MASTERY REWARDS (X/4)"` + next reward หรือ "All mastery rewards unlocked!"
 - **Class indicator HUD** (175×42px, bottom-left): icon + name + mini XP bar + Lv badge + chevron, คลิก toggle modal
 - **Mastery unlock levels**: 5=Title, 10=Trail, 15=Badge, 20=CardFrame + Ultimate skill

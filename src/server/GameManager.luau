@@ -13,6 +13,7 @@ local LeaderboardManager = require(script.Parent.LeaderboardManager)
 local SpectatorManager = require(script.Parent.SpectatorManager)
 local SelectionZoneManager = require(script.Parent.SelectionZoneManager)
 local ShopZoneManager = require(script.Parent.ShopZoneManager)
+local ShopManager = require(script.Parent.ShopManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Logger = require(ReplicatedStorage.Shared.Logger)
@@ -89,6 +90,9 @@ function GameManager.new()
 		showShopRemote = self.showShopRemote,
 		hideShopRemote = self.hideShopRemote,
 	})
+
+	-- Shop Manager (purchases + gacha)
+	self.shopManager = ShopManager.new(self.currencyManager, self.itemManager, self.classManager, self)
 
 	-- Player event connections (for cleanup on leave)
 	self.playerConnections = {} :: {[Player]: {RBXScriptConnection}}
@@ -266,6 +270,7 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.playerCheckpoints[player] = nil
 	self.selectionZoneManager:removePlayer(player)
 	self.shopZoneManager:removePlayer(player)
+	self.shopManager:removePlayer(player)
 	self.teleportingToLobby[player] = nil
 	self.soloWinsEnabled[player] = nil
 	self.playerRoundStats[player] = nil

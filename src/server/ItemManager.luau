@@ -396,6 +396,30 @@ function ItemManager:getFirstEmptySlot(player: Player): number?
 	return nil
 end
 
+-- Set a specific item in a specific slot (for shop purchases)
+function ItemManager:setItemInSlot(player: Player, slotIndex: number, itemId: string): boolean
+	local data = self.playerItems[player]
+	if not data then return false end
+
+	local itemDef = ItemTypes.getItem(itemId)
+	if not itemDef then return false end
+
+	if slotIndex < 1 or slotIndex > 2 then return false end
+	if data.itemSlots[slotIndex] ~= nil then return false end
+
+	data.itemSlots[slotIndex] = itemId
+	self:sendItemUpdate(player)
+	Logger.debug("ItemManager", "Set", itemId, "in slot", slotIndex, "for", player.Name)
+	return true
+end
+
+-- Get player's current item slots (for shop state sync)
+function ItemManager:getPlayerSlots(player: Player): {string?}
+	local data = self.playerItems[player]
+	if not data then return {nil, nil} end
+	return {data.itemSlots[1], data.itemSlots[2]}
+end
+
 -- Give random item to player based on their rank
 function ItemManager:giveRandomItem(player: Player)
 	local data = self.playerItems[player]

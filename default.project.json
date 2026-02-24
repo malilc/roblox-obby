@@ -134,10 +134,22 @@
         "ToggleSoloWins": {
           "$className": "RemoteEvent"
         },
+        "SetTestGems": {
+          "$className": "RemoteEvent"
+        },
         "ShowShop": {
           "$className": "RemoteEvent"
         },
         "HideShop": {
+          "$className": "RemoteEvent"
+        },
+        "BuyShopItem": {
+          "$className": "RemoteEvent"
+        },
+        "GachaClassPull": {
+          "$className": "RemoteEvent"
+        },
+        "ShopUpdate": {
           "$className": "RemoteEvent"
         }
       },
