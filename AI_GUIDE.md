@@ -1306,6 +1306,7 @@ local SOUNDS = {
 | `ToggleSoloWins` | Client → Server | 🧪 เปิด/ปิด solo wins (debug mode, payload: boolean) |
 | `SetMasteryLevel` | Client → Server | 🧪 ตั้ง mastery level `{ classId, level }` or `{ setAll, level }` |
 | `ResetDailyLogin` | Client → Server | 🧪 รีเซ็ต daily login streak (debug mode เท่านั้น) |
+| `SetTestGems` | Client → Server | 🧪 ตั้ง/เพิ่ม gems `{ action = "add"|"set", amount }` (debug mode เท่านั้น) |
 | `ShowShop` | Server → Client | 🛒 แสดง Shop popup (เดินเข้า ShopZone) |
 | `HideShop` | Server → Client | 🛒 ซ่อน Shop popup (ออกจาก ShopZone) |
 | `BuyShopItem` | Client → Server | 🛒 ซื้อ item ด้วย coins `{ itemId }` |
@@ -1451,7 +1452,7 @@ Leaderstats เป็น built-in UI ของ Roblox ที่แสดงส�
 | `TitleCollectionUI` | กลางจอ (modal) | 🏷️ หน้ารวม Title ทั้งหมด + filter/search/equip |
 | `TutorialUI` | มุมบนซ้าย (Y=240) + กลางจอ (popup) | ❓ ปุ่ม "?" + Game Guide 5 tabs (RichText) |
 | `ItemUI` | มุมล่างขวา | 🎯 2 Item slots (horizontal) + Tooltip |
-| `ItemTestingUI` | มุมบนขวา (toggle button) | 🧪 Testing Menu (items, mastery, solo start, solo wins) |
+| `ItemTestingUI` | มุมบนขวา (toggle button) | 🧪 Testing Menu (items, gems, mastery, solo start, solo wins) |
 | `FlyController` | ล่างซ้าย | FLY [F] ปุ่ม + Speed controls |
 | `StageSelectionUI` | กลางจอ | ⭐ เลือกลำดับด่าน + Countdown |
 | `SummaryUI` | กลางจอ (popup) | 🏆 Summary เมื่อจบเกม |
@@ -1460,7 +1461,7 @@ Leaderstats เป็น built-in UI ของ Roblox ที่แสดงส�
 | `SpectatorUI` | กลางจอ (popup + HUD) | 👁️ Spectate prompt + rankings + camera controls |
 | `DailyBonusUI` | มุมล่างซ้าย (HUD btn) + กลางจอ (popup) | 🎁 Daily Login 7-day calendar + claim/view mode |
 | `LeaderboardUI` | — (stub) | 🏆 ไม่มี UI จริง — ดู Global Leaderboard ที่ป้ายกายภาพใน lobby |
-| `ShopUI` | กลางจอ (popup) | 🛒 Shop 2-tab: Items (buy with coins) + Classes (gacha with gems) — triggered by ShopZone |
+| `ShopUI` | กลางจอ (popup, 780×560) | 🛒 Shop 2-tab: Items (3-col card grid, buy with coins) + Classes (gacha with gems, lock/unlock display) — triggered by ShopZone |
 | `MobileInputUI` | มุมล่าง (มือถือเท่านั้น) | 📱 Touch buttons: Item1/2, Sprint, Jump |
 
 ### StageSelectionUI:
@@ -1777,6 +1778,7 @@ Back to Lobby (State = "Lobby")
 - กด **"🎁 Reset Daily Login"** เพื่อรีเซ็ต streak + รับรางวัลวันที่ 1 ทันที (debug only)
 - **Solo Wins** toggle: เปิด/ปิด solo wins สำหรับทดสอบ
 - **Solo Start (Random)**: เริ่มเกมทันทีด้วย stages สุ่ม
+- **Gems**: แสดง gems ปัจจุบัน + ปุ่ม +10/+100/+1000 + Reset (0) — ใช้ `SetTestGems` remote, sync ผ่าน `UpdateGems`
 - **Mastery**: ตั้ง level per-class (+/-/MAX), Set All Lv 20, Reset All Lv 1
 
 ### Item Controls:
@@ -1870,7 +1872,7 @@ end)
 17. **Item Tooltip**: คลิกที่ item เพื่อดู description (auto-hide 6 วินาที)
 18. **Rarity Colors**: Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง
 19. **Item Icons**: ใช้ emoji (🚀🍌🛡️⚡🔄⚡🌩️)
-20. **Testing Menu**: toggle button มุมบนขวา เปิดเมนูทดสอบ (items, mastery, solo start, solo wins)
+20. **Testing Menu**: toggle button มุมบนขวา เปิดเมนูทดสอบ (items, gems, mastery, solo start, solo wins)
 21. **Banana Slip**: ล้มไปข้างหลัง + กระโดดไม่ได้ + เจ้าของก็ลื่นได้
 22. **Swap**: สลับกับคนที่อยู่ **ข้างหน้า** เท่านั้น (ไม่ใช่ข้างหลัง)
 23. **Shield Aura**: มี particles ลอยขึ้น + หมุนรอบตัว + กระพริบเรืองแสง
@@ -1995,3 +1997,12 @@ end)
 109. **TitleCollectionUI banner pulse**: stroke color = rarity frameColor, TweenInfo Sine InOut, repeatCount=-1, reverses=true — `:Cancel()` เมื่อ unequip เพื่อไม่ให้ leak connection
 110. **Row hover บน Frame**: ใช้ `InputBegan`/`InputEnded` + check `UserInputType.MouseMovement` — MouseEnter/Leave ทำงานได้กับ Frame แต่ `InputBegan` สม่ำเสมอกว่าเมื่อมี child elements ทับ
 111. **OBBY CHALLENGE popup**: อยู่ใน `init.client.luau` ไม่ใช่ `TutorialUI` — migrate ให้ใช้ ThemeConfig + RichText keywords + 3-layer gradient GOT IT button (300×45)
+
+### 🛒 Shop System
+112. **ShopManager**: server-side purchase validation + class gacha — dependency injection pattern (currencyManager, itemManager, classManager, gameManager)
+113. **Item Purchase**: coins → validate item/lobby/price/slot → spendCurrency → setItemInSlot → ShopUpdate result
+114. **Class Gacha**: 10 gems per pull → weighted random (Runner=35, Jumper=35, Tank=30) → new unlock OR duplicate refund (3 gems)
+115. **Class Unlock Change**: ClassSelectionUI ไม่มีปุ่ม BUY แล้ว — ใช้ gacha ใน ShopUI แทน; ClassSelectionUI แสดง "Get from Shop" สำหรับคลาสล็อค
+116. **ShopUI Card Grid**: 3-col UIGridLayout (225×270), per-rarity tinted backgrounds (CARD_BG_COLORS), rarity badge pills, price buttons with coin icons
+117. **ShopUI Gacha Tab**: mystery card → PULL button → flip reveal animation → banner → owned classes section (lock/emoji/checkmark toggle)
+118. **SetTestGems Remote**: Testing Menu gem editor — add/set gems via `SetTestGems { action, amount }`, synced through `UpdateGems`
