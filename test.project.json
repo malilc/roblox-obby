@@ -1,0 +1,19 @@
+{
+  "name": "roblox-obby-tests",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "DevPackages": {
+        "$path": "DevPackages"
+      },
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "RunTests": {
+        "$path": "scripts/run-tests.server.luau"
+      }
+    }
+  }
+}

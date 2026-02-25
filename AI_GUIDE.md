@@ -59,7 +59,16 @@ src/
     ├── Logger.luau              # 🔧 Centralized logging (configurable levels)
     ├── RemoteRegistry.luau      # 📡 Centralized RemoteEvent access with caching + WaitForChild fallback
     ├── ItemTypes.luau           # 🎯 นิยาม Items ทั้งหมด
-    └── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด (+ ultimateSkill field)
+    ├── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด (+ ultimateSkill field)
+    ├── ThemeConfig.luau         # 🎨 UI theme tokens + helpers
+    └── __tests__/               # 🧪 Jest Lua unit tests
+        ├── jest.config.luau     # Jest config
+        ├── ClassTypes.spec.luau # Tests for ClassTypes
+        ├── ItemTypes.spec.luau  # Tests for ItemTypes
+        └── StageInfo.spec.luau  # Tests for StageInfo
+
+scripts/
+└── run-tests.server.luau        # 🧪 Jest test runner (run-in-roblox)
 ```
 
 ---
@@ -1819,6 +1828,39 @@ Players.PlayerAdded:Connect(function(player)
 end)
 ```
 
+### Unit Testing (Jest Lua):
+
+**Framework**: [Jest Lua](https://github.com/jsdotlua/jest-lua) v3.10.0 (ติดตั้งผ่าน Wally)
+
+**ไฟล์สำคัญ**:
+- `wally.toml` — dev-dependencies: Jest + JestGlobals
+- `test.project.json` — Rojo project แยกสำหรับ tests (ไม่แตะ `default.project.json`)
+- `scripts/run-tests.server.luau` — test runner entry point
+- `src/shared/__tests__/*.spec.luau` — test files
+
+**Run tests จาก command line**:
+```bash
+rojo build test.project.json --output test-place.rbxl
+run-in-roblox --place test-place.rbxl --script scripts/run-tests.server.luau
+```
+
+**Tests ที่มี (45 tests, 3 suites)**:
+- `ClassTypes.spec.luau` — getClass, getAllClassIds, calculateStats, getClassDisplayInfo
+- `ItemTypes.spec.luau` — getItem, getItemsByRarity, getRarityColor, getRarityName, getWeightedRandomItem
+- `StageInfo.spec.luau` — getStage, getStagesByDifficulty, getTotalStageCount
+
+**เพิ่ม test ใหม่**:
+1. สร้างไฟล์ `src/shared/__tests__/YourModule.spec.luau`
+2. Require modules ผ่าน `ReplicatedStorage.Shared.YourModule`
+3. Require JestGlobals ผ่าน `ReplicatedStorage.DevPackages.JestGlobals`
+4. ใช้ syntax: `describe()`, `it()`, `expect()` (เหมือน Jest JS)
+
+**ติดตั้ง dependencies** (ครั้งแรก):
+```bash
+aftman install   # ติดตั้ง rojo, wally, run-in-roblox
+wally install    # ติดตั้ง Jest Lua → DevPackages/
+```
+
 ---
 
 ## 📝 Quick Reference
@@ -2006,3 +2048,10 @@ end)
 116. **ShopUI Card Grid**: 3-col UIGridLayout (225×270), per-rarity tinted backgrounds (CARD_BG_COLORS), rarity badge pills, price buttons with coin icons
 117. **ShopUI Gacha Tab**: mystery card → PULL button → flip reveal animation → banner → owned classes section (lock/emoji/checkmark toggle)
 118. **SetTestGems Remote**: Testing Menu gem editor — add/set gems via `SetTestGems { action, amount }`, synced through `UpdateGems`
+
+### 🧪 Unit Testing (Jest Lua)
+119. **Jest Lua v3.10.0** via Wally dev-dependencies — tests อยู่ใน `src/shared/__tests__/*.spec.luau`
+120. **test.project.json** = Rojo project แยก — map `DevPackages/` + `src/shared/` + runner script; ไม่แตะ `default.project.json`
+121. **Run**: `rojo build test.project.json --output test-place.rbxl && run-in-roblox --place test-place.rbxl --script scripts/run-tests.server.luau`
+122. **45 tests / 3 suites**: ClassTypes (16), ItemTypes (18), StageInfo (11) — pure logic, no mocking needed
+123. **เพิ่ม test**: สร้าง `.spec.luau` ใน `__tests__/`, require ผ่าน `ReplicatedStorage.Shared.*` + `ReplicatedStorage.DevPackages.JestGlobals`

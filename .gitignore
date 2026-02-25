@@ -6,3 +6,11 @@
 /*.rbxl.lock
 
 sourcemap.json
+
+# Wally packages (installed via wally install)
+/Packages/
+/DevPackages/
+/ServerPackages/
+
+# Test build artifacts
+/test-place.rbxl
