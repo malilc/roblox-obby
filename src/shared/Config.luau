@@ -19,7 +19,7 @@ local Config = {
 
 	-- Stage Settings
 	Stages = {
-		TotalCount = 7,        -- จำนวนด่านทั้งหมดใน pool
+		TotalCount = 11,       -- จำนวนด่านทั้งหมดใน pool
 		SelectionCount = 5,    -- จำนวนด่านที่เลือกต่อรอบ (แก้ได้เพื่อ test)
 		StageLength = 100,     -- ความยาวแต่ละด่าน (studs)
 		StartOffset = Vector3.new(-150, 0, 250), -- ตำแหน่งเริ่มต้นของด่านแรก

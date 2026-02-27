@@ -762,6 +762,599 @@ function StageTemplates.createStage7(startPosition: Vector3): Model
 	return stage
 end
 
+-- Stage 8: Candy Rainbow (Easy) - บันไดสีสัน + เสารุ้ง + แพลตฟอร์มลูกอม
+function StageTemplates.createStage8(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage8_CandyRainbow"
+
+	-- Start Part (สีชมพูอ่อน - candy theme)
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition,
+		Color = Color3.fromRGB(255, 182, 193),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	startPart.Parent = stage
+
+	-- Checkpoint
+	local checkpoint = createCheckpoint(startPosition + Vector3.new(0, 1.5, 0))
+	checkpoint.Parent = stage
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	-- === Section 1: Colorful Staircase Blocks (X: 0~35) ===
+	-- บล็อกสีสันเรียงเป็นขั้นบันได ขึ้นไปเรื่อยๆ
+	local stairColors = {
+		Color3.fromRGB(255, 130, 170), -- ชมพู
+		Color3.fromRGB(130, 200, 255), -- ฟ้าอ่อน
+		Color3.fromRGB(245, 245, 245), -- ขาวครีม
+		Color3.fromRGB(200, 140, 255), -- ม่วงอ่อน
+		Color3.fromRGB(255, 190, 100), -- ส้มอ่อน
+		Color3.fromRGB(170, 255, 170), -- เขียวอ่อน
+	}
+
+	for i = 1, 6 do
+		local stairBlock = createPart({
+			Name = "StairBlock_" .. i,
+			Size = Vector3.new(5, 2, 6),
+			Position = startPosition + Vector3.new(5 + i * 5, (i - 1) * 2, 0),
+			Color = stairColors[i],
+			Material = Enum.Material.SmoothPlastic,
+		})
+		stairBlock.Parent = obstacles
+	end
+
+	-- === Section 2: Rainbow Cylinders (X: 38~62) ===
+	-- เสาทรงกระบอกสีรุ้งตั้งเป็นแนว มีแพลตฟอร์มเชื่อมให้กระโดด
+	local rainbowColors = {
+		Color3.fromRGB(255, 60, 60),   -- แดง
+		Color3.fromRGB(255, 160, 40),  -- ส้ม
+		Color3.fromRGB(255, 240, 60),  -- เหลือง
+		Color3.fromRGB(80, 220, 80),   -- เขียว
+		Color3.fromRGB(80, 150, 255),  -- ฟ้า
+		Color3.fromRGB(180, 80, 255),  -- ม่วง
+	}
+
+	local cylinderStartX = 40
+	for i = 1, 6 do
+		-- เสาสีรุ้ง (ตกแต่ง)
+		local cylinder = Instance.new("Part")
+		cylinder.Name = "RainbowPillar_" .. i
+		cylinder.Anchored = true
+		cylinder.Shape = Enum.PartType.Cylinder
+		cylinder.Size = Vector3.new(14, 3, 3) -- height=14, diameter=3
+		cylinder.CFrame = CFrame.new(
+			startPosition + Vector3.new(cylinderStartX + (i - 1) * 5, 7, (if i % 2 == 0 then -4 else 4))
+		) * CFrame.Angles(0, 0, math.rad(90))
+		cylinder.Color = rainbowColors[i]
+		cylinder.Material = Enum.Material.Neon
+		cylinder.CanCollide = false
+		cylinder.Transparency = 0.3
+		cylinder.Parent = obstacles
+
+		-- PointLight สำหรับแต่ละเสา
+		local pillarLight = Instance.new("PointLight")
+		pillarLight.Color = rainbowColors[i]
+		pillarLight.Brightness = 1.5
+		pillarLight.Range = 8
+		pillarLight.Parent = cylinder
+	end
+
+	-- แพลตฟอร์มเชื่อมระหว่างเสารุ้ง (กระโดด zigzag)
+	local sectionHeight = 10 -- ความสูงหลังขึ้นบันได (6 ขั้น * 2 = 10)
+	for i = 1, 5 do
+		local zOffset = if i % 2 == 0 then -3 else 3
+		local bridgePlat = createPart({
+			Name = "RainbowPlat_" .. i,
+			Size = Vector3.new(5, 1, 5),
+			Position = startPosition + Vector3.new(cylinderStartX + (i - 1) * 5.5, sectionHeight + math.random(-1, 1), zOffset),
+			Color = rainbowColors[i],
+			Material = Enum.Material.SmoothPlastic,
+		})
+		bridgePlat.Parent = obstacles
+	end
+
+	-- === Section 3: Candy Swirl Platforms (X: 65~95) ===
+	-- แพลตฟอร์มลูกอมสีแดง-ขาวสลับ
+	local candyStartX = 68
+	for i = 1, 5 do
+		-- แพลตฟอร์มลูกอมทรงกลม (ใช้ Cylinder แนวนอนเป็นแผ่นกลม)
+		local candyPlat = Instance.new("Part")
+		candyPlat.Name = "CandyPlat_" .. i
+		candyPlat.Anchored = true
+		candyPlat.Shape = Enum.PartType.Cylinder
+		candyPlat.Size = Vector3.new(2, 6, 6) -- แผ่นกลมแบนๆ
+		candyPlat.CFrame = CFrame.new(
+			startPosition + Vector3.new(candyStartX + (i - 1) * 6.5, sectionHeight - (i - 1) * 1.5, (if i % 2 == 0 then -2 else 2))
+		)
+		candyPlat.Color = if i % 2 == 0 then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(255, 70, 70)
+		candyPlat.Material = Enum.Material.SmoothPlastic
+
+		-- เพิ่ม Friction สูง
+		candyPlat.CustomPhysicalProperties = PhysicalProperties.new(0.7, 2.0, 0.1, 1.0, 0.5)
+
+		candyPlat.Parent = obstacles
+	end
+
+	-- === Item Pickups ===
+	-- 3 item boxes กระจายตามเส้นทาง (Easy = 3 items)
+	local coin1 = createItemPickup(startPosition + Vector3.new(20, 8, 2))
+	coin1.Parent = itemPickups
+
+	local coin2 = createItemPickup(startPosition + Vector3.new(50, sectionHeight + 3, -2))
+	coin2.Parent = itemPickups
+
+	local coin3 = createItemPickup(startPosition + Vector3.new(80, sectionHeight, 0))
+	coin3.Parent = itemPickups
+
+	-- End Part (สีชมพูอ่อน - candy theme)
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
+		Color = Color3.fromRGB(255, 182, 193),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
+-- Stage 9: Rope Walk (Easy) - เดินบนเชือกข้ามไป มีเสาค้ำ + พักเป็นช่วงๆ
+function StageTemplates.createStage9(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage9_RopeWalk"
+
+	-- Start Part (สีน้ำตาลอ่อน - rope theme)
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition,
+		Color = Color3.fromRGB(160, 120, 70),
+		Material = Enum.Material.Wood,
+	})
+	startPart.Parent = stage
+
+	-- Checkpoint
+	local checkpoint = createCheckpoint(startPosition + Vector3.new(0, 1.5, 0))
+	checkpoint.Parent = stage
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	local ropeColor = Color3.fromRGB(139, 90, 43) -- สีเชือก (น้ำตาลเข้ม)
+	local poleColor = Color3.fromRGB(101, 67, 33) -- สีเสา (น้ำตาลไม้)
+	local platformColor = Color3.fromRGB(180, 140, 90) -- สีแท่นพัก
+
+	-- === Section 1: เชือกตรง (X: 8~35) ===
+	-- เชือกเส้นแรก ตรงยาว มีเสาสองฝั่ง
+	local rope1Start = 8
+	local rope1End = 35
+	local rope1Length = rope1End - rope1Start
+
+	-- เสาซ้ายต้นทาง
+	local pole1L = createPart({
+		Name = "Pole_1L",
+		Size = Vector3.new(2, 5, 2),
+		Position = startPosition + Vector3.new(rope1Start, 2.5, 0),
+		Color = poleColor,
+		Material = Enum.Material.Wood,
+	})
+	pole1L.Parent = obstacles
+
+	-- เสาขวาปลายทาง
+	local pole1R = createPart({
+		Name = "Pole_1R",
+		Size = Vector3.new(2, 5, 2),
+		Position = startPosition + Vector3.new(rope1End, 2.5, 0),
+		Color = poleColor,
+		Material = Enum.Material.Wood,
+	})
+	pole1R.Parent = obstacles
+
+	-- เชือก (Part แคบยาว)
+	local rope1 = createPart({
+		Name = "Rope_1",
+		Size = Vector3.new(rope1Length, 1, 2),
+		Position = startPosition + Vector3.new(rope1Start + rope1Length / 2, 0.5, 0),
+		Color = ropeColor,
+		Material = Enum.Material.Fabric,
+	})
+	rope1.Parent = obstacles
+
+	-- เชือกราว (สำหรับดู ไม่ collide - ตกแต่ง)
+	local handrail1 = Instance.new("Part")
+	handrail1.Name = "Handrail_1"
+	handrail1.Anchored = true
+	handrail1.Size = Vector3.new(rope1Length, 0.5, 0.5)
+	handrail1.Position = startPosition + Vector3.new(rope1Start + rope1Length / 2, 3.5, 0)
+	handrail1.Color = ropeColor
+	handrail1.Material = Enum.Material.Fabric
+	handrail1.CanCollide = false
+	handrail1.Transparency = 0.3
+	handrail1.Parent = obstacles
+
+	-- === แท่นพัก 1 (X: 35~40) ===
+	local restPlat1 = createPart({
+		Name = "RestPlatform_1",
+		Size = Vector3.new(6, 2, 8),
+		Position = startPosition + Vector3.new(37.5, 0, 0),
+		Color = platformColor,
+		Material = Enum.Material.WoodPlanks,
+	})
+	restPlat1.Parent = obstacles
+
+	-- === Section 2: เชือก zigzag (X: 40~68) ===
+	-- 3 เชือกสั้นๆ zigzag ซ้าย-ขวา
+	local zigzagRopes = {
+		{startX = 42, length = 8, z = 3, height = 0},
+		{startX = 52, length = 8, z = -3, height = 0.5},
+		{startX = 62, length = 8, z = 2, height = 0},
+	}
+
+	for i, ropeData in ipairs(zigzagRopes) do
+		-- เสาต้นทาง
+		local poleStart = createPart({
+			Name = "ZigPole_" .. i .. "L",
+			Size = Vector3.new(1.5, 4, 1.5),
+			Position = startPosition + Vector3.new(ropeData.startX, 2 + ropeData.height, ropeData.z),
+			Color = poleColor,
+			Material = Enum.Material.Wood,
+		})
+		poleStart.Parent = obstacles
+
+		-- เสาปลายทาง
+		local poleEnd = createPart({
+			Name = "ZigPole_" .. i .. "R",
+			Size = Vector3.new(1.5, 4, 1.5),
+			Position = startPosition + Vector3.new(ropeData.startX + ropeData.length, 2 + ropeData.height, ropeData.z),
+			Color = poleColor,
+			Material = Enum.Material.Wood,
+		})
+		poleEnd.Parent = obstacles
+
+		-- เชือก
+		local rope = createPart({
+			Name = "ZigRope_" .. i,
+			Size = Vector3.new(ropeData.length, 1, 1.8),
+			Position = startPosition + Vector3.new(ropeData.startX + ropeData.length / 2, ropeData.height + 0.5, ropeData.z),
+			Color = ropeColor,
+			Material = Enum.Material.Fabric,
+		})
+		rope.Parent = obstacles
+
+		-- เชือกราวตกแต่ง
+		local handrail = Instance.new("Part")
+		handrail.Name = "ZigHandrail_" .. i
+		handrail.Anchored = true
+		handrail.Size = Vector3.new(ropeData.length, 0.4, 0.4)
+		handrail.Position = startPosition + Vector3.new(ropeData.startX + ropeData.length / 2, ropeData.height + 3, ropeData.z)
+		handrail.Color = ropeColor
+		handrail.Material = Enum.Material.Fabric
+		handrail.CanCollide = false
+		handrail.Transparency = 0.3
+		handrail.Parent = obstacles
+	end
+
+	-- === แท่นพัก 2 (X: 70~75) ===
+	local restPlat2 = createPart({
+		Name = "RestPlatform_2",
+		Size = Vector3.new(6, 2, 8),
+		Position = startPosition + Vector3.new(72.5, 0, 0),
+		Color = platformColor,
+		Material = Enum.Material.WoodPlanks,
+	})
+	restPlat2.Parent = obstacles
+
+	-- === Section 3: เชือกยาวสุดท้าย (X: 75~95) ===
+	local rope3Start = 77
+	local rope3End = 95
+	local rope3Length = rope3End - rope3Start
+
+	-- เสาต้นทาง
+	local pole3L = createPart({
+		Name = "Pole_3L",
+		Size = Vector3.new(2, 5, 2),
+		Position = startPosition + Vector3.new(rope3Start, 2.5, 0),
+		Color = poleColor,
+		Material = Enum.Material.Wood,
+	})
+	pole3L.Parent = obstacles
+
+	-- เสาปลายทาง
+	local pole3R = createPart({
+		Name = "Pole_3R",
+		Size = Vector3.new(2, 5, 2),
+		Position = startPosition + Vector3.new(rope3End, 2.5, 0),
+		Color = poleColor,
+		Material = Enum.Material.Wood,
+	})
+	pole3R.Parent = obstacles
+
+	-- เชือกสุดท้าย (แคบกว่าเส้นแรกนิดหน่อย)
+	local rope3 = createPart({
+		Name = "Rope_3",
+		Size = Vector3.new(rope3Length, 1, 1.5),
+		Position = startPosition + Vector3.new(rope3Start + rope3Length / 2, 0.5, 0),
+		Color = ropeColor,
+		Material = Enum.Material.Fabric,
+	})
+	rope3.Parent = obstacles
+
+	-- เชือกราวตกแต่ง 2 เส้น (ซ้าย-ขวา)
+	for side = -1, 1, 2 do
+		local sideRail = Instance.new("Part")
+		sideRail.Name = "FinalHandrail_" .. (if side == -1 then "L" else "R")
+		sideRail.Anchored = true
+		sideRail.Size = Vector3.new(rope3Length, 0.4, 0.4)
+		sideRail.Position = startPosition + Vector3.new(rope3Start + rope3Length / 2, 3, side * 2)
+		sideRail.Color = ropeColor
+		sideRail.Material = Enum.Material.Fabric
+		sideRail.CanCollide = false
+		sideRail.Transparency = 0.3
+		sideRail.Parent = obstacles
+	end
+
+	-- === Item Pickups ===
+	local coin1 = createItemPickup(startPosition + Vector3.new(22, 2, 0))
+	coin1.Parent = itemPickups
+
+	local coin2 = createItemPickup(startPosition + Vector3.new(56, 2, -3))
+	coin2.Parent = itemPickups
+
+	local coin3 = createItemPickup(startPosition + Vector3.new(86, 2, 0))
+	coin3.Parent = itemPickups
+
+	-- End Part
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
+		Color = Color3.fromRGB(160, 120, 70),
+		Material = Enum.Material.Wood,
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
+-- Stage 10: Rainbow Zigzag (Easy) - ทาง S-curve สีรุ้งแบบงูเลื้อย
+function StageTemplates.createStage10(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage10_RainbowZigzag"
+
+	-- Start Part (สีแดง - เริ่มต้นสีรุ้ง)
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition,
+		Color = Color3.fromRGB(255, 80, 80),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	startPart.Parent = stage
+
+	-- Checkpoint
+	local checkpoint = createCheckpoint(startPosition + Vector3.new(0, 1.5, 0))
+	checkpoint.Parent = stage
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	-- สีรุ้ง 6 สี สำหรับไล่สี
+	local rainbowColors = {
+		Color3.fromRGB(255, 60, 60),   -- แดง
+		Color3.fromRGB(255, 160, 40),  -- ส้ม
+		Color3.fromRGB(255, 240, 60),  -- เหลือง
+		Color3.fromRGB(80, 220, 80),   -- เขียว
+		Color3.fromRGB(80, 150, 255),  -- ฟ้า
+		Color3.fromRGB(180, 80, 255),  -- ม่วง
+	}
+
+	-- === ทาง S-curve แบบงูเลื้อย (sine wave) ===
+	-- ใช้ segments จำนวนมาก + overlap ให้ต่อสนิทไม่มีฟันเลื่อย
+	local totalSegments = 60
+	local amplitude = 7
+	local waves = 2
+	local pathWidth = 8
+
+	-- คำนวณจุดทั้งหมดบน sine curve (N+1 จุด)
+	local points = {}
+	for i = 0, totalSegments do
+		local t = i / totalSegments
+		local x = STAGE_LENGTH * t
+		local z = amplitude * math.sin(t * waves * 2 * math.pi)
+		table.insert(points, Vector3.new(x, 0, z))
+	end
+
+	-- สร้าง segment เชื่อมจุดต่อจุด + ไล่สี gradient smooth
+	for i = 1, totalSegments do
+		local p1 = points[i]
+		local p2 = points[i + 1]
+		local mid = (p1 + p2) / 2
+		local length = (p2 - p1).Magnitude
+
+		-- ไล่สี gradient: lerp ระหว่างสีรุ้งแต่ละคู่
+		local t = (i - 0.5) / totalSegments -- 0~1 ตามตำแหน่ง
+		local colorT = t * (#rainbowColors - 1) -- 0~5
+		local idx = math.floor(colorT) + 1 -- index สีเริ่ม (1~6)
+		local frac = colorT - (idx - 1) -- fraction ระหว่าง 2 สี (0~1)
+		idx = math.clamp(idx, 1, #rainbowColors)
+		local nextIdx = math.clamp(idx + 1, 1, #rainbowColors)
+		local segColor = rainbowColors[idx]:Lerp(rainbowColors[nextIdx], frac)
+
+		local segment = createPart({
+			Name = "SnakePath_" .. i,
+			Size = Vector3.new(length + 1.2, 2, pathWidth),
+			Color = segColor,
+			Material = Enum.Material.SmoothPlastic,
+		})
+
+		local worldMid = startPosition + mid
+		local worldTarget = startPosition + p2
+		local lookCF = CFrame.lookAt(worldMid, worldTarget)
+		segment.CFrame = lookCF * CFrame.Angles(0, math.rad(90), 0)
+		segment.Parent = obstacles
+	end
+
+	-- === Item Pickups ===
+	-- วางที่จุดโค้งของ sine wave
+	local coin1 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.125, 2, amplitude))
+	coin1.Parent = itemPickups
+
+	local coin2 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.5, 2, 0))
+	coin2.Parent = itemPickups
+
+	local coin3 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.875, 2, amplitude))
+	coin3.Parent = itemPickups
+
+	-- End Part (สีม่วง - จบสีรุ้ง)
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
+		Color = Color3.fromRGB(180, 80, 255),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
+-- ============================================================
+-- Stage 11: Lane Switch (Normal)
+-- 4 เลนขนานที่เปิด-ปิดสลับจังหวะ ผู้เล่นต้องสลับเลนตามเวลา
+-- ============================================================
+function StageTemplates.createStage11(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage11_LaneSwitch"
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	-- Start Part (กว้างพอสำหรับ 4 เลน)
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(8, 2, 24),
+		Position = startPosition + Vector3.new(0, 0, 0),
+		Color = Color3.fromRGB(100, 100, 100),
+		Material = Enum.Material.Concrete,
+	})
+	startPart.Parent = stage
+
+	-- Checkpoint ที่จุดเริ่ม
+	local cp = createCheckpoint(startPosition + Vector3.new(0, 1, 0))
+	cp.Parent = stage
+
+	-- === Lane Config ===
+	local laneColors = {
+		Color3.fromRGB(0, 170, 255),   -- Lane 1: ฟ้า
+		Color3.fromRGB(0, 200, 100),   -- Lane 2: เขียว
+		Color3.fromRGB(180, 80, 255),  -- Lane 3: ม่วง
+		Color3.fromRGB(255, 150, 30),  -- Lane 4: ส้ม
+	}
+	local laneZ = { -9, -3, 3, 9 }     -- ห่างกันมากขึ้นเพราะเลนกว้าง
+	local laneWidth = 5.5               -- กว้างขึ้น (จาก 3.5)
+
+	-- === Zone definitions ===
+	-- แต่ละโซน: startX, endX, จังหวะเปิดปิด (onTime/offTime)
+	-- เลนคู่/คี่ offset กัน เพื่อให้เปิดสลับ
+	local zones = {
+		{ startX = 8,  endX = 35, onTime = 4.0, offTime = 3.0 },  -- โซน 1: ช้า
+		{ startX = 38, endX = 65, onTime = 3.5, offTime = 2.5 },  -- โซน 2: เร็วขึ้น
+		{ startX = 68, endX = 95, onTime = 2.5, offTime = 2.0 },  -- โซน 3: เร็วสุด
+	}
+
+	for zoneIdx, zone in ipairs(zones) do
+		local zoneLength = zone.endX - zone.startX
+		local zoneMidX = zone.startX + zoneLength / 2
+
+		for laneIdx, z in ipairs(laneZ) do
+			local lanePart = createPart({
+				Name = "Lane_Z" .. zoneIdx .. "_L" .. laneIdx,
+				Size = Vector3.new(zoneLength, 2, laneWidth),
+				Position = startPosition + Vector3.new(zoneMidX, 0, z),
+				Color = laneColors[laneIdx],
+				Material = Enum.Material.Neon,
+			})
+
+			-- ใช้ IsAutoCycling: เปิดปิดอัตโนมัติตามเวลา + กระพริบเตือนก่อนปิด
+			lanePart:SetAttribute("IsAutoCycling", true)
+			lanePart:SetAttribute("CycleOnTime", zone.onTime)
+			lanePart:SetAttribute("CycleOffTime", zone.offTime)
+			lanePart:SetAttribute("BlinkTime", 1.0)
+
+			-- เลนคี่ (1,3) เริ่มเปิดทันที / เลนคู่ (2,4) เริ่มหลัง offset
+			-- ทำให้ขณะเลน 1,3 กำลังจะปิด → เลน 2,4 เพิ่งเปิด
+			if laneIdx % 2 == 0 then
+				lanePart:SetAttribute("CycleOffset", zone.onTime * 0.5)
+			else
+				lanePart:SetAttribute("CycleOffset", 0)
+			end
+
+			lanePart.Parent = obstacles
+		end
+	end
+
+	-- === Transition Platforms (ระหว่างโซน) ===
+	local transitionXPositions = { 36.5, 66.5 }
+	for i, tx in ipairs(transitionXPositions) do
+		local transPlat = createPart({
+			Name = "Transition_" .. i,
+			Size = Vector3.new(5, 2, 24),
+			Position = startPosition + Vector3.new(tx, 0, 0),
+			Color = Color3.fromRGB(200, 200, 200),
+			Material = Enum.Material.DiamondPlate,
+		})
+		transPlat.Parent = obstacles
+	end
+
+	-- === Item Pickups (4 ชิ้น กระจายตามโซน) ===
+	local itemPositions = {
+		startPosition + Vector3.new(20, 2, laneZ[1]),   -- โซน 1 เลน 1
+		startPosition + Vector3.new(36.5, 2, 0),        -- transition 1
+		startPosition + Vector3.new(52, 2, laneZ[4]),   -- โซน 2 เลน 4
+		startPosition + Vector3.new(80, 2, laneZ[2]),   -- โซน 3 เลน 2
+	}
+	for _, pos in ipairs(itemPositions) do
+		local item = createItemPickup(pos)
+		item.Parent = itemPickups
+	end
+
+	-- End Part (กว้างพอสำหรับ 4 เลน)
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(10, 2, 24),
+		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
+		Color = Color3.fromRGB(80, 80, 80),
+		Material = Enum.Material.DiamondPlate,
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
 -- Get all stage creators
 function StageTemplates.getStageCreators(): {(Vector3) -> Model}
 	return {
@@ -772,6 +1365,10 @@ function StageTemplates.getStageCreators(): {(Vector3) -> Model}
 		StageTemplates.createStage5,  -- Hard: Combo
 		StageTemplates.createStage6,  -- Hard: Lava Rise
 		StageTemplates.createStage7,  -- Hard: Narrow
+		StageTemplates.createStage8,  -- Easy: Candy Rainbow
+		StageTemplates.createStage9,  -- Easy: Rope Walk
+		StageTemplates.createStage10, -- Easy: Rainbow Zigzag
+		StageTemplates.createStage11, -- Normal: Lane Switch
 	}
 end
 

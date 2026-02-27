@@ -79,6 +79,42 @@ StageInfo.Stages = {
 		gradientEnd = Color3.fromRGB(229, 115, 115),
 		reward = 7,
 	},
+	{
+		id = 8,
+		name = "Candy Rainbow",
+		icon = "🍭",
+		difficulty = "Easy",
+		color = Color3.fromRGB(255, 130, 170),
+		gradientEnd = Color3.fromRGB(255, 200, 220),
+		reward = 3,
+	},
+	{
+		id = 9,
+		name = "Rope Walk",
+		icon = "🪢",
+		difficulty = "Easy",
+		color = Color3.fromRGB(160, 120, 70),
+		gradientEnd = Color3.fromRGB(200, 165, 110),
+		reward = 3,
+	},
+	{
+		id = 10,
+		name = "Rainbow Zigzag",
+		icon = "🌈",
+		difficulty = "Easy",
+		color = Color3.fromRGB(255, 60, 60),
+		gradientEnd = Color3.fromRGB(180, 80, 255),
+		reward = 3,
+	},
+	{
+		id = 11,
+		name = "Lane Switch",
+		icon = "🔀",
+		difficulty = "Normal",
+		color = Color3.fromRGB(0, 170, 255),
+		gradientEnd = Color3.fromRGB(180, 80, 255),
+		reward = 4,
+	},
 }
 
 -- Difficulty display metadata

@@ -21,6 +21,7 @@ export type MatchMapData = {
 	movingParts: {Part},
 	spinningParts: {Part},
 	disappearingParts: {{part: Part, touched: boolean, lastTouchTime: number}},
+	autoCyclingParts: {{part: Part, thread: thread?}},
 	animationConnection: RBXScriptConnection?,
 	folder: Folder,
 }
@@ -37,6 +38,7 @@ function MapManager.new()
 		movingParts = {},
 		spinningParts = {},
 		disappearingParts = {},
+		autoCyclingParts = {},
 		animationConnection = nil,
 		folder = self.stagesFolder,
 	} :: MatchMapData
@@ -197,6 +199,13 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 				-- Setup touch detection
 				self:_setupDisappearingPlatform(descendant, mapData)
 			end
+
+			if descendant:GetAttribute("IsAutoCycling") then
+				local data = { part = descendant, thread = nil }
+				table.insert(mapData.autoCyclingParts, data)
+				-- Start auto cycle loop
+				self:_setupAutoCyclingPlatform(data)
+			end
 		end
 	end
 end
@@ -297,6 +306,50 @@ function MapManager:_setupDisappearingPlatform(part: Part, mapData: MatchMapData
 	end)
 end
 
+-- Internal: Setup auto-cycling platform (timer-based, ไม่ต้องรอคนเหยียบ)
+-- กระพริบเตือนก่อนปิด แล้วสลับอัตโนมัติ
+function MapManager:_setupAutoCyclingPlatform(data: {part: Part, thread: thread?})
+	local part = data.part
+	local onTime = part:GetAttribute("CycleOnTime") or 3      -- เวลาที่เปิด (วินาที)
+	local offTime = part:GetAttribute("CycleOffTime") or 3     -- เวลาที่ปิด (วินาที)
+	local offset = part:GetAttribute("CycleOffset") or 0       -- delay ก่อนเริ่ม cycle
+	local blinkTime = part:GetAttribute("BlinkTime") or 1      -- เวลากระพริบเตือน
+
+	local originalColor = part.Color
+	local warningColor = Color3.fromRGB(255, 60, 60) -- แดงเตือน
+
+	data.thread = task.spawn(function()
+		-- Offset เริ่มต้น (สำหรับ stagger เลนต่างกัน)
+		if offset > 0 then
+			task.wait(offset)
+		end
+
+		while part.Parent do
+			-- === ON phase: เลนเปิดอยู่ ===
+			part.Transparency = 0
+			part.CanCollide = true
+			part.Color = originalColor
+			task.wait(onTime - blinkTime)
+
+			-- === Blink warning: กระพริบก่อนปิด ===
+			local blinkCount = 6
+			for i = 1, blinkCount do
+				part.Transparency = 0.6
+				part.Color = warningColor
+				task.wait(blinkTime / (blinkCount * 2))
+				part.Transparency = 0
+				part.Color = originalColor
+				task.wait(blinkTime / (blinkCount * 2))
+			end
+
+			-- === OFF phase: เลนปิด ===
+			part.Transparency = 1
+			part.CanCollide = false
+			task.wait(offTime)
+		end
+	end)
+end
+
 -- Internal: Start animations
 function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 	-- หา Item Boxes ทั้งหมด
@@ -376,6 +429,14 @@ function MapManager:_clearMapInternal(mapData: MatchMapData, destroyFolder: bool
 	mapData.movingParts = {}
 	mapData.spinningParts = {}
 	mapData.disappearingParts = {}
+
+	-- Cancel auto-cycling threads
+	for _, data in ipairs(mapData.autoCyclingParts) do
+		if data.thread then
+			task.cancel(data.thread)
+		end
+	end
+	mapData.autoCyclingParts = {}
 
 	if destroyFolder and mapData.folder then
 		mapData.folder:Destroy()
@@ -547,6 +608,7 @@ function MapManager:generateMapForMatch(matchId: string, stageOrder: {number}): 
 		movingParts = {},
 		spinningParts = {},
 		disappearingParts = {},
+		autoCyclingParts = {},
 		animationConnection = nil,
 		folder = matchFolder,
 	}
