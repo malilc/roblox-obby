@@ -34,8 +34,8 @@ describe("ClassTypes", function()
 		it("should return Tank with knockback resistance", function()
 			local class = ClassTypes.getClass("Tank")
 			expect(class).toBeDefined()
-			expect(class.walkSpeedMod).toBe(0.85)
-			expect(class.knockbackResistance).toBe(0.5)
+			expect(class.walkSpeedMod).toBe(0.80)
+			expect(class.knockbackResistance).toBe(0.40)
 		end)
 
 		it("should return nil for invalid class ID", function()
@@ -80,7 +80,7 @@ describe("ClassTypes", function()
 
 		it("should apply Tank speed penalty", function()
 			local speed, jump = ClassTypes.calculateStats("Tank", 16, 50)
-			expect(speed).toBeCloseTo(13.6, 1) -- 16 * 0.85
+			expect(speed).toBeCloseTo(12.8, 1) -- 16 * 0.80
 			expect(jump).toBe(50) -- 1.00
 		end)
 

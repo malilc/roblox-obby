@@ -72,6 +72,7 @@ export type PlayerCurrencyData = {
 	hasSeenTutorial: boolean,
 	lastLoginTime: number?,
 	loginStreak: number,
+	personalBests: {[string]: number},
 }
 
 local function getDefaultClassId(): string
@@ -505,6 +506,7 @@ function CurrencyManager:initPlayer(player: Player)
 		hasSeenTutorial = false,
 		lastLoginTime = nil,
 		loginStreak = 0,
+		personalBests = {},
 	}
 
 	-- Load from DataStore
@@ -542,6 +544,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 		playerData.hasSeenTutorial = data.hasSeenTutorial == true
 		playerData.lastLoginTime = tonumber(data.lastLoginTime) or nil
 		playerData.loginStreak = tonumber(data.loginStreak) or 0
+		playerData.personalBests = if type(data.personalBests) == "table" then data.personalBests else {}
 
 		Logger.debug("CurrencyManager", "Loaded profile for", player.Name, "- Currency:", playerData.currency, "- Gems:", playerData.gems, "- Wins:", playerData.wins, "- Equipped:", playerData.equippedClass)
 	else
@@ -669,6 +672,7 @@ function CurrencyManager:savePlayerData(player: Player)
 			existingData.hasSeenTutorial = playerData.hasSeenTutorial
 			existingData.lastLoginTime  = playerData.lastLoginTime
 			existingData.loginStreak    = playerData.loginStreak
+			existingData.personalBests  = playerData.personalBests
 			return existingData
 		end)
 	end)
@@ -1424,6 +1428,31 @@ function CurrencyManager:addWin(player: Player)
 	Logger.debug("CurrencyManager", player.Name, "won! Total wins:", playerData.wins)
 
 	self:sendGemUpdate(player)
+end
+
+-- Get personal best time for a course (Time Trial)
+function CurrencyManager:getPersonalBest(player: Player, courseKey: string): number?
+	local playerData = self.playerData[player]
+	if not playerData or not playerData.personalBests then return nil end
+	return playerData.personalBests[courseKey]
+end
+
+-- Set personal best time for a course (returns true if new record)
+function CurrencyManager:setPersonalBest(player: Player, courseKey: string, time: number): boolean
+	local playerData = self.playerData[player]
+	if not playerData then return false end
+	if not playerData.personalBests then
+		playerData.personalBests = {}
+	end
+
+	local currentBest = playerData.personalBests[courseKey]
+	if currentBest == nil or time < currentBest then
+		playerData.personalBests[courseKey] = time
+		self.pendingSaves[player] = true
+		Logger.debug("CurrencyManager", player.Name, "NEW RECORD on course", courseKey, ":", string.format("%.2f", time), "s")
+		return true
+	end
+	return false
 end
 
 -- Send gem + wins update to client

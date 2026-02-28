@@ -73,6 +73,7 @@ ItemTypes.Items = {
 		cooldown = 0.5,
 		-- Effect specifics
 		blocksCount = 1,
+		immunityDuration = 1, -- seconds of immunity after shield blocks
 	},
 	
 	SpeedBoost = {
@@ -111,16 +112,18 @@ ItemTypes.Items = {
 	Lightning = {
 		id = "Lightning",
 		name = "Lightning",
-		description = "Slows ALL other players for 3 sec!",
+		description = "Slows ALL other players for 2 sec!",
 		icon = "⚡🌩️", -- lightning bolt emoji
 		rarity = "Epic",
 		weight = 4,
 		catchUpBonus = 8,
-		duration = 3, -- seconds
+		duration = 2, -- seconds (nerfed from 3)
 		cooldown = 1,
 		-- Effect specifics
 		slowMultiplier = 0.5,
 		shrinkScale = 0.7,
+		-- Position restriction: only available for players in 3rd place or worse
+		positionRestriction = 3,
 	},
 }
 
@@ -160,6 +163,10 @@ function ItemTypes.getWeightedRandomItem(playerRank: number, totalPlayers: numbe
 	local totalWeight = 0
 	
 	for _, item in pairs(ItemTypes.Items) do
+		-- Skip items restricted by position (e.g. Lightning only for 3rd+ place)
+		if item.positionRestriction and playerRank < item.positionRestriction then
+			continue
+		end
 		local weight = item.weight + (item.catchUpBonus * catchUpFactor)
 		totalWeight = totalWeight + weight
 		table.insert(weightedPool, {

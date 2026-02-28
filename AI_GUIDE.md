@@ -17,7 +17,7 @@ src/
 │   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
 │   ├── LeaderboardManager.luau  # 🏆 Dual Leaderboards: Gems + Wins (2 OrderedDataStores + 2 Physical Boards)
 │   ├── SpectatorManager.luau    # 👁️ ระบบ Spectator Mode (แยกจาก GameManager)
-│   ├── SelectionZoneManager.luau # ⭐ ระบบ SelectionZone detection + stage confirm (แยกจาก GameManager)
+│   ├── SelectionZoneManager.luau # ⭐ Dual zone detection + auto room management (PVP Race + Time Trial)
 │   ├── ShopManager.luau        # 🛒 ระบบ Shop purchases (item buy with coins + class gacha with gems) + rate limiting + state sync
 │   ├── ShopZoneManager.luau    # 🛒 ระบบ ShopZone detection + model placement (InsertService)
 │   ├── DataStoreHelper.luau     # 💾 Centralized DataStore utilities + retry logic + schema versioning
@@ -87,7 +87,8 @@ Workspace/
 │   ├── CeilLight_1/2/3    # แถบไฟ Neon Magenta ใต้เพดาน (3 เส้น)
 │   ├── GridH_1-4          # เส้น Grid แนวนอน บนพื้น (Neon น้ำเงินจาง)
 │   ├── GridV_1-4          # เส้น Grid แนวตั้ง บนพื้น (Neon น้ำเงินจาง)
-│   ├── SelectionZone      # ⭐ Zone เลือกด่าน (Neon Yellow, center front)
+│   ├── PvpRaceZone        # ⚔️ Zone PVP Race (Neon Red-orange, X=-15, Z=30)
+│   ├── TimeTrialZone      # ⏱️ Zone Time Trial (Neon Cyan, X=15, Z=30)
 │   └── ShopZone           # 🛒 Zone เปิด Shop (Neon Cyan, right side X=30, Z=15)
 ├── ShopModel              # 🛒 Loaded via InsertService (Asset 2310029676)
 ├── GemLeaderboard         # 💎 Physical gem leaderboard board (สร้างอัตโนมัติ, X=22)
@@ -98,8 +99,8 @@ Workspace/
 
 **สำคัญ**: 
 - `SpawnLocation` ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
-- `SelectionZone` ใช้ loop-based detection (เสถียรกว่า Touched events)
-- `ShopZone` ใช้ loop-based detection เหมือน SelectionZone (ShopZoneManager)
+- `PvpRaceZone` + `TimeTrialZone` ใช้ loop-based detection (เสถียรกว่า Touched events)
+- `ShopZone` ใช้ loop-based detection เหมือน SelectionZoneManager
 - `GemLeaderboard` + `WinLeaderboard` สร้างอัตโนมัติโดย LeaderboardManager (X=±22, Z=30)
 
 ---
@@ -108,7 +109,7 @@ Workspace/
 
 ### ไฟล์ที่เกี่ยวข้อง:
 - `src/shared/StageInfo.luau` - Stage metadata (single source of truth)
-- `src/server/SelectionZoneManager.luau` - Zone detection + confirm
+- `src/server/SelectionZoneManager.luau` - Dual zone detection + auto room management
 - `src/server/MapManager.luau` - Map generation + balanced random
 - `src/client/UI/StageSelectionUI.luau` - GUI ฝั่ง Client
 
@@ -154,46 +155,58 @@ UI แบ่งเป็น 3 tabs ตามความยาก แต่ล�
 - `show()` เรียก `switchTab(self.activeTab)` หลัง reset Visible เสมอ (เพราะ show loop ทำ Visible=true ทุกตัว)
 - Default tab: Easy
 
-### Flow:
+### Flow (Dual Zone Matchmaking):
 
 ```
-ผู้เล่นเดินเข้า SelectionZone (เดินหาป้าย "SELECT STAGE")
+ผู้เล่นเดินเข้า PvpRaceZone (ซ้าย) หรือ TimeTrialZone (ขวา)
     ↓
-Server ส่ง ShowStageSelection → Client
+SelectionZoneManager ตรวจจับ → auto สร้าง/เข้าร่วม MatchRoom
     ↓
-Client แสดง GUI: Tab Bar [EASY][NORMAL][HARD] + ปุ่มด่านของ tab ที่เลือก
+Server ส่ง ShowStageSelection { gameMode, playerCount, roomId } → Client
     ↓
-ผู้เล่นคลิก tab เพื่อดูด่านแต่ละระดับ + เลือกด่าน (สูงสุด SelectionCount รวมทุก tab)
+Client แสดง GUI: Mode Badge + Player Count + Tab Bar + ปุ่มด่าน
     ↓
-กด RANDOM หรือ START
+ผู้เล่นเลือกด่าน + กด VOTE หรือ RANDOM VOTE
     ↓
-Client ส่ง ConfirmStageSelection → Server
+Client ส่ง VoteStages → MatchManager (เก็บ vote)
     ↓
-Server สร้าง Map ตามลำดับที่เลือก (RANDOM ใช้ balanced algorithm)
+Countdown จาก MatchManager (WaitTime) จบ → startMatch()
     ↓
-Countdown 3, 2, 1 → Teleport ไปด่าน 1
+MatchManager คำนวณ final stage order จาก votes → สร้าง map ครั้งเดียว
+    ↓
+ทุกคนใน room: Countdown 3, 2, 1 → Teleport ไปด่าน 1 พร้อมกัน
 ```
+
+### Dual Zone System:
+- **PvpRaceZone** (X=-15, Z=30) — สีแดง-ส้ม, ป้าย "PVP RACE"
+- **TimeTrialZone** (X=15, Z=30) — สีฟ้า, ป้าย "TIME TRIAL"
+- **Singleton room**: แต่ละ mode สร้างได้แค่ 1 ห้องพร้อมกัน
+- ถ้าห้องกำลังแข่ง → แสดง "Match in progress" ไม่สร้างห้องใหม่
+- ถ้าห้อง Waiting → auto เข้าร่วม
+- เดินออกจากโซนขณะ Waiting → auto ออกจากห้อง
 
 ### การเลือกด่าน:
 - **คลิก tab** - สลับดูด่านระดับนั้น (Easy/Normal/Hard)
 - **คลิกปุ่มด่าน** - เพิ่มเข้าลำดับ (เช่น 3 → 1 → 5)
 - **คลิกอีกครั้ง** - ลบออกจากลำดับ
 - **เลือกครบ SelectionCount** - กดปุ่มด่านอื่นไม่ได้ (จนกว่าจะถอดออก)
-- **ปุ่ม RANDOM** - สุ่มลำดับด่านแบบเฉลี่ยความยาก (balanced)
-- **ปุ่ม START** - ต้องเลือกอย่างน้อย 1 ด่านก่อนกดได้
-- **Difficulty badge** - แสดงบนปุ่มแต่ละด่าน (EASY/NORMAL/HARD)
+- **ปุ่ม RANDOM VOTE** - ส่ง empty vote (server สุ่มให้)
+- **ปุ่ม VOTE** - ต้องเลือกอย่างน้อย 1 ด่านก่อนกดได้
+- หลัง vote → ปุ่มเปลี่ยนเป็น "✅ VOTED" (disabled)
+- **Mode badge** (static) — แสดง "⚔️ PVP RACE" หรือ "⏱️ TIME TRIAL"
+- **Player count** — "👥 2/16" อัพเดทผ่าน MatchUpdate
 
 ### Zone Detection (Loop-based):
 
 ```lua
--- ตรวจสอบทุก Config.Timing.SelectionZoneInterval (0.2 วินาที) — เสถียรกว่า Touched events
--- จัดการโดย SelectionZoneManager.luau (แยกออกจาก GameManager)
+-- ตรวจสอบทุก Config.Timing.SelectionZoneInterval (0.2 วินาที)
+-- จัดการโดย SelectionZoneManager.luau — ตรวจ 2 zones ใน loop เดียวกัน
 task.spawn(function()
     while true do
         task.wait(Config.Timing.SelectionZoneInterval)
         for _, player in ipairs(Players:GetPlayers()) do
-            local isInZone = self:isPlayerInZone(player)
-            -- เปรียบเทียบกับสถานะก่อนหน้า แล้ว show/hide UI
+            -- Check PvpRaceZone → onPlayerEnterMode("Race") / onPlayerLeaveMode("Race")
+            -- Check TimeTrialZone → onPlayerEnterMode("TimeTrial") / onPlayerLeaveMode("TimeTrial")
         end
     end
 end)
@@ -488,7 +501,7 @@ local Config = {
 
     -- 💎 Gems (rare premium currency) + 🏆 Wins
     Gems = {
-        FinishRace = 1,         -- +1 gem เมื่อเข้าเส้นชัย
+        FinishRace = 2,         -- +2 gems เมื่อเข้าเส้นชัย
         Top30Bonus = 5,         -- +5 gems ถ้าจบ top 30% (multiplayer)
         DailyLoginGems = { [1]=1, [2]=1, [3]=2, [4]=2, [5]=3, [6]=3, [7]=5 },
     },
@@ -566,10 +579,10 @@ local Config = {
 |------|--------|------|-------------|
 | Missile | Common | 🚀 | Fire a homing missile that tracks the nearest target ahead! Knocks down on hit (ล้ม). |
 | Banana | Common | 🍌 | Drop a banana behind you. Makes players slip! |
-| Shield | Uncommon | 🛡️ | Create a shield that blocks 1 attack. |
+| Shield | Uncommon | 🛡️ | Create a shield that blocks 1 attack. +1s immunity after block. |
 | Speed Boost | Uncommon | ⚡ | +50% speed for 3 seconds! |
 | Swap | Rare | 🔄 | Swap positions with the nearest player ahead of you! |
-| Lightning | Epic | ⚡🌩️ | Slows ALL other players for 3 sec! |
+| Lightning | Epic | ⚡🌩️ | Slows ALL other players for 2 sec! (3rd place or worse only) |
 
 ### Dual Item Slots:
 - ผู้เล่นถือได้ **2 items** พร้อมกัน
@@ -732,7 +745,7 @@ elseif itemDef.id == "NewItem" then
 | Normal | 16 (±0%) | 50 (±0%) | Balanced - ไม่มีข้อได้เปรียบ/เสียเปรียบ |
 | Runner | 18.4 (+15%) | 45 (-10%) | Sprint Burst - เพิ่มความเร็วชั่วคราว |
 | Jumper | 14.4 (-10%) | 60 (+20%) | Charged Jump - กระโดดสูงขึ้นเมื่อชาร์จ |
-| Tank | 13.6 (-15%) | 50 (±0%) | Stun Immunity - ไม่โดน stun |
+| Tank | 12.8 (-20%) | 50 (±0%) | 40% KB Resist + Iron Will (active: 5s stun immunity, 20s CD) |
 
 ### Class Unlock Settings (Config.luau):
 
@@ -757,8 +770,8 @@ Classes = {
 Mastery = {
     MaxLevel = 20,
     BaseXpPerLevel = 100,
-    XpGrowthMultiplier = 1.25,
-    PerStageXP = 20,
+    XpGrowthMultiplier = 1.15,
+    PerStageXP = 25,
     FinishBonusXP = 60,
     TitleThemes = {
         Common = { textColor = Color3.fromRGB(210, 210, 210), strokeColor = Color3.fromRGB(40, 40, 50), frameColor = Color3.fromRGB(80, 80, 95) },
@@ -833,7 +846,7 @@ Mastery = {
             id = "Sprint",
             name = "Sprint",
             description = "Press Shift to run 50% faster for 3 seconds",
-            cooldown = 15,
+            cooldown = 12,
             duration = 3,
             speedMultiplier = 1.5,
         },
@@ -846,8 +859,10 @@ Mastery = {
         Tank = {
             id = "IronWill",
             name = "Iron Will",
-            description = "Immune to all item stuns",
-            stunImmunity = true,
+            description = "Press Shift to become immune to stuns for 5 seconds",
+            stunImmunity = false,
+            duration = 5,
+            cooldown = 20,
         },
     },
     -- ... other mastery config
@@ -858,9 +873,9 @@ Mastery = {
 
 | Class | Ultimate Skill | Input | Description |
 |-------|---------------|-------|-------------|
-| Runner | Sprint | Shift | วิ่งเร็วขึ้น 50% เป็นเวลา 3 วินาที, cooldown 15 วินาที |
+| Runner | Sprint | Shift | วิ่งเร็วขึ้น 50% เป็นเวลา 3 วินาที, cooldown 12 วินาที |
 | Jumper | Double Jump | Space (mid-air) | กระโดดได้ 2 ครั้งในอากาศ |
-| Tank | Iron Will | Passive | ไม่โดน stun จาก items (Banana, Missile, Lightning) |
+| Tank | Iron Will | Shift | กด Shift เพื่อ immune stun 5 วินาที, cooldown 20 วินาที (golden ForceField aura) |
 
 ### Ultimate Skill Controller:
 
@@ -885,8 +900,10 @@ Mastery = {
 -- - Visual: Green burst effect
 
 -- Iron Will (Tank):
--- - Passive - always active when LV 20+
--- - Server-side check in ItemManager:applySlip/applyStunWithFall
+-- - Active skill - Press Shift to activate (5s duration, 20s cooldown)
+-- - Server-side: UseUltimateSkill remote → activateIronWill()
+-- - Client: tryActivateIronWill() → golden ForceField aura VFX
+-- - Immunity check in ItemManager:checkIronWillImmunity()
 ```
 
 ### Visual Effects:
@@ -895,6 +912,7 @@ Mastery = {
 |-------|-----|
 | Sprint | Blue trail (Trail attachment) on HumanoidRootPart |
 | Double Jump | Green burst (Part + ParticleEmitter) at jump position |
+| Iron Will | Golden ForceField aura on character (5s duration) |
 
 ### Testing:
 
@@ -905,7 +923,7 @@ Mastery = {
 5. ทดสอบ ultimate skill:
    - **Runner**: กด Shift ขณะวิ่ง
    - **Jumper**: กระโดดแล้วกด Space ในอากาศ
-   - **Tank**: โดน Banana/Missile → จะไม่ถูก stun
+   - **Tank**: กด Shift เพื่อเปิด Iron Will (5s immune, 20s CD) → โดน Banana/Missile → ไม่ stun
 
 ### Debug Config:
 
@@ -1018,6 +1036,70 @@ Match = {
 - `Finished` - จบแล้ว (รอเลือก spectate/leave)
 - `Spectating` - ดูคนอื่นแข่ง (character ซ่อน)
 
+### Game Modes (Dual Zone):
+
+| Mode | Zone | Players | Items | Description |
+|------|------|---------|-------|-------------|
+| Race | PvpRaceZone (ซ้าย, X=-15) | 1-16 | Yes | Standard PvP mode, Items, Top 30% gem bonus (5 gems) |
+| Time Trial | TimeTrialZone (ขวา, X=15) | 1-16 | No | วัดเวลา, Personal Best, ไม่มี Items |
+
+- **Mode กำหนดจาก zone ที่เดินเข้า** (ไม่มี toggle ใน UI)
+- **Singleton room**: แต่ละ mode มี active room ได้แค่ 1 ห้อง
+- เดินเข้าโซน → auto สร้าง/เข้าร่วมห้อง → vote stages → countdown → เริ่มพร้อมกัน
+
+### Time Trial Mode (Config.luau):
+
+```lua
+TimeTrial = {
+    Enabled = true,
+    MinPlayers = 1,       -- Solo OK
+    MaxPlayers = 16,      -- Multiplayer OK too
+    WaitTime = 3,
+    GemsReward = 2,       -- Base gems per finish (vs 2 in Race)
+    Top30Bonus = 3,       -- Smaller gem bonus for top 30% (vs 5 in Race)
+    TimeBonusThresholds = {
+        {maxSeconds = 60, coins = 100},
+        {maxSeconds = 120, coins = 50},
+        {maxSeconds = 180, coins = 25},
+    },
+    NoItems = true,       -- Items disabled
+},
+```
+
+### Time Trial การทำงาน:
+- Server tracks `playerGameMode[player]` = `"Race"` or `"TimeTrial"`
+- Mode ถูกกำหนดจาก `MatchRoom.gameMode` (set ตอน `createRoom`)
+- Items ถูก disable: `giveRandomItem()` skip สำหรับ TimeTrial players
+- Item boxes ถูก hide ใน TimeTrial map (`hideItemPickupParts`)
+- Rewards: `GemsReward` (2 gems) + time bonus coins ตาม thresholds
+- Personal Best: เก็บใน DataStore (`personalBests[courseKey]`), courseKey = sorted stage IDs joined
+- `CurrencyManager:getPersonalBest(player, courseKey)` / `setPersonalBest(player, courseKey, time)`
+- ถ้า multiplayer Time Trial: ยังมี position ranking + Top30Bonus (3 gems) + win count
+
+### Mode Selection UI (StageSelectionUI):
+- **Mode badge** (static, ไม่ clickable): `⚔️ PVP RACE` (สีแดง) หรือ `⏱️ TIME TRIAL` (สีฟ้า)
+- Mode กำหนดจาก zone ที่เดินเข้า (ข้อมูลจาก `ShowStageSelection` data)
+- **Player count**: `👥 2/16` อัพเดทผ่าน `MatchUpdate` remote
+- **Match countdown**: แสดง countdown จาก MatchManager (WaitTime)
+- กด VOTE / RANDOM VOTE → fire `VoteStages` remote
+- หลัง vote → ปุ่มเปลี่ยนเป็น "✅ VOTED" (disabled)
+- ถ้าห้องกำลังแข่ง: แสดง "Match in progress... Please wait"
+
+### Mode Badge HUD (ScoreUI):
+- Badge ขนาด 150x26 อยู่ top-center (ใต้ TimerFrame)
+- แสดงตอน countdown เริ่ม (ข้อมูลมาจาก `CountdownUpdate.gameMode`)
+- Race = สีแดง `⚔️ PVP RACE` / TimeTrial = สีฟ้า `⏱️ TIME TRIAL`
+- ซ่อนเมื่อ `ReturnToLobby`
+
+### RemoteEvents for Dual Zone:
+
+| Event | Direction | Usage |
+|-------|-----------|-------|
+| `ShowStageSelection` | Server → Client | ส่ง `{ gameMode, playerCount, roomId, roomState? }` |
+| `HideStageSelection` | Server → Client | ซ่อน Stage Selection UI |
+| `VoteStages` | Client → Server | ส่ง vote stages `{number}` (empty = random) |
+| `MatchUpdate` | Server → Client | `{ type, countdown, playerCount, gameMode }` (live updates) |
+
 ---
 
 ## ⏱️ Match Timer UI
@@ -1110,10 +1192,10 @@ Client รับ DailyBonusClaimed:
 ### Physical Boards:
 ```lua
 -- LeaderboardManager สร้าง 2 boards อัตโนมัติใน workspace
--- 💎 GemLeaderboard: X=22, Z=30 (ขวาของ SelectionZone, purple theme)
--- 🏆 WinLeaderboard: X=-22, Z=30 (ซ้ายของ SelectionZone, gold theme)
-GEM_BOARD_POS = Vector3.new(22, 109, 30)   -- ขวาของ SelectionZone
-WIN_BOARD_POS = Vector3.new(-22, 109, 30)  -- ซ้ายของ SelectionZone
+-- 💎 GemLeaderboard: X=22, Z=30 (ขวาของ TimeTrialZone, purple theme)
+-- 🏆 WinLeaderboard: X=-22, Z=30 (ซ้ายของ PvpRaceZone, gold theme)
+GEM_BOARD_POS = Vector3.new(22, 109, 30)   -- ขวาของ TimeTrialZone
+WIN_BOARD_POS = Vector3.new(-22, 109, 30)  -- ซ้ายของ PvpRaceZone
 BOARD_SIZE    = Vector3.new(10, 14, 0.5)   -- กว้าง × สูง × บาง
 -- SurfaceGui: PixelsPerStud=80, Face=Front, Top 10 rows
 -- Colors: ใช้ ThemeConfig tokens
@@ -1156,7 +1238,7 @@ Size: 16×0.5×16, Neon Cyan, CanCollide=false
 ```lua
 Shop = {
     ItemPrices = { Common = 15, Uncommon = 35, Rare = 75, Epic = 150 },
-    Gacha = { CostGems = 10, DuplicateGemsBack = 3 },
+    Gacha = { CostGems = 8, DuplicateGemsBack = 5 },
     GachaWeights = { Runner = 35, Jumper = 35, Tank = 30 },
     RequestCooldown = 0.5,
 },
@@ -1173,7 +1255,7 @@ Shop = {
 ### ShopManager (Server):
 - `ShopManager.new(currencyManager, itemManager, classManager, gameManager)`
 - **Item Purchase** (`handleBuyItem`): rate limit → validate item → check lobby state → check price by rarity → check currency → check empty slot → spendCurrency → setItemInSlot → fire ShopUpdate
-- **Class Gacha** (`handleGachaPull`): rate limit → check lobby → check gems (10) → spendGems → rollGachaClass (weighted random) → if new: unlockClass + fire ClassUpdate; if duplicate: refund 3 gems
+- **Class Gacha** (`handleGachaPull`): rate limit → check lobby → check gems (8) → spendGems → rollGachaClass (weighted random) → if new: unlockClass + fire ClassUpdate; if duplicate: refund 5 gems
 - **Weighted Random** (`rollGachaClass`): cumulative weight selection from `Config.Shop.GachaWeights`
 - **State Sync** (`sendStateSync`): fires on shop open, sends currency/gems/unlockedClasses/itemSlots
 - Cleanup: `removePlayer(player)` clears rate limit state
@@ -1194,7 +1276,7 @@ Shop = {
 
 #### Classes Tab (Gacha):
 - ScrollingFrame (CanvasSize 520px) with:
-  - "🎰 CLASS GACHA" title + "💎 10 gems per pull" subtitle
+  - "🎰 CLASS GACHA" title + "💎 8 gems per pull" subtitle
   - Large mystery card (85% width, 230px tall) — starts with "?" icon
   - PULL button (85% wide, 52px, purple gradient HUD_GEM_START→END)
   - Banner (result text: "NEW CLASS UNLOCKED!" green / "DUPLICATE +3 gems" yellow)
@@ -1319,8 +1401,10 @@ local SOUNDS = {
 | `ShowShop` | Server → Client | 🛒 แสดง Shop popup (เดินเข้า ShopZone) |
 | `HideShop` | Server → Client | 🛒 ซ่อน Shop popup (ออกจาก ShopZone) |
 | `BuyShopItem` | Client → Server | 🛒 ซื้อ item ด้วย coins `{ itemId }` |
-| `GachaClassPull` | Client → Server | 🛒 สุ่มคลาสด้วย gems (10 gems per pull) |
+| `GachaClassPull` | Client → Server | 🛒 สุ่มคลาสด้วย gems (8 gems per pull) |
 | `ShopUpdate` | Server → Client | 🛒 Shop state sync / purchase result / gacha result / error |
+| `StartTimeTrial` | Client → Server | ⏱️ (deprecated — now handled via dual zone + MatchManager) |
+| `UseUltimateSkill` | Client → Server | ⚡ เปิดใช้ Iron Will (Tank active skill, 5s duration) |
 
 **ClassUpdate Payload (สำคัญ):**
 ```lua
@@ -1726,7 +1810,7 @@ GameManager:onPlayerAdded()
     ↓
 StageTracker:initPlayer() + CurrencyManager:initPlayer() + ItemManager:initPlayer()
     ↓
-เดินเข้า SelectionZone (สี Magenta)
+เดินเข้า PvpRaceZone (สีแดง-ส้ม) หรือ TimeTrialZone (สีฟ้า)
     ↓
 แสดง GUI เลือกด่าน
     ↓
@@ -1890,7 +1974,7 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
 
 ### 🏗️ Core System
 1. **SpawnLocation**: ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
-2. **SelectionZone**: ใช้ loop-based detection ทุก 0.2 วินาที
+2. **Dual Zones (PvpRaceZone + TimeTrialZone)**: ใช้ loop-based detection ทุก 0.2 วินาที
 3. **Checkpoint**: ใช้ `Part` ไม่ใช่ `SpawnLocation`
 4. **Moving Platform**: ใช้ `PrismaticConstraint` (physics-based)
 5. **Friction**: ทุก Part มี Friction = 2.0
@@ -1942,7 +2026,7 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
 ### 💰 Currency + 💎 Gems + 🏆 Wins
 38. **Stage Rewards**: อยู่ใน `StageInfo.luau` → `StageInfo.getStage(id).reward` (S1=3, S2=4, S3=4, S4=5, S5=6, S6=6, S7=7)
 39. **Currency Breakdown**: Stage Clear (5) + Stage Rewards + Finish Bonus (25)
-40. **Gems**: +1 finish race, +5 top 30% (multiplayer), daily login gems
+40. **Gems**: +2 finish race, +5 top 30% (multiplayer), daily login gems
 41. **Wins**: +1 when finishing 1st (multiplayer only, or with Solo Wins debug toggle)
 42. **CurrencyUI**: มุมบนซ้าย Y=58 (ใต้ GemFrame)
 
@@ -2000,7 +2084,7 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
 ### 🏆 Dual Leaderboards (Gems + Wins)
 77. **DataStore**: ใช้ `OrderedDataStore` แยก 2 ตัว (`ObbyLeaderboard_Gems_v1`, `ObbyLeaderboard_Wins_v1`)
 78. **Physical Boards**: 2 boards สร้างอัตโนมัติ — 💎 GemLeaderboard (X=22) + 🏆 WinLeaderboard (X=-22)
-79. **Positions**: Flanking SelectionZone at Z=30, Y=109
+79. **Positions**: Flanking zones at Z=30, Y=109
 80. **Refresh**: broadcast ทุก 60 วินาที + เมื่อผู้เล่นจบเกม
 
 ### 🔊 Sound Manager
@@ -2043,11 +2127,24 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
 ### 🛒 Shop System
 112. **ShopManager**: server-side purchase validation + class gacha — dependency injection pattern (currencyManager, itemManager, classManager, gameManager)
 113. **Item Purchase**: coins → validate item/lobby/price/slot → spendCurrency → setItemInSlot → ShopUpdate result
-114. **Class Gacha**: 10 gems per pull → weighted random (Runner=35, Jumper=35, Tank=30) → new unlock OR duplicate refund (3 gems)
+114. **Class Gacha**: 8 gems per pull → weighted random (Runner=35, Jumper=35, Tank=30) → new unlock OR duplicate refund (5 gems)
 115. **Class Unlock Change**: ClassSelectionUI ไม่มีปุ่ม BUY แล้ว — ใช้ gacha ใน ShopUI แทน; ClassSelectionUI แสดง "Get from Shop" สำหรับคลาสล็อค
 116. **ShopUI Card Grid**: 3-col UIGridLayout (225×270), per-rarity tinted backgrounds (CARD_BG_COLORS), rarity badge pills, price buttons with coin icons
 117. **ShopUI Gacha Tab**: mystery card → PULL button → flip reveal animation → banner → owned classes section (lock/emoji/checkmark toggle)
 118. **SetTestGems Remote**: Testing Menu gem editor — add/set gems via `SetTestGems { action, amount }`, synced through `UpdateGems`
+
+### ⚖️ Balance Changes (Feb 2026)
+119. **Economy**: FinishRace gems 1→2, Gacha cost 10→8, Duplicate refund 3→5
+120. **Mastery XP**: XpGrowthMultiplier 1.25→1.15, PerStageXP 20→25 (Lv 20 achievable in ~250 races vs ~16,000)
+121. **Tank Nerf**: walkSpeedMod 0.85→0.80 (-20%), knockbackResistance 0.50→0.40
+122. **Iron Will Rework**: Passive → Active Skill (Shift key, 5s duration, 20s cooldown, golden ForceField aura)
+123. **Runner Buff**: Sprint cooldown 15→12 seconds
+124. **Lightning Nerf**: duration 3→2 sec, positionRestriction=3 (only 3rd place or worse can get it)
+125. **Shield Buff**: +1s immunity after blocking an attack (immunityDuration=1)
+126. **Top 30% Bug Fix**: gem bonus was only in soloWinsEnabled block — now works in multiplayer
+127. **Time Trial Mode**: 1-16 players, no items, personal best tracking, 2 gems/finish, time bonus coins, separate from Race mode
+128. **Dual Zone Matchmaking**: PvpRaceZone (X=-15, สีแดง-ส้ม) + TimeTrialZone (X=15, สีฟ้า), singleton room per mode, auto join/create, vote stages, MatchManager orchestrates startMatch
+128. **Personal Bests**: stored in DataStore (`personalBests[courseKey]`), courseKey = sorted stage IDs
 
 ### 🧪 Unit Testing (Jest Lua)
 119. **Jest Lua v3.10.0** via Wally dev-dependencies — tests อยู่ใน `src/shared/__tests__/*.spec.luau`

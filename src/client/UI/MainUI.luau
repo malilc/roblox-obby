@@ -146,6 +146,9 @@ function MainUI:setupRemotes()
 		if data.totalStages then
 			self.scoreUI:showStageProgress(data.totalStages)
 		end
+		if data.gameMode then
+			self.scoreUI:showModeBadge(data.gameMode)
+		end
 	end)
 
 	-- Update currency
@@ -170,9 +173,10 @@ function MainUI:setupRemotes()
 		self.scoreUI:updateGems(data)
 	end)
 
-	-- Hide timer when returning to lobby
+	-- Hide timer + mode badge when returning to lobby
 	RemoteRegistry.get("ReturnToLobby").OnClientEvent:Connect(function()
 		self.scoreUI:hideTimer()
+		self.scoreUI:hideModeBadge()
 	end)
 end
 

@@ -60,8 +60,8 @@ ClassTypes.Classes = {
 		-- Passive
 		passiveAbility = {
 			name = "Sprint Burst",
-			description = "กด W สองครั้งติดกันเพื่อ mini boost (cooldown 15 วิ)",
-			cooldown = 15,
+			description = "กด W สองครั้งติดกันเพื่อ mini boost (cooldown 12 วิ)",
+			cooldown = 12,
 		},
 	},
 	
@@ -86,13 +86,13 @@ ClassTypes.Classes = {
 	Tank = {
 		id = "Tank",
 		name = "Tank",
-		description = "ทนต่อการถูกโจมตี แต่เดินช้ากว่า",
+		description = "ทนต่อการถูกโจมตี แต่เดินช้ากว่ามาก",
 		icon = "🛡️",
 		color = Color3.fromRGB(255, 200, 100),
 		-- Stats
-		walkSpeedMod = 0.85, -- -15% speed
+		walkSpeedMod = 0.80, -- -20% speed
 		jumpPowerMod = 1.00, -- normal jump
-		knockbackResistance = 0.5, -- 50% knockback reduction
+		knockbackResistance = 0.40, -- 40% knockback reduction
 		-- Passive
 		passiveAbility = {
 			name = "Thick Skin",

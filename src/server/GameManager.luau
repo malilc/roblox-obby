@@ -47,7 +47,10 @@ function GameManager.new()
 
 	-- Debug: solo wins flag per player
 	self.soloWinsEnabled = {} :: {[Player]: boolean}
-	
+
+	-- Game mode per player ("Race" or "TimeTrial")
+	self.playerGameMode = {} :: {[Player]: string}
+
 	-- Round statistics for summary
 	self.playerRoundStats = {} :: {[Player]: {
 		startTime: number,
@@ -79,6 +82,7 @@ function GameManager.new()
 	self.selectionZoneManager = SelectionZoneManager.new({
 		getPlayerState = function(player) return self.playerStates[player] end,
 		mapManager = self.mapManager,
+		matchManager = self.matchManager,
 		showStageSelectionRemote = self.showStageSelectionRemote,
 		hideStageSelectionRemote = self.hideStageSelectionRemote,
 		startGameWithOrder = function(player, stageOrder) self:startGameWithOrder(player, stageOrder) end,
@@ -170,9 +174,23 @@ function GameManager:setupRemotes()
 		self:startGameForPlayer(player)
 	end)
 	
-	-- Confirm stage selection (delegated to SelectionZoneManager)
+	-- Solo start via ConfirmStageSelection (used by testing menu)
 	self.confirmStageSelectionRemote.OnServerEvent:Connect(function(player, data)
-		self.selectionZoneManager:onStageSelectionConfirmed(player, data)
+		if self.playerStates[player] ~= "Lobby" then return end
+		if type(data) ~= "table" then return end
+
+		local stageOrder: {number}
+		if data.isRandom == true then
+			stageOrder = self.mapManager:balancedRandomStages()
+		elseif data.stageOrder and type(data.stageOrder) == "table" and #data.stageOrder > 0 then
+			stageOrder = data.stageOrder
+		else
+			return
+		end
+
+		self.playerGameMode[player] = "Race"
+		self.hideStageSelectionRemote:FireClient(player)
+		self:startGameWithOrder(player, stageOrder)
 	end)
 
 	-- Spectator system (delegated to SpectatorManager)
@@ -273,6 +291,7 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.shopManager:removePlayer(player)
 	self.teleportingToLobby[player] = nil
 	self.soloWinsEnabled[player] = nil
+	self.playerGameMode[player] = nil
 	self.playerRoundStats[player] = nil
 
 	self.stageTracker:removePlayer(player)
@@ -504,9 +523,15 @@ function GameManager:onPlayerFinished(player: Player)
 	local finishMasteryXP = (Config.Mastery and Config.Mastery.FinishBonusXP) or 0
 	self:addMasteryXP(player, finishMasteryXP, "Finish")
 
-	-- Award gems for finishing race
+	-- Determine game mode
+	local gameMode = self.playerGameMode[player] or "Race"
+	local isTimeTrial = (gameMode == "TimeTrial")
+
+	-- Award gems for finishing
 	local gemsConfig = Config.Gems or {}
-	self.currencyManager:addGems(player, gemsConfig.FinishRace or 1, "FinishRace")
+	local ttConfig = Config.TimeTrial or {}
+	local baseGems = if isTimeTrial then (ttConfig.GemsReward or 2) else (gemsConfig.FinishRace or 2)
+	self.currencyManager:addGems(player, baseGems, if isTimeTrial then "TimeTrialFinish" else "FinishRace")
 
 	-- Check finish position for top 30% bonus and win
 	local matchRoom = self.matchManager:getPlayerRoom(player)
@@ -514,6 +539,7 @@ function GameManager:onPlayerFinished(player: Player)
 	local isWin = false
 	local finishPosition = 0
 	local totalPlayers = 1
+	local top30Gems = if isTimeTrial then (ttConfig.Top30Bonus or 3) else (gemsConfig.Top30Bonus or 5)
 
 	if matchRoom and #matchRoom.players > 1 then
 		for i, p in ipairs(matchRoom.finishOrder) do
@@ -529,17 +555,24 @@ function GameManager:onPlayerFinished(player: Player)
 			isWin = true
 			self.currencyManager:addWin(player)
 		end
+
+		-- Top 30% bonus (denominator = all players in match)
+		local cutoff = math.max(1, math.ceil(totalPlayers * 0.30))
+		isTop30 = finishPosition <= cutoff
+		if isTop30 then
+			self.currencyManager:addGems(player, top30Gems, "Top30Bonus")
+		end
 	elseif self.soloWinsEnabled[player] then
 		-- Debug: solo wins mode — treat finish as a win
 		finishPosition = 1
 		isWin = true
 		self.currencyManager:addWin(player)
 
-		-- Top 30% bonus (denominator = all players in match)
+		-- Top 30% bonus (always qualifies in solo debug mode)
 		local cutoff = math.max(1, math.ceil(totalPlayers * 0.30))
 		isTop30 = finishPosition <= cutoff
 		if isTop30 then
-			self.currencyManager:addGems(player, gemsConfig.Top30Bonus or 5, "Top30Bonus")
+			self.currencyManager:addGems(player, top30Gems, "Top30Bonus")
 		end
 	end
 
@@ -549,6 +582,35 @@ function GameManager:onPlayerFinished(player: Player)
 	local coinsCollected = roundStats and roundStats.coinsCollected or 0
 	local stageRewardsTotal = roundStats and roundStats.stageRewardsTotal or 0
 
+	-- Time Trial: time bonus coins + personal best
+	local timeBonus = 0
+	local isNewRecord = false
+	local personalBest = nil
+
+	if isTimeTrial then
+		-- Calculate time bonus
+		local thresholds = ttConfig.TimeBonusThresholds or {}
+		for _, threshold in ipairs(thresholds) do
+			if elapsedTime <= threshold.maxSeconds then
+				timeBonus = threshold.coins
+				break
+			end
+		end
+		if timeBonus > 0 then
+			self.currencyManager:addCurrency(player, timeBonus)
+		end
+
+		-- Check/update personal best
+		local sortedStages = table.clone(stageOrder)
+		table.sort(sortedStages)
+		local courseKey = table.concat(sortedStages, "-")
+		personalBest = self.currencyManager:getPersonalBest(player, courseKey)
+		isNewRecord = self.currencyManager:setPersonalBest(player, courseKey, elapsedTime)
+		if not personalBest then
+			personalBest = elapsedTime -- First time = current time is the record
+		end
+	end
+
 	-- Calculate stages cleared (all stages count now, including last one given in onPlayerFinished)
 	local stagesCleared = totalStages
 
@@ -556,7 +618,7 @@ function GameManager:onPlayerFinished(player: Player)
 	local canSpectate = matchRoom ~= nil and matchRoom.state == "Racing"
 
 	-- Calculate gems earned this round
-	local gemsEarned = (gemsConfig.FinishRace or 1) + (if isTop30 then (gemsConfig.Top30Bonus or 5) else 0)
+	local gemsEarned = baseGems + (if isTop30 then top30Gems else 0)
 
 	-- Notify client with summary data
 	self.stageCompleteRemote:FireClient(player, {
@@ -583,6 +645,11 @@ function GameManager:onPlayerFinished(player: Player)
 			totalCurrency = self.currencyManager:getCurrency(player),
 			stageOrder = stageOrder,
 			canSpectate = canSpectate,
+			-- Time Trial data
+			isTimeTrial = isTimeTrial,
+			timeBonus = timeBonus,
+			isNewRecord = isNewRecord,
+			personalBest = personalBest,
 		},
 	})
 
@@ -718,6 +785,11 @@ end
 -- Start game with specific stage order
 -- Uses per-match instanced maps for multiplayer support
 function GameManager:startGameWithOrder(player: Player, stageOrder: {number})
+	-- Set default game mode if not already set
+	if not self.playerGameMode[player] then
+		self.playerGameMode[player] = "Race"
+	end
+
 	-- Check if player is in a match room
 	local matchRoom = self.matchManager:getPlayerRoom(player)
 	local matchId: string?
@@ -737,19 +809,33 @@ function GameManager:startGameWithOrder(player: Player, stageOrder: {number})
 		self:setupKillPartsForMatch(matchId)
 		self:setupFinishLineForMatch(matchId)
 		
-		local pickups = self.mapManager:getAllItemPickupsForMatch(matchId)
-		self.itemManager:setupItemPickups(pickups)
+		local isTimeTrial = self.playerGameMode[player] == "TimeTrial"
+		if isTimeTrial then
+			-- Hide item box parts on map for Time Trial
+			local pickups = self.mapManager:getAllItemPickupsForMatch(matchId)
+			self:hideItemPickupParts(pickups)
+		else
+			local pickups = self.mapManager:getAllItemPickupsForMatch(matchId)
+			self.itemManager:setupItemPickups(pickups)
+		end
 	else
 		-- Solo play - use global map (backwards compatibility)
 		self.playerMatchIds[player] = nil
 		self.mapManager:generateMapWithOrder(stageOrder)
-		
+
 		-- Setup map elements
 		self:setupKillParts()
 		self:setupFinishLine()
-		
-		local pickups = self.mapManager:getAllItemPickups()
-		self.itemManager:setupItemPickups(pickups)
+
+		-- Setup item pickups (skip + hide for Time Trial mode)
+		local isTimeTrialSolo = self.playerGameMode[player] == "TimeTrial"
+		if isTimeTrialSolo then
+			local pickups = self.mapManager:getAllItemPickups()
+			self:hideItemPickupParts(pickups)
+		else
+			local pickups = self.mapManager:getAllItemPickups()
+			self.itemManager:setupItemPickups(pickups)
+		end
 	end
 	
 	-- Start countdown
@@ -762,11 +848,14 @@ function GameManager:startCountdown(player: Player, seconds: number, stageOrder:
 	local totalStages = stageOrder and #stageOrder or #self.mapManager.globalMap.stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.SelectionCount end
 
+	local gameMode = self.playerGameMode[player] or "Race"
+
 	for i = seconds, 1, -1 do
 		self.countdownUpdateRemote:FireClient(player, {
 			number = i,
 			message = if i > 1 then "Starting..." else "GO!",
 			totalStages = totalStages,
+			gameMode = gameMode,
 		})
 		task.wait(1)
 	end
@@ -837,9 +926,10 @@ function GameManager:teleportToLobby(player: Player)
 	-- Clear checkpoint
 	self.playerCheckpoints[player] = nil
 	
-	-- Clear match ID (player leaves match when returning to lobby)
+	-- Clear match ID and game mode (player leaves match when returning to lobby)
 	local matchId = self.playerMatchIds[player]
 	self.playerMatchIds[player] = nil
+	self.playerGameMode[player] = nil
 
 	-- Use Config position directly for more reliable teleport
 	local targetPosition = Config.Lobby.SpawnPosition
@@ -1044,6 +1134,50 @@ end
 -- Get match ID for player (public accessor)
 function GameManager:getPlayerMatchId(player: Player): string?
 	return self.playerMatchIds[player]
+end
+
+-- Setup shared match map (called once per match, before starting players)
+function GameManager:setupMatchMap(matchId: string, stageOrder: {number}, gameMode: string)
+	-- Generate instanced map for this match
+	self.mapManager:generateMapForMatch(matchId, stageOrder)
+
+	-- Setup map elements
+	self:setupKillPartsForMatch(matchId)
+	self:setupFinishLineForMatch(matchId)
+
+	-- Setup or hide item pickups based on game mode
+	local pickups = self.mapManager:getAllItemPickupsForMatch(matchId)
+	if gameMode == "TimeTrial" then
+		self:hideItemPickupParts(pickups)
+	else
+		self.itemManager:setupItemPickups(pickups)
+	end
+
+	Logger.info("GameManager", "Match map setup for", matchId, "mode:", gameMode)
+end
+
+-- Start a player in an existing match (countdown + teleport per player)
+function GameManager:startPlayerInMatch(player: Player, matchId: string, stageOrder: {number})
+	self.playerMatchIds[player] = matchId
+	self.hideStageSelectionRemote:FireClient(player)
+	self:startCountdown(player, 3, stageOrder)
+end
+
+-- Hide item pickup parts on map for Time Trial mode (keep coins visible)
+function GameManager:hideItemPickupParts(pickups: {Part})
+	for _, pickup in ipairs(pickups) do
+		if pickup:GetAttribute("IsCoin") then continue end
+		pickup.Transparency = 1
+		pickup.CanCollide = false
+		for _, child in pairs(pickup:GetDescendants()) do
+			if child:IsA("BasePart") then
+				child.Transparency = 1
+				child.CanCollide = false
+			elseif child:IsA("ParticleEmitter") or child:IsA("Light") or child:IsA("BillboardGui") then
+				child.Enabled = false
+			end
+		end
+	end
 end
 
 return GameManager

@@ -15,10 +15,15 @@ export type PlayerItemData = {
 	lastUseTime: number,
 	hasShield: boolean,
 	shieldExpiry: number?,
+	hasShieldImmunity: boolean,
+	shieldImmunityExpiry: number?,
 	isSlowed: boolean,
 	slowExpiry: number?,
 	isBoosted: boolean,
 	boostExpiry: number?,
+	ironWillActive: boolean,
+	ironWillExpiry: number,
+	ironWillCooldown: number,
 }
 
 function ItemManager.new(currencyManager: any?, gameManager: any?, matchManager: any?)
@@ -42,6 +47,16 @@ function ItemManager.new(currencyManager: any?, gameManager: any?, matchManager:
 	self.useItemRemote.OnServerEvent:Connect(function(player, slotIndex)
 		self:useItem(player, slotIndex or 1)
 	end)
+
+	-- Listen for Iron Will activation (Tank ultimate)
+	local useUltimateRemote = ReplicatedStorage.Remotes:FindFirstChild("UseUltimateSkill")
+	if useUltimateRemote then
+		useUltimateRemote.OnServerEvent:Connect(function(player, skillId)
+			if skillId == "IronWill" then
+				self:activateIronWill(player)
+			end
+		end)
+	end
 	
 	-- Setup testing remotes (for development, behind debug flag)
 	if Config.Debug and Config.Debug.ItemTesting then
@@ -352,10 +367,15 @@ function ItemManager:initPlayer(player: Player)
 		lastUseTime = 0,
 		hasShield = false,
 		shieldExpiry = nil,
+		hasShieldImmunity = false,
+		shieldImmunityExpiry = nil,
 		isSlowed = false,
 		slowExpiry = nil,
 		isBoosted = false,
 		boostExpiry = nil,
+		ironWillActive = false,
+		ironWillExpiry = 0,
+		ironWillCooldown = 0,
 	}
 end
 
@@ -422,6 +442,11 @@ end
 
 -- Give random item to player based on their rank
 function ItemManager:giveRandomItem(player: Player)
+	-- Skip items in Time Trial mode
+	if self.gameManager and self.gameManager.playerGameMode and self.gameManager.playerGameMode[player] == "TimeTrial" then
+		return
+	end
+
 	local data = self.playerItems[player]
 	if not data then return end
 	
@@ -760,6 +785,7 @@ function ItemManager:checkMissileHit(owner: Player, missile: Part): (Player | Mo
 							data.hasShield = false
 							data.shieldExpiry = nil
 							self:removeShieldVisual(player)
+							self:applyShieldImmunity(player)
 							self:sendItemUpdate(player)
 							Logger.debug("ItemManager", player.Name, "'s shield blocked missile!")
 							return nil -- Shield blocked
@@ -912,14 +938,17 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 			return
 		end
 		
-		-- Check if player has shield
+		-- Check if player has shield or shield immunity
 		local data = self.playerItems[hitPlayer]
 		if data and data.hasShield then
 			data.hasShield = false
 			data.shieldExpiry = nil
 			self:removeShieldVisual(hitPlayer)
+			self:applyShieldImmunity(hitPlayer)
 			self:sendItemUpdate(hitPlayer)
 			Logger.debug("ItemManager", hitPlayer.Name, "'s shield blocked banana!")
+		elseif self:hasShieldImmunity(hitPlayer) then
+			Logger.debug("ItemManager", hitPlayer.Name, "ignored banana due to shield immunity!")
 		else
 			self:applySlip(hitPlayer, itemDef)
 		end
@@ -939,6 +968,11 @@ function ItemManager:applySlip(player: Player, itemDef)
 	-- Check for Tank Iron Will (immune to stuns)
 	if self:checkIronWillImmunity(player) then
 		Logger.debug("ItemManager", player.Name, "ignored slip due to Iron Will!")
+		return
+	end
+	-- Check for shield immunity
+	if self:hasShieldImmunity(player) then
+		Logger.debug("ItemManager", player.Name, "ignored slip due to shield immunity!")
 		return
 	end
 	
@@ -1729,13 +1763,16 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 		if otherPlayer ~= player then
 			local data = self.playerItems[otherPlayer]
 			if data then
-				-- Check shield
+				-- Check shield or shield immunity
 				if data.hasShield then
 					data.hasShield = false
 					data.shieldExpiry = nil
 					self:removeShieldVisual(otherPlayer)
+					self:applyShieldImmunity(otherPlayer)
 					self:sendItemUpdate(otherPlayer)
 					Logger.debug("ItemManager", otherPlayer.Name, "'s shield blocked lightning!")
+				elseif self:hasShieldImmunity(otherPlayer) then
+					Logger.debug("ItemManager", otherPlayer.Name, "ignored lightning due to shield immunity!")
 				else
 					self:applyLightningSlow(otherPlayer, itemDef)
 					
@@ -1773,6 +1810,12 @@ end
 
 -- Apply lightning slow effect
 function ItemManager:applyLightningSlow(player: Player, itemDef)
+	-- Check for shield immunity
+	if self:hasShieldImmunity(player) then
+		Logger.debug("ItemManager", player.Name, "ignored lightning slow due to shield immunity!")
+		return
+	end
+
 	local data = self.playerItems[player]
 	if not data then return end
 	
@@ -2028,7 +2071,12 @@ function ItemManager:applyStunWithFall(target: Player | Model, duration: number)
 			Logger.debug("ItemManager", target.Name, "ignored stun due to Iron Will!")
 			return
 		end
-		
+		-- Check for shield immunity
+		if self:hasShieldImmunity(target) then
+			Logger.debug("ItemManager", target.Name, "ignored stun due to shield immunity!")
+			return
+		end
+
 		character = target.Character
 		targetName = target.Name
 		isPlayer = true
@@ -3020,12 +3068,17 @@ function ItemManager:resetPlayer(player: Player)
 		lastUseTime = 0,
 		hasShield = false,
 		shieldExpiry = nil,
+		hasShieldImmunity = false,
+		shieldImmunityExpiry = nil,
 		isSlowed = false,
 		slowExpiry = nil,
 		isBoosted = false,
 		boostExpiry = nil,
+		ironWillActive = false,
+		ironWillExpiry = 0,
+		ironWillCooldown = 0,
 	}
-	
+
 	self:sendItemUpdate(player)
 end
 
@@ -3052,16 +3105,79 @@ function ItemManager:setMatchManager(matchManager: any)
 	self.matchManager = matchManager
 end
 
--- Check if player has Iron Will (Tank ultimate) - immune to stuns
-function ItemManager:checkIronWillImmunity(player: Player): boolean
-	-- Check if player is Tank class with ultimate unlocked
+-- Apply shield immunity after shield blocks an attack (1s immunity window)
+function ItemManager:applyShieldImmunity(player: Player)
+	local data = self.playerItems[player]
+	if not data then return end
+
+	local shieldDef = ItemTypes.getItem("Shield")
+	local immunityDuration = shieldDef and shieldDef.immunityDuration or 1
+
+	data.hasShieldImmunity = true
+	data.shieldImmunityExpiry = os.clock() + immunityDuration
+
+	task.delay(immunityDuration, function()
+		if data.hasShieldImmunity and data.shieldImmunityExpiry and os.clock() >= data.shieldImmunityExpiry then
+			data.hasShieldImmunity = false
+			data.shieldImmunityExpiry = nil
+		end
+	end)
+
+	Logger.debug("ItemManager", player.Name, "has shield immunity for", immunityDuration, "seconds")
+end
+
+-- Check if player has shield immunity active
+function ItemManager:hasShieldImmunity(player: Player): boolean
+	local data = self.playerItems[player]
+	if not data then return false end
+	return data.hasShieldImmunity == true and os.clock() < (data.shieldImmunityExpiry or 0)
+end
+
+-- Activate Iron Will (Tank ultimate) - 5s stun immunity, 20s cooldown
+function ItemManager:activateIronWill(player: Player): boolean
+	local data = self.playerItems[player]
+	if not data then return false end
 	if not self.currencyManager then return false end
-	
+
 	local classId = self.currencyManager:getEquippedClass(player)
 	if classId ~= "Tank" then return false end
-	
-	-- Check if ultimate is unlocked
-	return self.currencyManager:hasUltimateUnlocked(player, "Tank")
+	if not self.currencyManager:hasUltimateUnlocked(player, "Tank") then return false end
+
+	local now = os.clock()
+	if data.ironWillCooldown and now < data.ironWillCooldown then return false end
+
+	local skillConfig = Config.Mastery and Config.Mastery.UltimateSkills and Config.Mastery.UltimateSkills.Tank
+	local duration = skillConfig and skillConfig.duration or 5
+	local cooldown = skillConfig and skillConfig.cooldown or 20
+
+	data.ironWillActive = true
+	data.ironWillExpiry = now + duration
+	data.ironWillCooldown = now + cooldown
+
+	-- Schedule deactivation
+	task.delay(duration, function()
+		if data.ironWillActive and data.ironWillExpiry and os.clock() >= data.ironWillExpiry then
+			data.ironWillActive = false
+			data.ironWillExpiry = 0
+		end
+	end)
+
+	Logger.debug("ItemManager", player.Name, "activated Iron Will for", duration, "seconds")
+	return true
+end
+
+-- Check if player has Iron Will active (Tank ultimate) - immune to stuns
+function ItemManager:checkIronWillImmunity(player: Player): boolean
+	if not self.currencyManager then return false end
+
+	local classId = self.currencyManager:getEquippedClass(player)
+	if classId ~= "Tank" then return false end
+	if not self.currencyManager:hasUltimateUnlocked(player, "Tank") then return false end
+
+	local data = self.playerItems[player]
+	if not data then return false end
+
+	return data.ironWillActive == true and os.clock() < (data.ironWillExpiry or 0)
 end
 
 return ItemManager

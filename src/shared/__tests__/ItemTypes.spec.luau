@@ -123,5 +123,48 @@ describe("ItemTypes", function()
 				expect(validRarities[item.rarity]).toBe(true)
 			end
 		end)
+
+		it("should not give Lightning to players in 1st or 2nd place", function()
+			for _ = 1, 100 do
+				local item = ItemTypes.getWeightedRandomItem(1, 4)
+				expect(item.id).never.toBe("Lightning")
+			end
+			for _ = 1, 100 do
+				local item = ItemTypes.getWeightedRandomItem(2, 4)
+				expect(item.id).never.toBe("Lightning")
+			end
+		end)
+
+		it("should allow Lightning for players in 3rd place or worse", function()
+			-- Run enough times to statistically expect at least one Lightning
+			local gotLightning = false
+			for _ = 1, 500 do
+				local item = ItemTypes.getWeightedRandomItem(4, 4) -- Last place
+				if item.id == "Lightning" then
+					gotLightning = true
+					break
+				end
+			end
+			expect(gotLightning).toBe(true)
+		end)
+	end)
+
+	describe("Lightning balance", function()
+		it("should have duration of 2 seconds", function()
+			local item = ItemTypes.getItem("Lightning")
+			expect(item.duration).toBe(2)
+		end)
+
+		it("should have position restriction at 3", function()
+			local item = ItemTypes.getItem("Lightning")
+			expect(item.positionRestriction).toBe(3)
+		end)
+	end)
+
+	describe("Shield balance", function()
+		it("should have immunity duration after block", function()
+			local item = ItemTypes.getItem("Shield")
+			expect(item.immunityDuration).toBe(1)
+		end)
 	end)
 end)

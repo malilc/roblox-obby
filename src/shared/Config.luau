@@ -10,11 +10,27 @@ local Config = {
 	Match = {
 		MinPlayers = 1,        -- Solo testing enabled
 		MaxPlayers = 16,       -- Maximum players per match
-		WaitTime = 3,          -- Testing: 3 วิ, Production: 30-60 วิ
+		WaitTime = 15,         -- เวลารอ vote stages (วินาที) ก่อนเริ่ม match
 		IsTestingMode = true,  -- Toggle สำหรับ testing
 		TimeLimit = 900,       -- 15 นาที (900 วินาที) per match
 		-- แจ้งเตือนเมื่อเหลือเวลา (วินาที)
 		TimeWarnings = {300, 60, 30, 10}, -- 5min, 1min, 30s, 10s
+	},
+
+	-- Time Trial Mode (1-16 players, no items, time-based)
+	TimeTrial = {
+		Enabled = true,
+		MinPlayers = 1,
+		MaxPlayers = 16,
+		WaitTime = 3,
+		GemsReward = 2,        -- Base gems per finish
+		Top30Bonus = 3,        -- Smaller gem bonus for top 30% (vs 5 in Race)
+		TimeBonusThresholds = {
+			{maxSeconds = 60, coins = 100},   -- Under 1 min
+			{maxSeconds = 120, coins = 50},   -- Under 2 min
+			{maxSeconds = 180, coins = 25},   -- Under 3 min
+		},
+		NoItems = true,
 	},
 
 	-- Stage Settings
@@ -30,7 +46,7 @@ local Config = {
 
 	-- Gem Settings (premium currency)
 	Gems = {
-		FinishRace = 1,      -- +1 gem เมื่อเข้าเส้นชัย
+		FinishRace = 2,      -- +2 gems เมื่อเข้าเส้นชัย
 		Top30Bonus = 5,      -- +5 gems เมื่อจบ top 30%
 		DailyLoginGems = {   -- gem rewards ต่อวัน (ควบคู่กับ coins)
 			[1] = 1,
@@ -80,8 +96,8 @@ local Config = {
 		},
 		-- Gacha settings
 		Gacha = {
-			CostGems = 10,
-			DuplicateGemsBack = 3,
+			CostGems = 8,
+			DuplicateGemsBack = 5,
 		},
 		-- Gacha class weights (higher = more likely, Normal excluded)
 		GachaWeights = {
@@ -96,8 +112,8 @@ local Config = {
 	Mastery = {
 		MaxLevel = 20,
 		BaseXpPerLevel = 100,
-		XpGrowthMultiplier = 1.25,
-		PerStageXP = 20,
+		XpGrowthMultiplier = 1.15,
+		PerStageXP = 25,
 		FinishBonusXP = 60,
 		-- Ultimate skill unlock level
 		UltimateUnlockLevel = 20,
@@ -107,7 +123,7 @@ local Config = {
 				id = "Sprint",
 				name = "Sprint",
 				description = "Press Shift to run 50% faster for 3 seconds",
-				cooldown = 15,
+				cooldown = 12,
 				duration = 3,
 				speedMultiplier = 1.5,
 			},
@@ -120,8 +136,10 @@ local Config = {
 			Tank = {
 				id = "IronWill",
 				name = "Iron Will",
-				description = "Immune to all item stuns",
-				stunImmunity = true,
+				description = "Press Shift to become immune to stuns for 5 seconds (20s cooldown)",
+				stunImmunity = false,
+				duration = 5,
+				cooldown = 20,
 			},
 		},
 		TitleThemes = {
@@ -189,9 +207,9 @@ local Config = {
 		Sections = {
 			{id = "movement", title = "Movement", icon = "🏃", content = '<font color="#AAD4FF"><b>Controls</b></font>\n  <font color="#FFDD77">WASD</font> — Move    <font color="#FFDD77">Space</font> — Jump\n  <font color="#FFDD77">Shift</font> — Sprint (if unlocked)\n\n<font color="#AAD4FF"><b>Mobile</b></font>\n  Use the joystick and jump button on screen.\n\n<font color="#AAD4FF"><b>Falling</b></font>\n  Fall off the map? No worries!\n  You\'ll respawn at the <font color="#77FF77">last checkpoint</font>.'},
 			{id = "items", title = "Items", icon = "🎁", content = '<font color="#AAD4FF"><b>How to Get Items</b></font>\n  Run through <font color="#FFDD77">item boxes</font> on the course to collect them.\n\n<font color="#AAD4FF"><b>Using Items</b></font>\n  Press <font color="#FFDD77">[1]</font> or <font color="#FFDD77">[2]</font> to use items from your slots.\n  On mobile, tap the item buttons on screen.\n\n<font color="#AAD4FF"><b>Rarities</b></font>\n  <font color="#CCCCCC">Common</font> · <font color="#77DD77">Uncommon</font> · <font color="#7799FF">Rare</font> · <font color="#CC77FF">Epic</font>\n  Players behind get <font color="#FFDD77">better items</font>!'},
-			{id = "classes", title = "Classes", icon = "⚔️", content = '<font color="#AAD4FF"><b>Choose a Class</b></font>\n  Pick your play style in the lobby before a match.\n\n<font color="#CCCCCC"><b>Normal</b></font> — Balanced stats <font color="#77FF77">(Free)</font>\n<font color="#FF9944"><b>Runner</b></font> — +15% speed, -10% jump\n<font color="#44BBFF"><b>Jumper</b></font> — -10% speed, +20% jump\n<font color="#FFDD44"><b>Tank</b></font> — -15% speed, stun immunity\n\n  Unlock new classes with <font color="#FFDD77">currency</font>!'},
+			{id = "classes", title = "Classes", icon = "⚔️", content = '<font color="#AAD4FF"><b>Choose a Class</b></font>\n  Pick your play style in the lobby before a match.\n\n<font color="#CCCCCC"><b>Normal</b></font> — Balanced stats <font color="#77FF77">(Free)</font>\n<font color="#FF9944"><b>Runner</b></font> — +15% speed, -10% jump\n<font color="#44BBFF"><b>Jumper</b></font> — -10% speed, +20% jump\n<font color="#FFDD44"><b>Tank</b></font> — -20% speed, 40% KB resist\n\n  Unlock new classes with <font color="#FFDD77">currency</font>!'},
 			{id = "mastery", title = "Mastery & Titles", icon = "🏆", content = '<font color="#AAD4FF"><b>Mastery XP</b></font>\n  Earn XP by completing stages in matches.\n  Each class levels up independently <font color="#FFDD77">(Lv.1 — 20)</font>.\n\n<font color="#AAD4FF"><b>Titles</b></font>\n  Unlock cosmetic titles at mastery milestones.\n  Equip titles to show off your skill!\n  Titles appear above your character.'},
-			{id = "ultimates", title = "Ultimate Skills", icon = "⚡", content = '<font color="#AAD4FF"><b>How to Unlock</b></font>\n  Reach <font color="#FFDD77">mastery level 20</font> on a class to unlock its ultimate!\n\n<font color="#AAD4FF"><b>Ultimate Skills</b></font>\n  <font color="#FF9944"><b>Runner</b></font> — Sprint <font color="#999999">(Shift)</font>: 50% speed boost\n  <font color="#44BBFF"><b>Jumper</b></font> — Double Jump <font color="#999999">(Space in air)</font>\n  <font color="#FFDD44"><b>Tank</b></font> — Iron Will: immune to stuns'},
+			{id = "ultimates", title = "Ultimate Skills", icon = "⚡", content = '<font color="#AAD4FF"><b>How to Unlock</b></font>\n  Reach <font color="#FFDD77">mastery level 20</font> on a class to unlock its ultimate!\n\n<font color="#AAD4FF"><b>Ultimate Skills</b></font>\n  <font color="#FF9944"><b>Runner</b></font> — Sprint <font color="#999999">(Shift)</font>: 50% speed boost\n  <font color="#44BBFF"><b>Jumper</b></font> — Double Jump <font color="#999999">(Space in air)</font>\n  <font color="#FFDD44"><b>Tank</b></font> — Iron Will <font color="#999999">(Shift)</font>: 5s stun immunity (20s CD)'},
 		},
 		HintDuration = 8,
 	},

@@ -29,6 +29,7 @@ export type MatchRoom = {
 	-- Stage voting
 	stageVotes: {[Player]: {number}},  -- Each player's stage vote
 	selectedStageOrder: {number}?,      -- Final selected stage order after voting
+	gameMode: string,                   -- "Race" | "TimeTrial"
 }
 
 function MatchManager.new(gameManager: any?)
@@ -38,7 +39,8 @@ function MatchManager.new(gameManager: any?)
 	self.rooms = {} :: {[string]: MatchRoom}
 	self.playerRooms = {} :: {[Player]: string} -- Player -> RoomId mapping
 	self.nextRoomId = 1
-	
+	self.onRoomClosed = nil :: ((roomId: string) -> ())? -- Callback when room closes
+
 	-- Remotes
 	self.createMatchRemote = ReplicatedStorage.Remotes.CreateMatch
 	self.joinMatchRemote = ReplicatedStorage.Remotes.JoinMatch
@@ -114,6 +116,7 @@ function MatchManager:createRoom(host: Player, settings: {stageOrder: {number}?}
 		},
 		stageVotes = {},
 		selectedStageOrder = nil,
+		gameMode = settings and settings.gameMode or "Race",
 	}
 	
 	self.rooms[roomId] = room
@@ -123,12 +126,7 @@ function MatchManager:createRoom(host: Player, settings: {stageOrder: {number}?}
 	
 	-- Notify host
 	self:broadcastRoomUpdate(room)
-	
-	-- Auto-start timer for testing mode
-	if Config.Match.IsTestingMode then
-		self:startWaitTimer(roomId)
-	end
-	
+
 	return roomId
 end
 
@@ -198,10 +196,14 @@ function MatchManager:leaveRoom(player: Player)
 	
 	Logger.debug("MatchManager", player.Name, "left room", roomId)
 	
-	-- If room is empty or host left, close room
-	if #room.players == 0 or room.host == player then
+	-- If room is empty, close room
+	if #room.players == 0 then
 		self:closeRoom(roomId)
 	else
+		-- Transfer host if needed
+		if room.host == player then
+			room.host = room.players[1]
+		end
 		-- Notify remaining players
 		self:broadcastRoomUpdate(room)
 	end
@@ -222,6 +224,11 @@ function MatchManager:closeRoom(roomId: string)
 	-- Clean up match touch connections in GameManager
 	if self.gameManager and self.gameManager.disconnectMatchConnections then
 		self.gameManager:disconnectMatchConnections(roomId)
+	end
+
+	-- Notify callback (SelectionZoneManager uses this to clear singleton room)
+	if self.onRoomClosed then
+		self.onRoomClosed(roomId)
 	end
 
 	Logger.info("MatchManager", "Room closed:", roomId)
@@ -246,6 +253,7 @@ function MatchManager:startWaitTimer(roomId: string)
 					countdown = i,
 					playerCount = #room.players,
 					maxPlayers = Config.Match.MaxPlayers,
+					gameMode = room.gameMode,
 				})
 			end
 			
@@ -264,26 +272,43 @@ function MatchManager:startMatch(roomId: string)
 	local room = self.rooms[roomId]
 	if not room then return end
 	if room.state ~= "Waiting" then return end
-	
+
 	room.state = "Starting"
 	Logger.info("MatchManager", "Starting match in room", roomId, "with", #room.players, "players")
-	
+
+	-- Calculate final stage order from votes
+	local stageOrder = self:calculateFinalStageOrder(room)
+	room.selectedStageOrder = stageOrder
+	room.stageOrder = stageOrder
+
 	-- Notify all players
 	for _, player in ipairs(room.players) do
 		self.matchStartRemote:FireClient(player, {
 			roomId = roomId,
 			players = self:getPlayerNames(room.players),
-			stageOrder = room.stageOrder,
+			stageOrder = stageOrder,
+			gameMode = room.gameMode,
 		})
 	end
-	
-	-- Let GameManager handle the actual game start
+
+	-- Orchestrate game start via GameManager
 	if self.gameManager then
+		-- Setup the shared map once for the match
+		self.gameManager:setupMatchMap(roomId, stageOrder, room.gameMode)
+
+		-- Set game mode + start each player
+		for _, player in ipairs(room.players) do
+			self.gameManager.playerGameMode[player] = room.gameMode
+			task.spawn(function()
+				self.gameManager:startPlayerInMatch(player, roomId, stageOrder)
+			end)
+		end
+
 		task.delay(0.5, function()
 			room.state = "Racing"
 			room.startTime = os.clock()
 			room.timeRemaining = Config.Match.TimeLimit
-			
+
 			-- Start race timer
 			self:startRaceTimer(roomId)
 		end)
@@ -359,6 +384,7 @@ function MatchManager:broadcastRoomUpdate(room: MatchRoom)
 			playerCount = #room.players,
 			maxPlayers = Config.Match.MaxPlayers,
 			state = room.state,
+			gameMode = room.gameMode,
 		})
 	end
 end

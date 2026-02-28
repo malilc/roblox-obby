@@ -299,6 +299,49 @@ function ScoreUI:createUI()
 	timerTextStroke.Thickness = 1.5
 	timerTextStroke.Transparency = 0.3
 	timerTextStroke.Parent = timerLabel
+
+	-- === GAME MODE BADGE (top-center, below timer) ===
+	local modeBadge = Instance.new("Frame")
+	modeBadge.Name = "ModeBadge"
+	modeBadge.Size = UDim2.new(0, 150, 0, 26)
+	modeBadge.Position = UDim2.new(0.5, -75, 0, 58)
+	modeBadge.BackgroundColor3 = Color3.fromRGB(255, 95, 85)
+	modeBadge.BackgroundTransparency = 0.15
+	modeBadge.BorderSizePixel = 0
+	modeBadge.Visible = false
+	modeBadge.Parent = self.parent
+	self.modeBadge = modeBadge
+
+	local modeBadgeCorner = Instance.new("UICorner")
+	modeBadgeCorner.CornerRadius = Theme.CORNER_SM
+	modeBadgeCorner.Parent = modeBadge
+
+	local modeBadgeStroke = Instance.new("UIStroke")
+	modeBadgeStroke.Color = Color3.fromRGB(255, 140, 130)
+	modeBadgeStroke.Thickness = Theme.STROKE_THIN
+	modeBadgeStroke.Transparency = 0.3
+	modeBadgeStroke.Parent = modeBadge
+	self.modeBadgeStroke = modeBadgeStroke
+
+	createDropShadow(modeBadge)
+
+	local modeBadgeLabel = Instance.new("TextLabel")
+	modeBadgeLabel.Name = "ModeLabel"
+	modeBadgeLabel.Size = UDim2.new(1, 0, 1, 0)
+	modeBadgeLabel.BackgroundTransparency = 1
+	modeBadgeLabel.Text = "\u{2694}\u{FE0F} PVP RACE"
+	modeBadgeLabel.TextColor3 = Theme.TEXT_PRIMARY
+	modeBadgeLabel.TextSize = 12
+	modeBadgeLabel.Font = Enum.Font.GothamBold
+	modeBadgeLabel.TextXAlignment = Enum.TextXAlignment.Center
+	modeBadgeLabel.Parent = modeBadge
+	self.modeBadgeLabel = modeBadgeLabel
+
+	local modeBadgeLabelStroke = Instance.new("UIStroke")
+	modeBadgeLabelStroke.Color = Color3.fromRGB(0, 0, 0)
+	modeBadgeLabelStroke.Thickness = 1
+	modeBadgeLabelStroke.Transparency = 0.5
+	modeBadgeLabelStroke.Parent = modeBadgeLabel
 end
 
 function ScoreUI:updateGems(data: {gems: number, wins: number?})
@@ -600,6 +643,37 @@ function ScoreUI:updateTimer(seconds: number)
 		self.timerLabel.TextColor3 = Theme.TEXT_PRIMARY
 		self.timerStroke.Color = Theme.HUD_GLOW_CYAN
 	end
+end
+
+function ScoreUI:showModeBadge(gameMode: string?)
+	local mode = gameMode or "Race"
+	if mode == "TimeTrial" then
+		self.modeBadgeLabel.Text = "\u{23F1}\u{FE0F} TIME TRIAL"
+		self.modeBadge.BackgroundColor3 = Color3.fromRGB(0, 160, 220)
+		self.modeBadgeStroke.Color = Color3.fromRGB(80, 210, 255)
+	else
+		self.modeBadgeLabel.Text = "\u{2694}\u{FE0F} PVP RACE"
+		self.modeBadge.BackgroundColor3 = Color3.fromRGB(255, 95, 85)
+		self.modeBadgeStroke.Color = Color3.fromRGB(255, 140, 130)
+	end
+
+	self.modeBadge.Visible = true
+	self.modeBadge.BackgroundTransparency = 1
+
+	local fadeIn = TweenService:Create(self.modeBadge, TweenInfo.new(0.3), {
+		BackgroundTransparency = 0.15
+	})
+	fadeIn:Play()
+end
+
+function ScoreUI:hideModeBadge()
+	local fadeOut = TweenService:Create(self.modeBadge, TweenInfo.new(0.4), {
+		BackgroundTransparency = 1
+	})
+	fadeOut:Play()
+	fadeOut.Completed:Connect(function()
+		self.modeBadge.Visible = false
+	end)
 end
 
 return ScoreUI

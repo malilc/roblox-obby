@@ -119,6 +119,9 @@
         "ReturnToLobby": {
           "$className": "RemoteEvent"
         },
+        "StartTimeTrial": {
+          "$className": "RemoteEvent"
+        },
         "DailyBonusClaimed": {
           "$className": "RemoteEvent"
         },
@@ -270,14 +273,26 @@
             "Transparency": 0.75
           }
         },
-        "SelectionZone": {
+        "PvpRaceZone": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.87, 0],
+            "Color": [1, 0.35, 0.2],
             "Material": "Neon",
-            "Size": [20, 0.5, 20],
-            "Position": [0, 101, 30],
+            "Size": [16, 0.5, 16],
+            "Position": [-15, 101, 30],
+            "Transparency": 0.3,
+            "CanCollide": false
+          }
+        },
+        "TimeTrialZone": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0, 0.8, 1.0],
+            "Material": "Neon",
+            "Size": [16, 0.5, 16],
+            "Position": [15, 101, 30],
             "Transparency": 0.3,
             "CanCollide": false
           }
