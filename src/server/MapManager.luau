@@ -22,6 +22,7 @@ export type MatchMapData = {
 	spinningParts: {Part},
 	disappearingParts: {{part: Part, touched: boolean, lastTouchTime: number}},
 	autoCyclingParts: {{part: Part, thread: thread?}},
+	pendulumParts: {{ball: Part, rope: Part?, pivotCFrame: CFrame, ropeLength: number, maxAngle: number, speed: number, phaseOffset: number}},
 	animationConnection: RBXScriptConnection?,
 	folder: Folder,
 }
@@ -39,6 +40,7 @@ function MapManager.new()
 		spinningParts = {},
 		disappearingParts = {},
 		autoCyclingParts = {},
+		pendulumParts = {},
 		animationConnection = nil,
 		folder = self.stagesFolder,
 	} :: MatchMapData
@@ -206,6 +208,73 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 				-- Start auto cycle loop
 				self:_setupAutoCyclingPlatform(data)
 			end
+
+			if descendant:GetAttribute("IsPendulum") then
+				local ropeLength = descendant:GetAttribute("PendulumRopeLength") or 15
+				local maxAngleDeg = descendant:GetAttribute("PendulumMaxAngle") or 45
+				local speed = descendant:GetAttribute("PendulumSpeed") or 2.5
+				local phaseOffset = descendant:GetAttribute("PendulumPhaseOffset") or 0
+				local pivotCFrame = CFrame.new(descendant.Position + Vector3.new(0, ropeLength, 0))
+
+				-- Find linked rope part
+				local ropePart = nil
+				local ropeName = descendant:GetAttribute("PendulumRopeName")
+				if ropeName and descendant.Parent then
+					ropePart = descendant.Parent:FindFirstChild(ropeName)
+				end
+
+				table.insert(mapData.pendulumParts, {
+					ball = descendant,
+					rope = ropePart,
+					pivotCFrame = pivotCFrame,
+					ropeLength = ropeLength,
+					maxAngle = math.rad(maxAngleDeg),
+					speed = speed,
+					phaseOffset = phaseOffset,
+				})
+
+				-- Push player on touch
+				local pushStrength = descendant:GetAttribute("PendulumPushForce") or 4000
+				local pushCooldowns = {}
+				descendant.Touched:Connect(function(hit)
+					local character = hit.Parent
+					local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+					local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+					if humanoid and rootPart and humanoid.Health > 0 then
+						if pushCooldowns[character] then return end
+						pushCooldowns[character] = true
+						task.delay(0.8, function()
+							pushCooldowns[character] = nil
+						end)
+
+						-- Push direction: away from ball center + upward
+						local dir = (rootPart.Position - descendant.Position)
+						dir = Vector3.new(dir.X, 0, dir.Z)
+						if dir.Magnitude > 0.1 then
+							dir = dir.Unit
+						else
+							dir = Vector3.new(0, 0, 1)
+						end
+
+						-- Use VectorForce impulse for strong knockback
+						local attachment = Instance.new("Attachment")
+						attachment.Parent = rootPart
+
+						local force = Instance.new("VectorForce")
+						force.Attachment0 = attachment
+						force.Force = dir * pushStrength + Vector3.new(0, 1600, 0)
+						force.RelativeTo = Enum.ActuatorRelativeTo.World
+						force.ApplyAtCenterOfMass = true
+						force.Parent = rootPart
+
+						-- Remove after short impulse
+						task.delay(0.15, function()
+							force:Destroy()
+							attachment:Destroy()
+						end)
+					end
+				end)
+			end
 		end
 	end
 end
@@ -308,24 +377,37 @@ end
 
 -- Internal: Setup auto-cycling platform (timer-based, ไม่ต้องรอคนเหยียบ)
 -- กระพริบเตือนก่อนปิด แล้วสลับอัตโนมัติ
+-- OffTransparency: ถ้าตั้ง < 1 จะแสดงเงาจางๆ ตอนปิด (เห็นตำแหน่งที่จะปลอดภัยรอบถัดไป)
 function MapManager:_setupAutoCyclingPlatform(data: {part: Part, thread: thread?})
 	local part = data.part
 	local onTime = part:GetAttribute("CycleOnTime") or 3      -- เวลาที่เปิด (วินาที)
 	local offTime = part:GetAttribute("CycleOffTime") or 3     -- เวลาที่ปิด (วินาที)
 	local offset = part:GetAttribute("CycleOffset") or 0       -- delay ก่อนเริ่ม cycle
 	local blinkTime = part:GetAttribute("BlinkTime") or 1      -- เวลากระพริบเตือน
+	local offTransparency = part:GetAttribute("OffTransparency") or 1 -- 1=หายไปเลย, <1=เห็นเงาจาง
 
 	local originalColor = part.Color
+	-- สีจางสำหรับ ghostly mode (30% ของสีเดิม)
+	local dimColor = Color3.new(originalColor.R * 0.3, originalColor.G * 0.3, originalColor.B * 0.3)
 	local warningColor = Color3.fromRGB(255, 60, 60) -- แดงเตือน
 
 	data.thread = task.spawn(function()
+		-- StartsOff: เริ่มในสถานะปิด (สำหรับ checkerboard pattern)
+		if part:GetAttribute("StartsOff") then
+			part.Transparency = offTransparency
+			part.CanCollide = false
+			if offTransparency < 1 then
+				part.Color = dimColor
+			end
+		end
+
 		-- Offset เริ่มต้น (สำหรับ stagger เลนต่างกัน)
 		if offset > 0 then
 			task.wait(offset)
 		end
 
 		while part.Parent do
-			-- === ON phase: เลนเปิดอยู่ ===
+			-- === ON phase: เลนเปิดอยู่ (สว่าง ชัดเจน) ===
 			part.Transparency = 0
 			part.CanCollide = true
 			part.Color = originalColor
@@ -342,9 +424,12 @@ function MapManager:_setupAutoCyclingPlatform(data: {part: Part, thread: thread?
 				task.wait(blinkTime / (blinkCount * 2))
 			end
 
-			-- === OFF phase: เลนปิด ===
-			part.Transparency = 1
+			-- === OFF phase: เลนปิด (จางหรือหายไป) ===
+			part.Transparency = offTransparency
 			part.CanCollide = false
+			if offTransparency < 1 then
+				part.Color = dimColor
+			end
 			task.wait(offTime)
 		end
 	end)
@@ -396,6 +481,25 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 			end
 		end
 
+		-- Pendulum parts
+		for _, data in ipairs(mapData.pendulumParts) do
+			if data.ball.Parent then
+				local angle = data.maxAngle * math.sin(time * data.speed + data.phaseOffset)
+				local ballCF = data.pivotCFrame * CFrame.Angles(angle, 0, 0) * CFrame.new(0, -data.ropeLength, 0)
+				data.ball.CFrame = ballCF
+
+				-- Update rope visual
+				if data.rope and data.rope.Parent then
+					local pivotPos = data.pivotCFrame.Position
+					local ballPos = ballCF.Position
+					local mid = (pivotPos + ballPos) / 2
+					local dist = (pivotPos - ballPos).Magnitude
+					data.rope.Size = Vector3.new(0.5, dist, 0.5)
+					data.rope.CFrame = CFrame.lookAt(mid, ballPos) * CFrame.Angles(math.rad(90), 0, 0)
+				end
+			end
+		end
+
 		-- Item Boxes: Spin + Bob (Neon Cube style)
 		for _, box in ipairs(itemBoxes) do
 			if box.Parent then
@@ -429,6 +533,7 @@ function MapManager:_clearMapInternal(mapData: MatchMapData, destroyFolder: bool
 	mapData.movingParts = {}
 	mapData.spinningParts = {}
 	mapData.disappearingParts = {}
+	mapData.pendulumParts = {}
 
 	-- Cancel auto-cycling threads
 	for _, data in ipairs(mapData.autoCyclingParts) do
@@ -609,6 +714,7 @@ function MapManager:generateMapForMatch(matchId: string, stageOrder: {number}): 
 		spinningParts = {},
 		disappearingParts = {},
 		autoCyclingParts = {},
+		pendulumParts = {},
 		animationConnection = nil,
 		folder = matchFolder,
 	}

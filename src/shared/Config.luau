@@ -19,7 +19,7 @@ local Config = {
 
 	-- Stage Settings
 	Stages = {
-		TotalCount = 11,       -- จำนวนด่านทั้งหมดใน pool
+		TotalCount = 12,       -- จำนวนด่านทั้งหมดใน pool
 		SelectionCount = 5,    -- จำนวนด่านที่เลือกต่อรอบ (แก้ได้เพื่อ test)
 		StageLength = 100,     -- ความยาวแต่ละด่าน (studs)
 		StartOffset = Vector3.new(-150, 0, 250), -- ตำแหน่งเริ่มต้นของด่านแรก
@@ -234,7 +234,7 @@ local Config = {
 	-- Map Physics Settings
 	Map = {
 		StageGapStuds = 10,             -- ระยะห่างระหว่าง stage (studs)
-		FinishLineRadius = 20,          -- ระยะตรวจจับ finish line (studs)
+		FinishLineRadius = 8,           -- ระยะตรวจจับ finish line (studs)
 		PlatformServoForce = 1000000,   -- แรง servo ของ moving platform
 		PlatformServoSpeed = 50,        -- ความเร็ว servo ของ moving platform
 	},

@@ -115,6 +115,15 @@ StageInfo.Stages = {
 		gradientEnd = Color3.fromRGB(180, 80, 255),
 		reward = 4,
 	},
+	{
+		id = 12,
+		name = "Pendulum",
+		icon = "🔨",
+		difficulty = "Normal",
+		color = Color3.fromRGB(120, 120, 120),
+		gradientEnd = Color3.fromRGB(180, 180, 180),
+		reward = 4,
+	},
 }
 
 -- Difficulty display metadata

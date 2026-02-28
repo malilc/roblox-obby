@@ -1238,10 +1238,14 @@ function StageTemplates.createStage10(startPosition: Vector3): Model
 end
 
 -- ============================================================
--- Stage 11: Lane Switch (Normal)
--- 4 เลนขนานที่เปิด-ปิดสลับจังหวะ ผู้เล่นต้องสลับเลนตามเวลา
+-- Stage 11: Lane Switch (Normal) — ยาว 2 เท่า (200 studs)
+-- 4 เลนแบบ Checkerboard บังคับสลับเลนทุก segment
+-- OFF segments แสดงเงาจางๆ (ghostly) เพื่อให้เห็นว่าจะปลอดภัยรอบถัดไป
+-- มีจุดพักปลอดภัย 1 จุด ตรงกลาง
 -- ============================================================
 function StageTemplates.createStage11(startPosition: Vector3): Model
+	local stageLength = 200 -- 2x ปกติ
+
 	local stage = Instance.new("Model")
 	stage.Name = "Stage11_LaneSwitch"
 
@@ -1253,10 +1257,10 @@ function StageTemplates.createStage11(startPosition: Vector3): Model
 	itemPickups.Name = "ItemPickups"
 	itemPickups.Parent = stage
 
-	-- Start Part (กว้างพอสำหรับ 4 เลน)
+	-- Start Part
 	local startPart = createPart({
 		Name = "StartPart",
-		Size = Vector3.new(8, 2, 24),
+		Size = Vector3.new(5, 2, 24),
 		Position = startPosition + Vector3.new(0, 0, 0),
 		Color = Color3.fromRGB(100, 100, 100),
 		Material = Enum.Material.Concrete,
@@ -1274,79 +1278,250 @@ function StageTemplates.createStage11(startPosition: Vector3): Model
 		Color3.fromRGB(180, 80, 255),  -- Lane 3: ม่วง
 		Color3.fromRGB(255, 150, 30),  -- Lane 4: ส้ม
 	}
-	local laneZ = { -9, -3, 3, 9 }     -- ห่างกันมากขึ้นเพราะเลนกว้าง
-	local laneWidth = 5.5               -- กว้างขึ้น (จาก 3.5)
+	local laneZ = { -9, -3, 3, 9 }
+	local laneWidth = 5.5
 
-	-- === Zone definitions ===
-	-- แต่ละโซน: startX, endX, จังหวะเปิดปิด (onTime/offTime)
-	-- เลนคู่/คี่ offset กัน เพื่อให้เปิดสลับ
-	local zones = {
-		{ startX = 8,  endX = 35, onTime = 4.0, offTime = 3.0 },  -- โซน 1: ช้า
-		{ startX = 38, endX = 65, onTime = 3.5, offTime = 2.5 },  -- โซน 2: เร็วขึ้น
-		{ startX = 68, endX = 95, onTime = 2.5, offTime = 2.0 },  -- โซน 3: เร็วสุด
-	}
+	-- === Segment Config ===
+	local segLength = 8
+	local segGap = 2
+	local segStride = segLength + segGap -- 10 studs
+	local numSegments = 9 -- ต่อ section
 
-	for zoneIdx, zone in ipairs(zones) do
-		local zoneLength = zone.endX - zone.startX
-		local zoneMidX = zone.startX + zoneLength / 2
+	-- === Cycling Config ===
+	local onTime = 3.0
+	local offTime = 3.0
+	local blinkTime = 1.0
 
-		for laneIdx, z in ipairs(laneZ) do
-			local lanePart = createPart({
-				Name = "Lane_Z" .. zoneIdx .. "_L" .. laneIdx,
-				Size = Vector3.new(zoneLength, 2, laneWidth),
-				Position = startPosition + Vector3.new(zoneMidX, 0, z),
-				Color = laneColors[laneIdx],
-				Material = Enum.Material.Neon,
-			})
+	-- === Layout: 2 sections + rest zone ตรงกลาง ===
+	-- [Start 5s] [Section1: 90s] [gap] [RestZone 10s] [gap] [Section2: 90s] [End]
+	local section1Start = 5
+	local restZoneX = 100 -- center ของ rest zone (กลาง stage)
+	local restZoneWidth = 10
+	local section2Start = restZoneX + restZoneWidth / 2 + 2 -- 107
 
-			-- ใช้ IsAutoCycling: เปิดปิดอัตโนมัติตามเวลา + กระพริบเตือนก่อนปิด
-			lanePart:SetAttribute("IsAutoCycling", true)
-			lanePart:SetAttribute("CycleOnTime", zone.onTime)
-			lanePart:SetAttribute("CycleOffTime", zone.offTime)
-			lanePart:SetAttribute("BlinkTime", 1.0)
+	-- === Helper: สร้าง checkerboard section ===
+	-- Segment ที่ ON = สีสดใส ทึบ (ปลอดภัย กระโดดได้!)
+	-- Segment ที่ OFF = เงาจางๆ สีมืด (เห็นตำแหน่ง แต่ตกทะลุ!)
+	local function createSection(sectionStartX: number, label: string)
+		for segIdx = 1, numSegments do
+			local segX = sectionStartX + (segIdx - 1) * segStride + segLength / 2
 
-			-- เลนคี่ (1,3) เริ่มเปิดทันที / เลนคู่ (2,4) เริ่มหลัง offset
-			-- ทำให้ขณะเลน 1,3 กำลังจะปิด → เลน 2,4 เพิ่งเปิด
-			if laneIdx % 2 == 0 then
-				lanePart:SetAttribute("CycleOffset", zone.onTime * 0.5)
-			else
-				lanePart:SetAttribute("CycleOffset", 0)
+			for laneIdx, z in ipairs(laneZ) do
+				local isPhaseB = (laneIdx + segIdx) % 2 == 1
+
+				local seg = createPart({
+					Name = label .. "_Seg" .. segIdx .. "_L" .. laneIdx,
+					Size = Vector3.new(segLength, 2, laneWidth),
+					Position = startPosition + Vector3.new(segX, 0, z),
+					Color = laneColors[laneIdx],
+					Material = Enum.Material.SmoothPlastic,
+				})
+
+				seg:SetAttribute("IsAutoCycling", true)
+				seg:SetAttribute("CycleOnTime", onTime)
+				seg:SetAttribute("CycleOffTime", offTime)
+				seg:SetAttribute("BlinkTime", blinkTime)
+				seg:SetAttribute("OffTransparency", 0.75) -- เงาจางตอนปิด
+
+				if isPhaseB then
+					seg:SetAttribute("StartsOff", true)
+					seg:SetAttribute("CycleOffset", onTime)
+				else
+					seg:SetAttribute("CycleOffset", 0)
+				end
+
+				seg.Parent = obstacles
 			end
-
-			lanePart.Parent = obstacles
 		end
 	end
 
-	-- === Transition Platforms (ระหว่างโซน) ===
-	local transitionXPositions = { 36.5, 66.5 }
-	for i, tx in ipairs(transitionXPositions) do
-		local transPlat = createPart({
-			Name = "Transition_" .. i,
-			Size = Vector3.new(5, 2, 24),
-			Position = startPosition + Vector3.new(tx, 0, 0),
-			Color = Color3.fromRGB(200, 200, 200),
-			Material = Enum.Material.DiamondPlate,
-		})
-		transPlat.Parent = obstacles
-	end
+	-- === Checkerboard Pattern (ทั้ง 2 sections) ===
+	--
+	--  สีสด = ON (ปลอดภัย!)    จาง = OFF (ตกทะลุ!)
+	--
+	--         Seg1  Seg2  Seg3  Seg4  Seg5  Seg6  Seg7  Seg8  Seg9
+	-- Lane1: [สด]  จาง  [สด]  จาง  [สด]  จาง  [สด]  จาง  [สด]
+	-- Lane2:  จาง  [สด]  จาง  [สด]  จาง  [สด]  จาง  [สด]  จาง
+	-- Lane3: [สด]  จาง  [สด]  จาง  [สด]  จาง  [สด]  จาง  [สด]
+	-- Lane4:  จาง  [สด]  จาง  [สด]  จาง  [สด]  จาง  [สด]  จาง
+	--
+	-- ทุก 3 วินาที สลับเฟส: สด↔จาง
+	-- ต้อง zigzag ข้ามเลนตลอด!
 
-	-- === Item Pickups (4 ชิ้น กระจายตามโซน) ===
+	-- Section 1
+	createSection(section1Start, "S1")
+
+	-- === Rest Zone (จุดพักปลอดภัย ตรงกลาง) ===
+	local restPlatform = createPart({
+		Name = "RestZone",
+		Size = Vector3.new(restZoneWidth, 2, 24),
+		Position = startPosition + Vector3.new(restZoneX, 0, 0),
+		Color = Color3.fromRGB(0, 180, 80),
+		Material = Enum.Material.DiamondPlate,
+	})
+	restPlatform.Parent = obstacles
+
+	-- Checkpoint ที่จุดพัก
+	local cpRest = createCheckpoint(startPosition + Vector3.new(restZoneX, 1, 0))
+	cpRest.Parent = stage
+
+	-- Section 2
+	createSection(section2Start, "S2")
+
+	-- === Item Pickups (4 ชิ้น กระจายทั้ง 2 sections) ===
 	local itemPositions = {
-		startPosition + Vector3.new(20, 2, laneZ[1]),   -- โซน 1 เลน 1
-		startPosition + Vector3.new(36.5, 2, 0),        -- transition 1
-		startPosition + Vector3.new(52, 2, laneZ[4]),   -- โซน 2 เลน 4
-		startPosition + Vector3.new(80, 2, laneZ[2]),   -- โซน 3 เลน 2
+		startPosition + Vector3.new(section1Start + 2 * segStride + segLength / 2, 2, laneZ[2]),
+		startPosition + Vector3.new(section1Start + 6 * segStride + segLength / 2, 2, laneZ[3]),
+		startPosition + Vector3.new(section2Start + 2 * segStride + segLength / 2, 2, laneZ[4]),
+		startPosition + Vector3.new(section2Start + 6 * segStride + segLength / 2, 2, laneZ[1]),
 	}
 	for _, pos in ipairs(itemPositions) do
 		local item = createItemPickup(pos)
 		item.Parent = itemPickups
 	end
 
-	-- End Part (กว้างพอสำหรับ 4 เลน)
+	-- End Part
 	local endPart = createPart({
 		Name = "EndPart",
-		Size = Vector3.new(10, 2, 24),
-		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
+		Size = Vector3.new(6, 2, 24),
+		Position = startPosition + Vector3.new(stageLength, 0, 0),
+		Color = Color3.fromRGB(80, 80, 80),
+		Material = Enum.Material.DiamondPlate,
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
+-- ==================== STAGE 12: Pendulum (Normal) ====================
+function StageTemplates.createStage12(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage_Pendulum"
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	local stageLength = 200
+	local runwayWidth = 8
+
+	-- Start Part
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(6, 2, runwayWidth),
+		Position = startPosition,
+		Color = Color3.fromRGB(80, 80, 80),
+		Material = Enum.Material.DiamondPlate,
+	})
+	startPart.Parent = stage
+
+	-- Runway floor
+	local runway = createPart({
+		Name = "Runway",
+		Size = Vector3.new(stageLength, 1, runwayWidth),
+		Position = startPosition + Vector3.new(stageLength / 2, -0.5, 0),
+		Color = Color3.fromRGB(140, 140, 150),
+		Material = Enum.Material.Concrete,
+	})
+	runway.Parent = obstacles
+
+	-- Layout: Start → Checkpoint → All 12 pendulums → End
+	-- No pendulums behind spawn or checkpoint
+	-- X=0: Start, X=10: Checkpoint, X=25 to X=190: 12 pendulums, X=200: End
+	local beamWidth = runwayWidth + 4
+	local pendulumStart = 25
+	local pendulumEnd = 190
+
+	local pendulumConfigs = {
+		{ speed = 2.5, angle = 50, phase = 0,            rope = 15 },
+		{ speed = 2.5, angle = 50, phase = math.pi / 2,  rope = 15 },
+		{ speed = 2.8, angle = 50, phase = 0,            rope = 15 },
+		{ speed = 2.8, angle = 50, phase = math.pi / 2,  rope = 16 },
+		{ speed = 3.0, angle = 52, phase = 0,            rope = 16 },
+		{ speed = 3.0, angle = 52, phase = math.pi / 2,  rope = 16 },
+		{ speed = 3.2, angle = 52, phase = 0,            rope = 17 },
+		{ speed = 3.2, angle = 52, phase = math.pi / 2,  rope = 17 },
+		{ speed = 3.5, angle = 55, phase = 0,            rope = 17 },
+		{ speed = 3.5, angle = 55, phase = math.pi / 2,  rope = 18 },
+		{ speed = 4.0, angle = 55, phase = 0,            rope = 18 },
+		{ speed = 4.0, angle = 55, phase = math.pi / 4,  rope = 18 },
+	}
+
+	local numPendulums = #pendulumConfigs
+	local pendulumSpacing = (pendulumEnd - pendulumStart) / (numPendulums + 1)
+
+	for i, config in ipairs(pendulumConfigs) do
+		local xOffset = pendulumStart + pendulumSpacing * i
+		local ballY = 5 -- ball radius = 5, so center at Y=5 sits on runway surface
+		local beamY = startPosition.Y + ballY + config.rope + 3
+
+		-- Pendulum ball (pushes player, NOT kill)
+		local ball = Instance.new("Part")
+		ball.Name = "PendulumBall_" .. i
+		ball.Shape = Enum.PartType.Ball
+		ball.Size = Vector3.new(10, 10, 10)
+		ball.Position = startPosition + Vector3.new(xOffset, ballY, 0)
+		ball.Anchored = true
+		ball.Material = Enum.Material.SmoothPlastic
+		ball.Color = Color3.fromRGB(200, 50, 50)
+		ball.CanCollide = true
+		ball:SetAttribute("IsPendulum", true)
+		ball:SetAttribute("PendulumRopeLength", config.rope)
+		ball:SetAttribute("PendulumMaxAngle", config.angle)
+		ball:SetAttribute("PendulumSpeed", config.speed)
+		ball:SetAttribute("PendulumPhaseOffset", config.phase)
+		ball:SetAttribute("PendulumRopeName", "Rope_" .. i)
+		ball.Parent = obstacles
+
+		-- Rope (visual, no collision)
+		local rope = createPart({
+			Name = "Rope_" .. i,
+			Size = Vector3.new(0.5, config.rope, 0.5),
+			Position = startPosition + Vector3.new(xOffset, ballY + config.rope / 2, 0),
+			Color = Color3.fromRGB(80, 80, 80),
+			Material = Enum.Material.Metal,
+		})
+		rope.CanCollide = false
+		rope.Parent = obstacles
+
+		-- Overhead beam
+		local beam = createPart({
+			Name = "Beam_" .. i,
+			Size = Vector3.new(2, 2, beamWidth),
+			Position = startPosition + Vector3.new(xOffset, beamY, 0),
+			Color = Color3.fromRGB(100, 100, 110),
+			Material = Enum.Material.Metal,
+		})
+		beam.Parent = obstacles
+
+	end
+
+	-- Checkpoint right before pendulums (die → respawn here, all pendulums ahead)
+	local cp = createCheckpoint(startPosition + Vector3.new(15, 1, 0))
+	cp.Parent = stage
+
+	-- Item pickups between pendulums
+	local coin1 = createItemPickup(startPosition + Vector3.new(pendulumStart + pendulumSpacing * 2.5, 3, 6))
+	coin1.Parent = itemPickups
+
+	local coin2 = createItemPickup(startPosition + Vector3.new(pendulumStart + pendulumSpacing * 5.5, 3, -6))
+	coin2.Parent = itemPickups
+
+	local coin3 = createItemPickup(startPosition + Vector3.new(pendulumStart + pendulumSpacing * 8.5, 3, 6))
+	coin3.Parent = itemPickups
+
+	local coin4 = createItemPickup(startPosition + Vector3.new(pendulumStart + pendulumSpacing * 11.5, 3, -6))
+	coin4.Parent = itemPickups
+
+	-- End Part
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(6, 2, runwayWidth),
+		Position = startPosition + Vector3.new(stageLength, 0, 0),
 		Color = Color3.fromRGB(80, 80, 80),
 		Material = Enum.Material.DiamondPlate,
 	})
@@ -1369,6 +1544,7 @@ function StageTemplates.getStageCreators(): {(Vector3) -> Model}
 		StageTemplates.createStage9,  -- Easy: Rope Walk
 		StageTemplates.createStage10, -- Easy: Rainbow Zigzag
 		StageTemplates.createStage11, -- Normal: Lane Switch
+		StageTemplates.createStage12, -- Normal: Pendulum
 	}
 end
 
