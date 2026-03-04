@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 local RemoteRegistry = require(ReplicatedStorage.Shared.RemoteRegistry)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
@@ -22,8 +23,19 @@ local SpectatorUI = require(script.Parent.SpectatorUI)
 local DailyBonusUI = require(script.Parent.DailyBonusUI)
 local LeaderboardUI = require(script.Parent.LeaderboardUI)
 local ShopUI = require(script.Parent.ShopUI)
+local MenuGridUI = require(script.Parent.MenuGridUI)
 
 local LocalPlayer = Players.LocalPlayer
+
+-- Map panel keys to MenuGridUI button IDs
+local PANEL_TO_BUTTON = {
+	shopUI            = "Shop",
+	classSelectionUI  = "Classes",
+	titleCollectionUI = "Titles",
+	tutorialUI        = "Help",
+}
+
+local MANAGED_PANELS = {"shopUI", "classSelectionUI", "titleCollectionUI", "tutorialUI"}
 
 local MainUI = {}
 MainUI.__index = MainUI
@@ -50,58 +62,88 @@ function MainUI.new()
 	self.summaryUI = SummaryUI.new(screenGui)
 	self.matchLobbyUI = MatchLobbyUI.new(screenGui)
 	self.raceResultsUI = RaceResultsUI.new(screenGui)
-	self.titleCollectionUI = TitleCollectionUI.new(screenGui)
+	self.titleCollectionUI = TitleCollectionUI.new(screenGui, {
+		onHide = function()
+			self:_syncGridButton("titleCollectionUI", false)
+		end,
+	})
 	self.tutorialUI = TutorialUI.new(screenGui, {
+		hideHelpButton = true,
 		onShow = function()
-			if self.classSelectionUI and self.classSelectionUI.isVisible then
-				self.classSelectionUI:hide()
-			end
-			if self.titleCollectionUI and self.titleCollectionUI.isVisible then
-				self.titleCollectionUI:hide()
-			end
+			self:_hideAllExcept("tutorialUI")
+			self:_syncGridButton("tutorialUI", true)
+		end,
+		onHide = function()
+			self:_syncGridButton("tutorialUI", false)
 		end,
 	})
 	self.spectatorUI = SpectatorUI.new(screenGui)
-	self.dailyBonusUI = DailyBonusUI.new(screenGui)
+	self.dailyBonusUI = DailyBonusUI.new(screenGui, { hideHudButton = true })
 	self.leaderboardUI = LeaderboardUI.new(screenGui)
 
 	-- ShopUI with mutual exclusion
 	self.shopUI = ShopUI.new(screenGui, {
 		onShow = function()
-			if self.stageSelectionUI and self.stageSelectionUI.isVisible then
-				self.stageSelectionUI:hide()
-			end
-			if self.classSelectionUI and self.classSelectionUI.isVisible then
-				self.classSelectionUI:hide()
-			end
-			if self.titleCollectionUI and self.titleCollectionUI.isVisible then
-				self.titleCollectionUI:hide()
-			end
+			self:_hideAllExcept("shopUI")
+			self:_syncGridButton("shopUI", true)
+		end,
+		onHide = function()
+			self:_syncGridButton("shopUI", false)
 		end,
 	})
 
 	-- ClassSelectionUI with cross-navigation callback
 	self.classSelectionUI = ClassSelectionUI.new(screenGui, {
+		hideIndicator = true,
 		onOpenTitleCollection = function()
 			self.classSelectionUI:hide()
 			task.delay(0.15, function()
-				self.titleCollectionUI:show()
+				self:openMenuPanel("titleCollectionUI")
 			end)
 		end,
 		onShow = function()
-			if self.titleCollectionUI and self.titleCollectionUI.isVisible then
-				self.titleCollectionUI:hide()
-			end
-			if self.tutorialUI and self.tutorialUI.isVisible then
-				self.tutorialUI:hide()
-			end
+			self:_hideAllExcept("classSelectionUI")
+			self:_syncGridButton("classSelectionUI", true)
+		end,
+		onHide = function()
+			self:_syncGridButton("classSelectionUI", false)
 		end,
 	})
 
-	-- TitleHUD with callback to open collection
+	-- TitleHUD with callback to open collection (hidden — replaced by menu grid)
 	self.titleHUDUI = TitleHUDUI.new(screenGui, function()
-		self:toggleTitleCollection()
-	end)
+		self:toggleMenuPanel("titleCollectionUI")
+	end, { hidden = true })
+
+	-- Menu Grid (top-left button grid)
+	self.menuGridUI = MenuGridUI.new(screenGui, {
+		onShop = function()
+			self:toggleMenuPanel("shopUI")
+		end,
+		onClasses = function()
+			self:toggleMenuPanel("classSelectionUI")
+		end,
+		onTitles = function()
+			self:toggleMenuPanel("titleCollectionUI")
+		end,
+		onDaily = function()
+			-- Toggle: if calendar is open, close it; otherwise close other panels and open it
+			if self.dailyBonusUI._calendarOpen then
+				self.dailyBonusUI:hideCalendar()
+			else
+				self:closeAllMenuPanels()
+				local data = self.dailyBonusUI.lastData
+					or { claimed = false, day = 1, rewards = {25, 50, 75, 100, 150, 200, 500}, gemRewards = {1, 1, 2, 2, 3, 3, 5} }
+				self.dailyBonusUI:showCalendar(data)
+			end
+		end,
+		onHelp = function()
+			self:toggleMenuPanel("tutorialUI")
+		end,
+		onSettings = function()
+			-- stub: no SettingsUI yet
+		end,
+	})
 
 	-- Setup remote listeners
 	self:setupRemotes()
@@ -109,19 +151,84 @@ function MainUI.new()
 	return self
 end
 
-function MainUI:toggleTitleCollection()
-	if self.titleCollectionUI then
-		if self.titleCollectionUI.isVisible then
-			self.titleCollectionUI:hide()
-		else
-			if self.classSelectionUI and self.classSelectionUI.isVisible then
-				self.classSelectionUI:hide()
-			end
-			if self.tutorialUI and self.tutorialUI.isVisible then
-				self.tutorialUI:hide()
-			end
-			self.titleCollectionUI:show()
+-- Sync grid button active state
+function MainUI:_syncGridButton(panelKey: string, active: boolean)
+	if self.menuGridUI then
+		local btnId = PANEL_TO_BUTTON[panelKey]
+		if btnId then
+			self.menuGridUI:setActive(btnId, active)
 		end
+	end
+end
+
+-- Hide all managed panels except the one specified
+function MainUI:_hideAllExcept(exceptKey: string)
+	for _, key in ipairs(MANAGED_PANELS) do
+		if key ~= exceptKey then
+			local panel = self[key]
+			if panel and panel.isVisible then
+				panel:hide()
+			end
+		end
+	end
+	-- Also close daily calendar if it's open
+	if self.dailyBonusUI then
+		self.dailyBonusUI:hideCalendar()
+	end
+	-- Also hide stage selection if shop is opening
+	if exceptKey == "shopUI" and self.stageSelectionUI and self.stageSelectionUI.isVisible then
+		self.stageSelectionUI:hide()
+	end
+end
+
+-- Toggle a managed panel: close if open, open if closed (closing others first)
+function MainUI:toggleMenuPanel(panelKey: string)
+	local panel = self[panelKey]
+	if not panel then return end
+
+	if panel.isVisible then
+		panel:hide()
+	else
+		self:openMenuPanel(panelKey)
+	end
+end
+
+-- Always open a panel (used by zone triggers and cross-navigation)
+function MainUI:openMenuPanel(panelKey: string)
+	local panel = self[panelKey]
+	if not panel then return end
+
+	-- Hide all other managed panels
+	self:_hideAllExcept(panelKey)
+
+	-- Clear all grid active states, then set the target active
+	if self.menuGridUI then
+		self.menuGridUI:clearAllActive()
+		local btnId = PANEL_TO_BUTTON[panelKey]
+		if btnId then
+			self.menuGridUI:setActive(btnId, true)
+		end
+	end
+
+	if not panel.isVisible then
+		panel:show()
+	end
+end
+
+-- Close all managed panels (e.g. when race starts)
+function MainUI:closeAllMenuPanels()
+	for _, key in ipairs(MANAGED_PANELS) do
+		local panel = self[key]
+		if panel and panel.isVisible then
+			panel:hide()
+		end
+	end
+	-- Also close daily calendar
+	if self.dailyBonusUI then
+		self.dailyBonusUI:hideCalendar()
+	end
+	if self.menuGridUI then
+		self.menuGridUI:clearAllActive()
 	end
 end
 
@@ -145,6 +252,8 @@ function MainUI:setupRemotes()
 	RemoteRegistry.get("CountdownUpdate").OnClientEvent:Connect(function(data)
 		if data.totalStages then
 			self.scoreUI:showStageProgress(data.totalStages)
+			-- Close all menu panels when race starts
+			self:closeAllMenuPanels()
 		end
 	end)
 
@@ -237,7 +346,6 @@ function MainUI:onCurrencyUpdate(data: {[string]: any})
 end
 
 function MainUI:showTimeWarning(message: string, isCritical: boolean?)
-	local TweenService = game:GetService("TweenService")
 	local notification = Instance.new("TextLabel")
 	notification.Name = "TimeWarning"
 	notification.Size = UDim2.new(0, 260, 0, 36)
@@ -267,8 +375,6 @@ function MainUI:showTimeWarning(message: string, isCritical: boolean?)
 end
 
 function MainUI:showDeathNotification()
-	local TweenService = game:GetService("TweenService")
-
 	-- เล็กลง + อยู่ด้านบน + โปร่งใส
 	local notification = Instance.new("TextLabel")
 	notification.Name = "DeathNotification"

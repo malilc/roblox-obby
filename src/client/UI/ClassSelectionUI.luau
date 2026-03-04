@@ -320,7 +320,7 @@ function ClassSelectionUI:createUI()
 	local containerStroke = Instance.new("UIStroke")
 	containerStroke.Color = Theme.ACCENT_CYAN
 	containerStroke.Thickness = Theme.STROKE_BOLD
-	containerStroke.Transparency = 0.2
+	containerStroke.Transparency = 0.4
 	containerStroke.Parent = container
 
 	-- Drop shadow
@@ -338,75 +338,43 @@ function ClassSelectionUI:createUI()
 	-- Header row
 	local header = Instance.new("TextLabel")
 	header.Name = "Header"
-	header.Size = UDim2.new(0.6, 0, 0, 32)
-	header.Position = UDim2.new(0, 24, 0, 16)
+	header.Size = UDim2.new(0, 300, 0, 40)
+	header.Position = UDim2.new(0, 22, 0, 10)
 	header.BackgroundTransparency = 1
-	header.Text = "SELECT YOUR CLASS"
-	header.TextColor3 = COLORS.TEXT_PRIMARY
-	header.TextSize = 26
-	header.Font = Enum.Font.GothamBlack
+	header.RichText = true
+	header.Text = '<font size="20">\u{2694}</font>  <font face="GothamBold" size="24"><b>CLASSES</b></font>'
+	header.TextColor3 = Theme.TEXT_PRIMARY
+	header.TextSize = 24
+	header.Font = Enum.Font.GothamBold
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.Parent = container
-
-	-- Header text stroke
-	local headerTextStroke = Instance.new("UIStroke")
-	headerTextStroke.Color = Theme.HUD_SCORE_END
-	headerTextStroke.Thickness = 1.5
-	headerTextStroke.Transparency = 0.4
-	headerTextStroke.Parent = header
-
-	local subHeader = Instance.new("TextLabel")
-	subHeader.Name = "SubHeader"
-	subHeader.Size = UDim2.new(0.6, 0, 0, 18)
-	subHeader.Position = UDim2.new(0, 24, 0, 48)
-	subHeader.BackgroundTransparency = 1
-	subHeader.Text = "Choose your play style"
-	subHeader.TextColor3 = COLORS.TEXT_SECONDARY
-	subHeader.TextSize = 14
-	subHeader.Font = Enum.Font.GothamMedium
-	subHeader.TextXAlignment = Enum.TextXAlignment.Left
-	subHeader.Parent = container
-
-	-- Currency display (top-right)
-	local currencyLabel = Instance.new("TextLabel")
-	currencyLabel.Name = "CurrencyLabel"
-	currencyLabel.Size = UDim2.new(0, 140, 0, 30)
-	currencyLabel.Position = UDim2.new(1, -170, 0, 18)
-	currencyLabel.BackgroundColor3 = Theme.BG_ELEVATED
-	currencyLabel.BackgroundTransparency = 0.05
-	currencyLabel.BorderSizePixel = 0
-	currencyLabel.Text = "0"
-	currencyLabel.TextColor3 = Theme.PRIMARY
-	currencyLabel.TextSize = 16
-	currencyLabel.Font = Enum.Font.GothamBold
-	currencyLabel.Parent = container
-	self.currencyLabel = currencyLabel
-
-	local currencyCorner = Instance.new("UICorner")
-	currencyCorner.CornerRadius = Theme.CORNER_SM
-	currencyCorner.Parent = currencyLabel
-
-	local currencyStroke = Instance.new("UIStroke")
-	currencyStroke.Color = Theme.BG_ELEVATED
-	currencyStroke.Thickness = Theme.STROKE_THIN
-	currencyStroke.Parent = currencyLabel
 
 	-- Close button
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Name = "CloseButton"
-	closeBtn.Size = UDim2.new(0, 30, 0, 30)
-	closeBtn.Position = UDim2.new(1, -36, 0, 18)
-	closeBtn.BackgroundColor3 = Theme.DANGER
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -50, 0, 12)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 40, 75)
 	closeBtn.BorderSizePixel = 0
-	closeBtn.Text = "X"
-	closeBtn.TextColor3 = Theme.TEXT_PRIMARY
-	closeBtn.TextSize = 15
-	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.Text = ""
 	closeBtn.Parent = container
+	Theme.applyCorner(closeBtn, "sm")
 
-	local closeBtnCorner = Instance.new("UICorner")
-	closeBtnCorner.CornerRadius = Theme.CORNER_SM
-	closeBtnCorner.Parent = closeBtn
+	local closeStroke = Instance.new("UIStroke")
+	closeStroke.Color = Theme.TEXT_MUTED
+	closeStroke.Thickness = 1
+	closeStroke.Transparency = 0.5
+	closeStroke.Parent = closeBtn
+
+	local closeBtnLabel = Instance.new("TextLabel")
+	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
+	closeBtnLabel.BackgroundTransparency = 1
+	closeBtnLabel.Text = "X"
+	closeBtnLabel.TextColor3 = Theme.TEXT_MUTED
+	closeBtnLabel.TextSize = 18
+	closeBtnLabel.Font = Enum.Font.GothamBold
+	closeBtnLabel.ZIndex = closeBtn.ZIndex + 1
+	closeBtnLabel.Parent = closeBtn
 
 	closeBtn.MouseButton1Click:Connect(function()
 		self:hide()
@@ -416,7 +384,7 @@ function ClassSelectionUI:createUI()
 	local classesFrame = Instance.new("Frame")
 	classesFrame.Name = "ClassesFrame"
 	classesFrame.Size = UDim2.new(1, -40, 0, 280)
-	classesFrame.Position = UDim2.new(0, 20, 0, 76)
+	classesFrame.Position = UDim2.new(0, 20, 0, 58)
 	classesFrame.BackgroundTransparency = 1
 	classesFrame.Parent = container
 
@@ -557,7 +525,9 @@ function ClassSelectionUI:createUI()
 		self:confirmSelection()
 	end)
 
-	self:createCurrentClassIndicator()
+	if not (self.callbacks and self.callbacks.hideIndicator) then
+		self:createCurrentClassIndicator()
+	end
 end
 
 -- ── Class Card ──
@@ -1524,6 +1494,7 @@ function ClassSelectionUI:confirmSelection()
 end
 
 function ClassSelectionUI:updateIndicator(classId: string)
+	if not self.classIndicator then return end
 	local classDef = ClassTypes.getClass(classId)
 	if not classDef then
 		return
@@ -1727,11 +1698,9 @@ function ClassSelectionUI:show()
 	self.isVisible = true
 	self.container.Visible = true
 
-	self.container.Position = UDim2.new(0.5, 0, 0.5, 40)
 	self.container.BackgroundTransparency = 1
 
-	TweenService:Create(self.container, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
-		Position = UDim2.new(0.5, 0, 0.5, 0),
+	TweenService:Create(self.container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0.02,
 	}):Play()
 
@@ -1741,12 +1710,15 @@ end
 function ClassSelectionUI:hide()
 	self.isVisible = false
 
-	TweenService:Create(self.container, TweenInfo.new(0.2), {
-		Position = UDim2.new(0.5, 0, 0.5, 40),
-		BackgroundTransparency = 1,
-	}):Play()
+	if self.callbacks and self.callbacks.onHide then
+		self.callbacks.onHide()
+	end
 
-	task.delay(0.2, function()
+	local fadeOut = TweenService:Create(self.container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		BackgroundTransparency = 1,
+	})
+	fadeOut:Play()
+	fadeOut.Completed:Connect(function()
 		self.container.Visible = false
 	end)
 end

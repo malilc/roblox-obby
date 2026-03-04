@@ -143,10 +143,11 @@ local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: C
 	return result
 end
 
-function TitleCollectionUI.new(parent: ScreenGui)
+function TitleCollectionUI.new(parent: ScreenGui, callbacks: {onHide: (() -> ())?}?)
 	local self = setmetatable({}, TitleCollectionUI)
 
 	self.parent = parent
+	self.callbacks = callbacks
 	self.remotes = Remotes
 	self.isVisible = false
 	self.titleCatalog = {}
@@ -200,8 +201,8 @@ function TitleCollectionUI:createUI()
 	-- Glow stroke
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.ACCENT_CYAN
-	stroke.Thickness = Theme.STROKE_MED
-	stroke.Transparency = 0.2
+	stroke.Thickness = Theme.STROKE_BOLD
+	stroke.Transparency = 0.4
 	stroke.Parent = container
 
 	-- Drop shadow
@@ -219,39 +220,43 @@ function TitleCollectionUI:createUI()
 	-- ===== HEADER =====
 	local header = Instance.new("TextLabel")
 	header.Name = "Header"
-	header.Size = UDim2.new(1, -110, 0, 36)
-	header.Position = UDim2.new(0, 18, 0, 14)
+	header.Size = UDim2.new(0, 300, 0, 40)
+	header.Position = UDim2.new(0, 22, 0, 10)
 	header.BackgroundTransparency = 1
-	header.Text = "TITLE COLLECTION"
-	header.TextColor3 = COLORS.TEXT_PRIMARY
-	header.TextSize = 26
-	header.Font = Enum.Font.GothamBlack
+	header.RichText = true
+	header.Text = '<font size="20">\u{1F4CB}</font>  <font face="GothamBold" size="24"><b>TITLES</b></font>'
+	header.TextColor3 = Theme.TEXT_PRIMARY
+	header.TextSize = 24
+	header.Font = Enum.Font.GothamBold
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.Parent = container
 
-	-- Header text stroke
-	local headerStroke = Instance.new("UIStroke")
-	headerStroke.Color = Theme.HUD_SCORE_END
-	headerStroke.Thickness = 1.5
-	headerStroke.Transparency = 0.4
-	headerStroke.Parent = header
-
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 32, 0, 32)
-	closeButton.Position = UDim2.new(1, -46, 0, 14)
-	closeButton.BackgroundColor3 = COLORS.BG_CLOSE
+	closeButton.Size = UDim2.new(0, 36, 0, 36)
+	closeButton.Position = UDim2.new(1, -50, 0, 12)
+	closeButton.BackgroundColor3 = Color3.fromRGB(50, 40, 75)
 	closeButton.BorderSizePixel = 0
-	closeButton.Text = "X"
-	closeButton.TextColor3 = COLORS.TEXT_WHITE
-	closeButton.TextSize = 15
-	closeButton.Font = Enum.Font.GothamBold
+	closeButton.Text = ""
 	closeButton.Parent = container
 	self.closeButton = closeButton
+	Theme.applyCorner(closeButton, "sm")
 
-	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = Theme.CORNER_SM
-	closeCorner.Parent = closeButton
+	local closeStroke = Instance.new("UIStroke")
+	closeStroke.Color = Theme.TEXT_MUTED
+	closeStroke.Thickness = 1
+	closeStroke.Transparency = 0.5
+	closeStroke.Parent = closeButton
+
+	local closeBtnLabel = Instance.new("TextLabel")
+	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
+	closeBtnLabel.BackgroundTransparency = 1
+	closeBtnLabel.Text = "X"
+	closeBtnLabel.TextColor3 = Theme.TEXT_MUTED
+	closeBtnLabel.TextSize = 18
+	closeBtnLabel.Font = Enum.Font.GothamBold
+	closeBtnLabel.ZIndex = closeButton.ZIndex + 1
+	closeBtnLabel.Parent = closeButton
 
 	-- ===== ACTIVE TITLE BANNER =====
 	local bannerFrame = Instance.new("Frame")
@@ -1014,11 +1019,9 @@ function TitleCollectionUI:show()
 
 	self.isVisible = true
 	self.container.Visible = true
-	self.container.Position = UDim2.new(0.5, 0, 0.5, 20)
-	self.container.BackgroundTransparency = 0.3
+	self.container.BackgroundTransparency = 1
 
-	TweenService:Create(self.container, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, 0, 0.5, 0),
+	TweenService:Create(self.container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0.02,
 	}):Play()
 end
@@ -1029,9 +1032,13 @@ function TitleCollectionUI:hide()
 	end
 
 	self.isVisible = false
-	local tween = TweenService:Create(self.container, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-		Position = UDim2.new(0.5, 0, 0.5, 20),
-		BackgroundTransparency = 0.4,
+
+	if self.callbacks and self.callbacks.onHide then
+		self.callbacks.onHide()
+	end
+
+	local tween = TweenService:Create(self.container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		BackgroundTransparency = 1,
 	})
 	tween:Play()
 

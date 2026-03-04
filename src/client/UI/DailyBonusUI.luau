@@ -22,13 +22,16 @@ local COLORS = {
 local DailyBonusUI = {}
 DailyBonusUI.__index = DailyBonusUI
 
-function DailyBonusUI.new(parent: ScreenGui)
+function DailyBonusUI.new(parent: ScreenGui, callbacks: {hideHudButton: boolean?}?)
 	local self = setmetatable({}, DailyBonusUI)
 	self.parent        = parent
 	self.lastData      = nil   -- stores last received streak data from server
 	self._calendarOpen = false -- guard: prevent multiple calendar popups
+	self._callbacks    = callbacks
 
-	self:_createHudButton()
+	if not (callbacks and callbacks.hideHudButton) then
+		self:_createHudButton()
+	end
 
 	task.spawn(function()
 		local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -541,6 +544,7 @@ function DailyBonusUI:showCalendar(data)
 		if closing then return end
 		closing = true
 		self._calendarOpen = false
+		self._closeCalendar = nil
 		-- Mark as viewed so HUD button opens view mode next time
 		if self.lastData then self.lastData.claimed = false end
 		TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play()
@@ -553,6 +557,9 @@ function DailyBonusUI:showCalendar(data)
 			modalGui:Destroy()
 		end)
 	end
+
+	-- Store close function so hideCalendar() can call it externally
+	self._closeCalendar = close
 
 	actionBtn.MouseButton1Click:Connect(function()
 		if isClaim then
@@ -615,6 +622,12 @@ function DailyBonusUI:showCalendar(data)
 		task.delay(10, function()
 			if modalGui and modalGui.Parent then close() end
 		end)
+	end
+end
+
+function DailyBonusUI:hideCalendar()
+	if self._closeCalendar then
+		self._closeCalendar()
 	end
 end
 

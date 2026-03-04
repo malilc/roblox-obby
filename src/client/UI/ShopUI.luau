@@ -98,7 +98,7 @@ function ShopUI:createUI()
 	mainFrame.Size = UDim2.new(0, 780, 0, 560)
 	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-	mainFrame.BackgroundColor3 = Color3.fromRGB(30, 22, 55)
+	mainFrame.BackgroundColor3 = Theme.BG_BASE
 	mainFrame.BackgroundTransparency = 0.02
 	mainFrame.BorderSizePixel = 0
 	mainFrame.Visible = false
@@ -107,11 +107,32 @@ function ShopUI:createUI()
 
 	Theme.applyCorner(mainFrame, "lg")
 
+	-- Gradient background
+	local mainGrad = Instance.new("UIGradient")
+	mainGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+	})
+	mainGrad.Rotation = 135
+	mainGrad.Parent = mainFrame
+
 	local borderStroke = Instance.new("UIStroke")
 	borderStroke.Color = Theme.ACCENT_CYAN
 	borderStroke.Thickness = Theme.STROKE_BOLD
 	borderStroke.Transparency = 0.4
 	borderStroke.Parent = mainFrame
+
+	-- Drop shadow
+	local mainShadow = Instance.new("Frame")
+	mainShadow.Name = "Shadow"
+	mainShadow.Size = UDim2.new(1, 6, 1, 6)
+	mainShadow.Position = UDim2.new(0, -3, 0, 4)
+	mainShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	mainShadow.BackgroundTransparency = 0.6
+	mainShadow.BorderSizePixel = 0
+	mainShadow.ZIndex = mainFrame.ZIndex - 1
+	mainShadow.Parent = mainFrame
+	Theme.applyCorner(mainShadow, "lg")
 
 	-- ===== HEADER ROW (Y: 0-55) =====
 	self:createHeader(mainFrame)
@@ -208,6 +229,7 @@ function ShopUI:createCurrencyDisplays(parent: Frame)
 	coinDisplay.Position = UDim2.new(1, -238, 0, 13)
 	coinDisplay.BackgroundColor3 = Color3.fromRGB(40, 30, 65)
 	coinDisplay.BorderSizePixel = 0
+	coinDisplay.Visible = false
 	coinDisplay.Parent = parent
 	Theme.applyCorner(coinDisplay, "full")
 
@@ -255,6 +277,7 @@ function ShopUI:createCurrencyDisplays(parent: Frame)
 	gemDisplay.Position = UDim2.new(1, -100, 0, 13)
 	gemDisplay.BackgroundColor3 = Color3.fromRGB(40, 30, 65)
 	gemDisplay.BorderSizePixel = 0
+	gemDisplay.Visible = false
 	gemDisplay.Parent = parent
 	Theme.applyCorner(gemDisplay, "full")
 
@@ -1319,6 +1342,10 @@ end
 function ShopUI:hide()
 	if not self.isVisible then return end
 	self.isVisible = false
+
+	if self.callbacks.onHide then
+		self.callbacks.onHide()
+	end
 
 	self.isGachaPending = false
 
