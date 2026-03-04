@@ -286,10 +286,11 @@
           "$className": "Part",
           "$properties": {
             "Anchored": true,
+            "Shape": "Cylinder",
             "Color": [0.2, 0.87, 1],
             "Material": "Neon",
-            "Size": [16, 0.5, 16],
-            "Position": [30, 101, 15],
+            "Size": [0.5, 12, 12],
+            "CFrame": [30, 100.3, 5, 0, 1, 0, 1, 0, 0, 0, 0, -1],
             "Transparency": 0.3,
             "CanCollide": false
           }
