@@ -124,6 +124,24 @@ StageInfo.Stages = {
 		gradientEnd = Color3.fromRGB(180, 180, 180),
 		reward = 4,
 	},
+	{
+		id = 13,
+		name = "Spinning Bars",
+		icon = "🌀",
+		difficulty = "Easy",
+		color = Color3.fromRGB(80, 180, 80),
+		gradientEnd = Color3.fromRGB(140, 220, 140),
+		reward = 3,
+	},
+	{
+		id = 14,
+		name = "Boxing Glove Run",
+		icon = "🥊",
+		difficulty = "Easy",
+		color = Color3.fromRGB(200, 35, 30),
+		gradientEnd = Color3.fromRGB(240, 90, 70),
+		reward = 3,
+	},
 }
 
 -- Difficulty display metadata

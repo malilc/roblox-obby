@@ -2,6 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 local StageTemplates = require(script.Parent.StageTemplates)
 
@@ -209,6 +210,46 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 				self:_setupAutoCyclingPlatform(data)
 			end
 
+			-- Generic push-on-touch for any part with PushForce attribute
+			if descendant:GetAttribute("PushForce") and not descendant:GetAttribute("IsPendulum") then
+				local pushStrength = descendant:GetAttribute("PushForce")
+				local pushUp = descendant:GetAttribute("PushUpForce") or 800
+				local pushCooldowns = {}
+				descendant.Touched:Connect(function(hit)
+					local character = hit.Parent
+					local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+					local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+					if humanoid and rootPart and humanoid.Health > 0 then
+						if pushCooldowns[character] then return end
+						pushCooldowns[character] = true
+						task.delay(0.8, function() pushCooldowns[character] = nil end)
+
+						local dir = (rootPart.Position - descendant.Position)
+						dir = Vector3.new(dir.X, 0, dir.Z)
+						if dir.Magnitude > 0.1 then dir = dir.Unit else dir = Vector3.new(0, 0, 1) end
+
+						local attachment = Instance.new("Attachment")
+						attachment.Parent = rootPart
+						local force = Instance.new("VectorForce")
+						force.Attachment0 = attachment
+						force.Force = dir * pushStrength + Vector3.new(0, pushUp, 0)
+						force.RelativeTo = Enum.ActuatorRelativeTo.World
+						force.ApplyAtCenterOfMass = true
+						force.Parent = rootPart
+						task.delay(0.15, function() force:Destroy() attachment:Destroy() end)
+
+						-- Fire hit effect to client (screen shake + red flash)
+						local player = Players:GetPlayerFromCharacter(character)
+						if player then
+							local itemEffectRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("ItemEffect")
+							if itemEffectRemote then
+								itemEffectRemote:FireClient(player, "HitEffect", {})
+							end
+						end
+					end
+				end)
+			end
+
 			if descendant:GetAttribute("IsPendulum") then
 				local ropeLength = descendant:GetAttribute("PendulumRopeLength") or 15
 				local maxAngleDeg = descendant:GetAttribute("PendulumMaxAngle") or 45
@@ -332,6 +373,31 @@ function MapManager:_setupMovingPlatformConstraint(part: Part)
 
 	-- เก็บ reference
 	part:SetAttribute("_HasConstraint", true)
+
+	-- Prevent rotation: keep the part's original orientation
+	local alignAttachment = Instance.new("Attachment")
+	alignAttachment.Name = "AlignAttachment"
+	alignAttachment.Parent = part
+
+	local alignOrientation = Instance.new("AlignOrientation")
+	alignOrientation.Name = "KeepOrientation"
+	alignOrientation.Attachment0 = alignAttachment
+	alignOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	alignOrientation.CFrame = part.CFrame - part.CFrame.Position
+	alignOrientation.MaxTorque = math.huge
+	alignOrientation.Responsiveness = 200
+	alignOrientation.Parent = part
+
+	-- Unanchor welded parts (Massless so they don't drag the assembly down)
+	for _, child in ipairs(part:GetChildren()) do
+		if child:IsA("WeldConstraint") then
+			local other = child.Part1
+			if other and other ~= part and other.Anchored then
+				other.Anchored = false
+				other.Massless = true
+			end
+		end
+	end
 end
 
 -- Internal: Setup disappearing platform

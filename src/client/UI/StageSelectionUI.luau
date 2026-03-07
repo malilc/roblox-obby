@@ -849,14 +849,19 @@ function StageSelectionUI:refreshStageButtons()
 		btnData.container.Visible = false
 	end
 
-	-- Show and position visible buttons (centered)
+	-- Show and position visible buttons (centered, multi-row support)
 	local columns = 4
+	local cardSpacing = 120
+	local rowHeight = 115
 	local count = #visibleStages
-	local rowOffset = math.max(0, (columns - count) * 120 / 2)
 
 	for idx, stageId in ipairs(visibleStages) do
 		local btnData = self.stageButtons[stageId]
-		btnData.container.Position = UDim2.new(0, rowOffset + (idx - 1) * 120, 0, 0)
+		local row = math.floor((idx - 1) / columns)
+		local col = (idx - 1) % columns
+		local rowCount = math.min(columns, count - row * columns)
+		local rowOffset = math.max(0, (columns - rowCount) * cardSpacing / 2)
+		btnData.container.Position = UDim2.new(0, rowOffset + col * cardSpacing, 0, row * rowHeight)
 		btnData.container.Visible = true
 	end
 end

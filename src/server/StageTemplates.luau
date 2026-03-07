@@ -1530,6 +1530,442 @@ function StageTemplates.createStage12(startPosition: Vector3): Model
 	return stage
 end
 
+-- ==================== STAGE 13: Spinning Bars (Easy) ====================
+function StageTemplates.createStage13(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage_SpinningBars"
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	local stageLength = STAGE_LENGTH
+
+	-- Start Part
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition,
+		Color = Color3.fromRGB(60, 150, 60),
+		Material = Enum.Material.DiamondPlate,
+	})
+	startPart.Parent = stage
+
+	-- Checkpoint near start
+	local cp = createCheckpoint(startPosition + Vector3.new(8, 1.5, 0))
+	cp.Parent = stage
+
+	-- Section configs: แต่ละ section มี platform + เสากลาง + แท่งหมุน
+	-- bars: height = ความสูงจากพื้น platform, speed = ความเร็วหมุน (ลบ = ทวนเข็ม), startAngle = มุมเริ่มต้น
+	-- ปรับให้พอดี STAGE_LENGTH = 100 studs
+	local sections = {
+		{
+			xOffset = 20, platSize = 18, pillarRadius = 2.5, pillarHeight = 12,
+			bars = {
+				{ height = 3, speed = 1.2, startAngle = 0 },
+			},
+			pushForce = 3000,
+		},
+		{
+			xOffset = 50, platSize = 20, pillarRadius = 3, pillarHeight = 14,
+			bars = {
+				{ height = 3, speed = 1.5, startAngle = 0 },
+				{ height = 7, speed = -1.2, startAngle = math.rad(90) },
+			},
+			pushForce = 3500,
+		},
+		{
+			xOffset = 80, platSize = 20, pillarRadius = 3, pillarHeight = 14,
+			bars = {
+				{ height = 3, speed = -1.8, startAngle = 0 },
+				{ height = 7, speed = 1.5, startAngle = math.rad(45) },
+			},
+			pushForce = 3500,
+		},
+	}
+
+	local pillarColor = Color3.fromRGB(30, 30, 40)
+	local barColor = Color3.fromRGB(220, 50, 50)
+
+	for i, sec in ipairs(sections) do
+		local center = startPosition + Vector3.new(sec.xOffset, 0, 0)
+
+		-- Platform สี่เหลี่ยม
+		local platform = createPart({
+			Name = "Platform_" .. i,
+			Size = Vector3.new(sec.platSize, 2, sec.platSize),
+			Position = center,
+			Color = if i % 2 == 1 then Color3.fromRGB(80, 180, 80) else Color3.fromRGB(70, 160, 70),
+			Material = Enum.Material.SmoothPlastic,
+		})
+		platform.Parent = obstacles
+
+		-- เสากลาง (Cylinder ตั้งตรง)
+		local pillarDiam = sec.pillarRadius * 2
+		local pillar = Instance.new("Part")
+		pillar.Name = "Pillar_" .. i
+		pillar.Shape = Enum.PartType.Cylinder
+		pillar.Size = Vector3.new(sec.pillarHeight, pillarDiam, pillarDiam)
+		-- หมุน 90° รอบ Z เพื่อให้ Cylinder ตั้งตรง (ความยาวตามแกน Y)
+		pillar.CFrame = CFrame.new(center + Vector3.new(0, sec.pillarHeight / 2 + 1, 0))
+			* CFrame.Angles(0, 0, math.rad(90))
+		pillar.Anchored = true
+		pillar.CanCollide = true
+		pillar.Color = pillarColor
+		pillar.Material = Enum.Material.Metal
+		pillar.CustomPhysicalProperties = PhysicalProperties.new(0.7, 2.0, 0.1, 1.0, 0.5)
+		pillar.Parent = obstacles
+
+		-- แท่งหมุน (Cylinder นอน หมุนรอบแกน Y เหมือนใบพัดเฮลิคอปเตอร์)
+		for j, barCfg in ipairs(sec.bars) do
+			local barLength = sec.platSize + 4 -- ยาวเลยขอบ platform เล็กน้อย
+			local bar = Instance.new("Part")
+			bar.Name = "SpinBar_" .. i .. "_" .. j
+			bar.Shape = Enum.PartType.Cylinder
+			bar.Size = Vector3.new(barLength, 3, 3)
+			-- ไม่หมุน Z: Cylinder ยาวตามแกน X, animation หมุนรอบ Y (กวาดแนวนอน)
+			bar.CFrame = CFrame.new(center + Vector3.new(0, barCfg.height + 1, 0))
+				* CFrame.Angles(0, barCfg.startAngle, 0)
+			bar.Anchored = true
+			bar.CanCollide = true
+			bar.Color = barColor
+			bar.Material = Enum.Material.SmoothPlastic
+			bar:SetAttribute("IsSpinning", true)
+			bar:SetAttribute("SpinSpeed", barCfg.speed)
+			bar:SetAttribute("PushForce", sec.pushForce)
+			bar:SetAttribute("PushUpForce", 1200)
+			bar.Parent = obstacles
+		end
+	end
+
+	-- ทางเดินเชื่อม: Start → Section 1
+	local startEdge = 5 -- StartPart ขนาด 10, กลางที่ 0, ขอบขวาที่ 5
+	local sec1Left = sections[1].xOffset - sections[1].platSize / 2
+	local wLen0 = sec1Left - startEdge
+	if wLen0 > 0 then
+		local walkway = createPart({
+			Name = "Walkway_Start",
+			Size = Vector3.new(wLen0, 2, 8),
+			Position = startPosition + Vector3.new(startEdge + wLen0 / 2, 0, 0),
+			Color = Color3.fromRGB(100, 100, 110),
+			Material = Enum.Material.DiamondPlate,
+		})
+		walkway.Parent = obstacles
+	end
+
+	-- ทางเดินเชื่อมระหว่าง sections
+	for i = 1, #sections - 1 do
+		local sec1 = sections[i]
+		local sec2 = sections[i + 1]
+		local x1 = sec1.xOffset + sec1.platSize / 2
+		local x2 = sec2.xOffset - sec2.platSize / 2
+		local wLen = x2 - x1
+		if wLen > 0 then
+			local walkway = createPart({
+				Name = "Walkway_" .. i,
+				Size = Vector3.new(wLen, 2, 8),
+				Position = startPosition + Vector3.new((x1 + x2) / 2, 0, 0),
+				Color = Color3.fromRGB(100, 100, 110),
+				Material = Enum.Material.DiamondPlate,
+			})
+			walkway.Parent = obstacles
+		end
+	end
+
+	-- ทางเดินเชื่อม: Section สุดท้าย → EndPart
+	local secLast = sections[#sections]
+	local secLastRight = secLast.xOffset + secLast.platSize / 2
+	local endLeft = stageLength - 5 -- EndPart ขนาด 10, กลางที่ stageLength, ขอบซ้ายที่ -5
+	local wLenEnd = endLeft - secLastRight
+	if wLenEnd > 0 then
+		local walkway = createPart({
+			Name = "Walkway_End",
+			Size = Vector3.new(wLenEnd, 2, 8),
+			Position = startPosition + Vector3.new((secLastRight + endLeft) / 2, 0, 0),
+			Color = Color3.fromRGB(100, 100, 110),
+			Material = Enum.Material.DiamondPlate,
+		})
+		walkway.Parent = obstacles
+	end
+
+	-- Item pickups บนทางเดินระหว่าง sections
+	for i = 1, #sections - 1 do
+		local x1 = sections[i].xOffset + sections[i].platSize / 2
+		local x2 = sections[i + 1].xOffset - sections[i + 1].platSize / 2
+		local itemX = (x1 + x2) / 2
+		local itemZ = if i % 2 == 1 then 0 else 0
+		local item = createItemPickup(startPosition + Vector3.new(itemX, 3, itemZ))
+		item.Parent = itemPickups
+	end
+
+	-- End Part
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(10, 2, 10),
+		Position = startPosition + Vector3.new(stageLength, 0, 0),
+		Color = Color3.fromRGB(60, 150, 60),
+		Material = Enum.Material.DiamondPlate,
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
+-- ==================== STAGE 14: Boxing Glove Run (Easy) ====================
+-- ทางเดินเปิดโล่ง สไตล์สดใส มีนวมชกมวยแดงบนแขนไม้ยื่นออกมาชกผู้เล่นกระเด็น
+function StageTemplates.createStage14(startPosition: Vector3): Model
+	local stage = Instance.new("Model")
+	stage.Name = "Stage_BoxingGloveRun"
+
+	local obstacles = Instance.new("Folder")
+	obstacles.Name = "Obstacles"
+	obstacles.Parent = stage
+
+	local itemPickups = Instance.new("Folder")
+	itemPickups.Name = "ItemPickups"
+	itemPickups.Parent = stage
+
+	local stageLength = STAGE_LENGTH
+	local pathWidth = 10
+
+	-- สีสดใส (Boxing theme)
+	local floorColor = Color3.fromRGB(220, 215, 200)        -- พื้นสีเบจอ่อน
+	local sideWallColor = Color3.fromRGB(180, 175, 165)     -- กำแพงเตี้ยสีเทาอ่อน
+	local gloveRed = Color3.fromRGB(200, 35, 30)            -- นวมแดง
+	local gloveDarkRed = Color3.fromRGB(160, 25, 20)        -- นวมแดงเข้ม
+	local wristWhite = Color3.fromRGB(240, 235, 225)        -- ข้อมือขาว (ผ้าพัน)
+	local armWoodColor = Color3.fromRGB(190, 150, 90)       -- แขนไม้
+	local armWoodDark = Color3.fromRGB(140, 105, 55)        -- แขนไม้เข้ม (แถบ)
+
+	-- Start Part
+	local startPart = createPart({
+		Name = "StartPart",
+		Size = Vector3.new(8, 2, 8),
+		Position = startPosition,
+		Color = floorColor,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	startPart.Parent = stage
+
+	-- Checkpoint
+	local cp = createCheckpoint(startPosition + Vector3.new(6, 1.5, 0))
+	cp.Parent = stage
+
+	-- === พื้นทางเดิน ===
+	local pathStart = 5
+	local pathEnd = 95
+	local pathLength = pathEnd - pathStart
+	local floor = createPart({
+		Name = "Floor",
+		Size = Vector3.new(pathLength, 2, pathWidth),
+		Position = startPosition + Vector3.new(pathStart + pathLength / 2, -0.5, 0),
+		Color = floorColor,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	floor.Parent = obstacles
+
+	-- === ขอบพื้นสีเข้ม (edge trim) ===
+	for _, sideZ in ipairs({-1, 1}) do
+		local edgeTrim = createPart({
+			Name = "EdgeTrim_" .. (sideZ == 1 and "R" or "L"),
+			Size = Vector3.new(pathLength, 2.2, 0.5),
+			Position = startPosition + Vector3.new(pathStart + pathLength / 2, -0.5, (pathWidth / 2 + 0.25) * sideZ),
+			Color = Color3.fromRGB(160, 155, 145),
+			Material = Enum.Material.SmoothPlastic,
+		})
+		edgeTrim.Parent = obstacles
+	end
+
+	-- === กำแพงเตี้ย 2 ฝั่ง (กันตก) ===
+	local lowWallHeight = 2
+	for _, sideZ in ipairs({-1, 1}) do
+		local lowWall = createPart({
+			Name = "LowWall_" .. (sideZ == 1 and "R" or "L"),
+			Size = Vector3.new(pathLength, lowWallHeight, 1.5),
+			Position = startPosition + Vector3.new(pathStart + pathLength / 2, lowWallHeight / 2, (pathWidth / 2 + 1.25) * sideZ),
+			Color = sideWallColor,
+			Material = Enum.Material.SmoothPlastic,
+		})
+		lowWall.Parent = obstacles
+	end
+
+	-- === Config นวมชกมวย ===
+	-- ทุกตัวเรียงตรงแกน Z (ตั้งฉากกับผู้เล่นที่เดินแกน X)
+	-- โครงสร้าง: [นวม] → [ข้อมือขาว] → [แขนไม้] ทั้งหมดเรียงตรง Z
+	local gloveConfigs = {
+		{ xOffset = 15, side = 1,  speed = 2.5 },
+		{ xOffset = 25, side = -1, speed = 3.0 },
+		{ xOffset = 35, side = 1,  speed = 2.5 },
+		{ xOffset = 45, side = -1, speed = 3.5 },
+		{ xOffset = 55, side = 1,  speed = 3.0 },
+		{ xOffset = 63, side = -1, speed = 3.5 },
+		{ xOffset = 71, side = 1,  speed = 3.5 },
+		{ xOffset = 80, side = -1, speed = 4.0 },
+	}
+
+	-- ขนาดชิ้นส่วน (ทั้งหมดเป็น Box Part เรียงตรง Z)
+	local gloveSize = Vector3.new(4, 4.5, 4)       -- นวม (กว้างX, สูงY, ลึกZ)
+	local wristSize = Vector3.new(3, 3.5, 2)        -- ข้อมือผ้าพันขาว
+	local strapSize = Vector3.new(3.3, 3.8, 0.5)    -- แถบแดงรัดข้อมือ
+	local armSize = Vector3.new(2, 2, 12)            -- แขนไม้ยาว
+	local armBandSize = Vector3.new(2.3, 2.3, 0.5)  -- แถบไม้เข้มบนแขน
+	local fistMoveDistance = 5
+	local fistY = 4
+
+	for i, cfg in ipairs(gloveConfigs) do
+		-- นวมเริ่มอยู่ใกล้กลางทาง ชกข้ามไปอีกฝั่ง
+		local gloveZ = (pathWidth / 2 - 2) * cfg.side
+		local pos = startPosition + Vector3.new(cfg.xOffset, fistY, gloveZ)
+
+		local speedRatio = math.clamp((cfg.speed - 2.5) / 1.5, 0, 1)
+
+		-- === นวมชกมวย (Glove) — part หลักที่ขยับ ===
+		local glove = createPart({
+			Name = "Glove_" .. i,
+			Size = gloveSize,
+			Position = pos,
+			Color = gloveRed,
+			Material = Enum.Material.SmoothPlastic,
+		})
+		glove:SetAttribute("IsMoving", true)
+		glove:SetAttribute("MoveAxis", "Z")
+		glove:SetAttribute("MoveDistance", fistMoveDistance)
+		glove:SetAttribute("MoveSpeed", cfg.speed)
+		glove:SetAttribute("PushForce", 2500 + 800 * speedRatio)
+		glove:SetAttribute("PushUpForce", 1200)
+		glove.Parent = obstacles
+
+		-- PointLight
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 80, 60)
+		light.Brightness = 0.6 + 0.4 * speedRatio
+		light.Range = 10
+		light.Parent = glove
+
+		-- === ข้อมือ (ผ้าพันสีขาว) — ต่อจากนวมตรง Z ===
+		local wristZ = cfg.side * (gloveSize.Z / 2 + wristSize.Z / 2)
+		local wrist = createPart({
+			Name = "Wrist_" .. i,
+			Size = wristSize,
+			Position = pos + Vector3.new(0, 0, wristZ),
+			Color = wristWhite,
+			Material = Enum.Material.SmoothPlastic,
+		})
+		wrist:SetAttribute("PushForce", 2000 + 600 * speedRatio)
+		wrist:SetAttribute("PushUpForce", 1000)
+		wrist.Parent = obstacles
+		local wristWeld = Instance.new("WeldConstraint")
+		wristWeld.Part0 = glove
+		wristWeld.Part1 = wrist
+		wristWeld.Parent = glove
+
+		-- แถบแดงรัดข้อมือ (strap)
+		local strapZ = cfg.side * (gloveSize.Z / 2 + wristSize.Z - strapSize.Z / 2)
+		local strap = createPart({
+			Name = "Strap_" .. i,
+			Size = strapSize,
+			Position = pos + Vector3.new(0, 0, strapZ),
+			Color = gloveRed,
+			Material = Enum.Material.SmoothPlastic,
+		})
+		strap.CanCollide = false
+		strap.Parent = obstacles
+		local strapWeld = Instance.new("WeldConstraint")
+		strapWeld.Part0 = glove
+		strapWeld.Part1 = strap
+		strapWeld.Parent = glove
+
+		-- === แขนไม้ (Arm) — ต่อจากข้อมือตรง Z ===
+		local armZ = cfg.side * (gloveSize.Z / 2 + wristSize.Z + armSize.Z / 2)
+		local arm = createPart({
+			Name = "Arm_" .. i,
+			Size = armSize,
+			Position = pos + Vector3.new(0, 0, armZ),
+			Color = armWoodColor,
+			Material = Enum.Material.Wood,
+		})
+		arm.CanCollide = false
+		arm.Parent = obstacles
+		local armWeld = Instance.new("WeldConstraint")
+		armWeld.Part0 = glove
+		armWeld.Part1 = arm
+		armWeld.Parent = glove
+
+		-- แถบไม้เข้มบนแขน (wood bands) x2
+		for bandIdx = 1, 2 do
+			local bandZ = cfg.side * (gloveSize.Z / 2 + wristSize.Z + armSize.Z * bandIdx / 3)
+			local band = createPart({
+				Name = "ArmBand_" .. i .. "_" .. bandIdx,
+				Size = armBandSize,
+				Position = pos + Vector3.new(0, 0, bandZ),
+				Color = armWoodDark,
+				Material = Enum.Material.Wood,
+			})
+			band.CanCollide = false
+			band.Parent = obstacles
+			local bandWeld = Instance.new("WeldConstraint")
+			bandWeld.Part0 = glove
+			bandWeld.Part1 = band
+			bandWeld.Parent = glove
+		end
+
+		-- === เสาฐาน (anchored, ไม่ weld ไม่ขยับ) ===
+		local postZ = (pathWidth / 2 + 1.5) * cfg.side
+		local post = createPart({
+			Name = "Post_" .. i,
+			Size = Vector3.new(2.5, 8, 2.5),
+			Position = startPosition + Vector3.new(cfg.xOffset, 4, postZ),
+			Color = Color3.fromRGB(160, 155, 145),
+			Material = Enum.Material.SmoothPlastic,
+		})
+		post.Parent = obstacles
+
+		local postBase = createPart({
+			Name = "PostBase_" .. i,
+			Size = Vector3.new(3.5, 1, 3.5),
+			Position = startPosition + Vector3.new(cfg.xOffset, 0.5, postZ),
+			Color = Color3.fromRGB(140, 135, 125),
+			Material = Enum.Material.SmoothPlastic,
+		})
+		postBase.Parent = obstacles
+
+		-- === Danger zone marker บนพื้น ===
+		local dangerZone = createPart({
+			Name = "DangerZone_" .. i,
+			Size = Vector3.new(gloveSize.X + 2, 0.1, pathWidth - 2),
+			Position = startPosition + Vector3.new(cfg.xOffset, 0.6, 0),
+			Color = Color3.fromRGB(255, 60, 40),
+			Material = Enum.Material.Neon,
+		})
+		dangerZone.Transparency = 0.75
+		dangerZone.CanCollide = false
+		dangerZone.Parent = obstacles
+	end
+
+	-- Item pickups ระหว่างกลุ่มนวม
+	local itemPositions = { 20, 40, 58, 76 }
+	for _, itemX in ipairs(itemPositions) do
+		local item = createItemPickup(startPosition + Vector3.new(itemX, 3, 0))
+		item.Parent = itemPickups
+	end
+
+	-- End Part
+	local endPart = createPart({
+		Name = "EndPart",
+		Size = Vector3.new(8, 2, 8),
+		Position = startPosition + Vector3.new(stageLength, 0, 0),
+		Color = floorColor,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	endPart.Parent = stage
+
+	return stage
+end
+
 -- Get all stage creators
 function StageTemplates.getStageCreators(): {(Vector3) -> Model}
 	return {
@@ -1545,6 +1981,8 @@ function StageTemplates.getStageCreators(): {(Vector3) -> Model}
 		StageTemplates.createStage10, -- Easy: Rainbow Zigzag
 		StageTemplates.createStage11, -- Normal: Lane Switch
 		StageTemplates.createStage12, -- Normal: Pendulum
+		StageTemplates.createStage13, -- Easy: Spinning Bars
+		StageTemplates.createStage14, -- Easy: Fist Corridor
 	}
 end
 

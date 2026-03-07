@@ -78,6 +78,8 @@ function ItemEffects:playEffect(effectType: string, params: {[string]: any}?)
 		self:speedBoostFOV(params.duration or 3)
 	elseif effectType == "StunEffect" then
 		self:stunEffect(params.duration or 2)
+	elseif effectType == "HitEffect" then
+		self:hitEffect()
 	end
 end
 

@@ -151,6 +151,9 @@
         },
         "ShopUpdate": {
           "$className": "RemoteEvent"
+        },
+        "ItemEffect": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {
