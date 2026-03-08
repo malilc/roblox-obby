@@ -261,8 +261,9 @@ function MainUI:setupRemotes()
 	RemoteRegistry.get("CountdownUpdate").OnClientEvent:Connect(function(data)
 		if data.totalStages then
 			self.scoreUI:showStageProgress(data.totalStages)
-			-- Close all menu panels when race starts
+			-- Close all menu panels and hide menu grid when race starts
 			self:closeAllMenuPanels()
+			self.menuGridUI:hide()
 		end
 	end)
 
@@ -291,6 +292,7 @@ function MainUI:setupRemotes()
 	-- Hide timer when returning to lobby
 	RemoteRegistry.get("ReturnToLobby").OnClientEvent:Connect(function()
 		self.scoreUI:hideTimer()
+		self.menuGridUI:show()
 	end)
 end
 

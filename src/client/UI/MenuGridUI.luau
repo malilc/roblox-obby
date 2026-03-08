@@ -131,4 +131,20 @@ function MenuGridUI:clearAllActive()
 	end
 end
 
+function MenuGridUI:hide()
+	if self.panel then
+		TweenService:Create(self.panel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0, -PANEL_W - 10, PANEL_Y_SCALE, PANEL_Y_OFFSET),
+		}):Play()
+	end
+end
+
+function MenuGridUI:show()
+	if self.panel then
+		TweenService:Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, PANEL_X, PANEL_Y_SCALE, PANEL_Y_OFFSET),
+		}):Play()
+	end
+end
+
 return MenuGridUI

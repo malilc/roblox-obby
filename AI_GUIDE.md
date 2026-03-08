@@ -260,7 +260,7 @@ end
 |----------|-------------|-------------|
 | `createPart(props)` | `Part` | สร้าง Part พร้อม Friction สูง |
 | `createCheckpoint(pos)` | `Part` | สร้าง Checkpoint (Part สีเขียว Neon) |
-| `createItemPickup(pos)` | `Part` | สร้าง Item pickup (Item Box Mesh ID: 6325349064) |
+| `createItemPickup(pos)` | `Part` | สร้าง Item pickup (Lucky Block model, asset 129696127925672) |
 
 ### ⚠️ สำคัญ: Checkpoint เป็น Part ไม่ใช่ SpawnLocation
 
@@ -336,13 +336,15 @@ itemBox.Parent = itemPickups
 ```
 
 **createItemPickup สร้าง:**
-- รูปทรง: **Mesh (Item Box)** ID: 6325349064
-- ขนาด: Scale `0.30, 0.30, 0.30`
-- สี: **เหลืองสว่าง** (255, 200, 50) + Material Neon
+- รูปทรง: **Lucky Block model** (asset ID: 129696127925672) — voxel-style golden "?" block
+- โครงสร้าง: invisible hitbox Part (Transparency=1) + cloned Lucky Block model welded via WeldConstraint
+- สี: **สีเดิมของ model** (golden) — ไม่มี Neon
 - ยกขึ้น: **+3 studs** จากตำแหน่งที่ให้
-- หมุน: อัตโนมัติรอบแกน Y
-- เอฟเฟกต์: **Rainbow Sparkles** + PointLight เรืองแสง
+- หมุน: อัตโนมัติรอบแกน Y (CFrame rotation บน hitbox Part)
+- เอฟเฟกต์: **Gold Sparkles** (subtle) + warm PointLight
 - Attributes: `IsItemBox = true`, `IsCoin = false`
+- Fallback: ถ้า model load ไม่ได้ จะสร้าง yellow SmoothPlastic box แทน
+- Strip: ProximityPrompt, ClickDetector, BaseScript ถูกลบออกจาก model อัตโนมัติ
 
 **🎯 Item Box:**
 - เมื่อเก็บ: ได้ **random item** (Missile, Banana, Shield, etc.)
@@ -582,13 +584,13 @@ local Config = {
 - UI แสดงแบบ **horizontal** (ซ้าย-ขวา)
 - กรอบ item มี **สี rarity** (Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง)
 
-### Item Box (Neon Cube Style):
+### Item Box (Lucky Block Style):
 
 ```lua
--- สร้าง Item Box (Neon Cube - ให้ random item)
+-- สร้าง Item Box (Lucky Block model - ให้ random item)
 local itemBox = createItemPickup(position)
--- Style: Purple-blue neon cube (150, 100, 255)
--- มี bobbing animation + spinning + particles
+-- Style: Golden voxel "?" block (asset 129696127925672)
+-- Invisible hitbox + welded model + bobbing/spinning + gold sparkles
 itemBox.Parent = itemPickups
 ```
 
@@ -1920,7 +1922,7 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
 
 ### 🎯 Item System (Mario Kart Style)
 14. **Dual Slots**: ผู้เล่นถือได้ 2 items, กด 1/2 เพื่อใช้
-15. **Item Box**: "Neon Cube" style (สีม่วง-น้ำเงิน) + bobbing animation
+15. **Item Box**: Lucky Block model (asset 129696127925672) — golden voxel "?" block + bobbing animation
 16. **Weighted Random**: คนอันดับท้ายได้ item หายากมากกว่า (catch-up)
 17. **Item Tooltip**: คลิกที่ item เพื่อดู description (auto-hide 6 วินาที)
 18. **Rarity Colors**: Common=เทา, Uncommon=เขียว, Rare=น้ำเงิน, Epic=ม่วง
@@ -1963,6 +1965,9 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
     - Each button: 74×68, UIFactory.createButton, colored stroke per type, emoji icon + label
     - `setActive(id)` tweens bg + stroke to show active panel
     - Toggle behavior: clicking opens/closes panels with mutual exclusion
+    - `hide()`: slides panel off-screen left (during gameplay/race)
+    - `show()`: slides panel back in (on ReturnToLobby)
+    - Hidden on CountdownUpdate (race start), shown on ReturnToLobby
 
 **Bottom-left — HUD pills**:
 42. **Y=1,-132**: Stage Frame (🚩 Progress, only during race)
