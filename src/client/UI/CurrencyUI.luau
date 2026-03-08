@@ -180,21 +180,17 @@ function CurrencyUI:createUI()
 	self:startShineAnimation()
 end
 
--- Shine animation loop
+-- Shine animation loop (continuous, no gap)
 function CurrencyUI:startShineAnimation()
 	task.spawn(function()
 		while self.shine and self.shine.Parent do
-			-- Reset position
 			self.shine.Position = UDim2.new(-0.3, 0, -0.1, 0)
 
-			-- Animate across
-			local shineTween = TweenService:Create(self.shine, TweenInfo.new(0.8, Enum.EasingStyle.Linear), {
+			local shineTween = TweenService:Create(self.shine, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
 				Position = UDim2.new(1.1, 0, -0.1, 0)
 			})
 			shineTween:Play()
-
-			-- Wait before next shine
-			task.wait(1.5)
+			shineTween.Completed:Wait()
 		end
 	end)
 end

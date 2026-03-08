@@ -1955,7 +1955,7 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
 39. **Currency Breakdown**: Stage Clear (5) + Stage Rewards + Finish Bonus (25)
 40. **Gems**: +1 finish race, +5 top 30% (multiplayer), daily login gems
 41. **Wins**: +1 when finishing 1st (multiplayer only, or with Solo Wins debug toggle)
-42. **CurrencyUI**: มุมบนซ้าย Y=58 (ใต้ GemFrame)
+42. **CurrencyUI**: มุมบนซ้าย Y=58 (ใต้ GemFrame), coin shine sweep ต่อเนื่อง (1.2s Quad InOut, no gap)
 
 ### 🖥️ UI Layout
 **Left side — MenuGridUI** (vertically centered, X=10):
