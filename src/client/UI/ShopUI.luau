@@ -1085,54 +1085,265 @@ function ShopUI:playGachaReveal(classId: string, isNew: boolean, gemsRefunded: n
 	card.Visible = true
 	card.Size = UDim2.new(0.85, 0, 0, 230)
 	card.Position = UDim2.new(0.075, 0, 0, 65)
-	card.BackgroundColor3 = Theme.BG_OVERLAY
-	self.gachaCardIcon.Text = "?"
-	self.gachaCardIcon.TextColor3 = Theme.HUD_GEM_START
-	self.gachaCardName.Text = "..."
-	self.gachaCardName.TextColor3 = Theme.TEXT_MUTED
-	self.gachaCardDesc.Text = ""
+	card.BackgroundColor3 = Theme.BG_SURFACE
+	card.ClipsDescendants = true
 	self.gachaCardStroke.Color = Theme.BG_ELEVATED
 
-	task.delay(0.5, function()
-		local flipOut = TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Size = UDim2.new(0, 0, 0, 230),
-			Position = UDim2.new(0.5, 0, 0, 65),
+	-- Hide normal labels during carousel animation
+	self.gachaCardIcon.Visible = false
+	self.gachaCardName.Visible = false
+	self.gachaCardDesc.Visible = false
+
+	-- Build class list
+	local allClasses = {}
+	for _, cid in ipairs(ClassTypes.ClassOrder) do
+		local def = ClassTypes.getClass(cid)
+		if def then
+			table.insert(allClasses, def)
+		end
+	end
+
+	-- Build card sequence: cards BEFORE result + result + cards AFTER result
+	local BEFORE_COUNT = 18 -- cards before the result
+	local AFTER_COUNT = 5  -- visible cards after result (so it's not obvious)
+	local RESULT_INDEX = BEFORE_COUNT + 1
+	local TOTAL_CARDS = BEFORE_COUNT + 1 + AFTER_COUNT
+
+	local sequence = {}
+	local idx = math.random(1, #allClasses)
+
+	-- Cards before the result
+	for i = 1, BEFORE_COUNT do
+		idx = (idx % #allClasses) + 1
+		local def = allClasses[idx]
+		-- Avoid showing result class in last 3 before result
+		if i >= BEFORE_COUNT - 2 and def.id == classId then
+			idx = (idx % #allClasses) + 1
+			def = allClasses[idx]
+		end
+		table.insert(sequence, def)
+	end
+
+	-- The result card
+	table.insert(sequence, classDef)
+
+	-- Cards after the result (decoys so user can't tell)
+	for i = 1, AFTER_COUNT do
+		idx = (idx % #allClasses) + 1
+		local def = allClasses[idx]
+		-- Avoid same class right next to result
+		if i == 1 and def.id == classId then
+			idx = (idx % #allClasses) + 1
+			def = allClasses[idx]
+		end
+		table.insert(sequence, def)
+	end
+
+	-- Small card dimensions
+	local SMALL_W = 120
+	local SMALL_H = 160
+	local GAP = 10
+	local CELL_W = SMALL_W + GAP
+
+	-- Container height for vertical centering
+	local containerH = card.AbsoluteSize.Y
+	if containerH < 50 then containerH = 230 end
+	local containerW = card.AbsoluteSize.X
+	if containerW < 100 then containerW = 550 end
+	local stripY = math.floor((containerH - SMALL_H) / 2)
+
+	-- Create horizontal scroll strip
+	local strip = Instance.new("Frame")
+	strip.Name = "ScrollStrip"
+	strip.Size = UDim2.new(0, CELL_W * TOTAL_CARDS + containerW, 0, SMALL_H)
+	strip.Position = UDim2.new(0, containerW, 0, stripY) -- start off-screen right
+	strip.BackgroundTransparency = 1
+	strip.Parent = card
+
+	-- Track the result slide for expand animation
+	local resultSlide = nil
+
+	-- Create small class cards
+	for i, def in ipairs(sequence) do
+		local slide = Instance.new("Frame")
+		slide.Name = "Slide" .. i
+		slide.Size = UDim2.new(0, SMALL_W, 0, SMALL_H)
+		slide.Position = UDim2.new(0, (i - 1) * CELL_W, 0, 0)
+		slide.BackgroundColor3 = def.color:Lerp(Theme.BG_SURFACE, 0.8)
+		slide.BackgroundTransparency = 0.05
+		slide.BorderSizePixel = 0
+		slide.Parent = strip
+		Theme.applyCorner(slide, "md")
+
+		-- Colored stroke
+		local slideStroke = Instance.new("UIStroke")
+		slideStroke.Color = def.color
+		slideStroke.Thickness = 2
+		slideStroke.Transparency = 0.3
+		slideStroke.Parent = slide
+
+		-- Class icon (centered)
+		local icon = Instance.new("TextLabel")
+		icon.Name = "Icon"
+		icon.Size = UDim2.new(1, 0, 0, 70)
+		icon.Position = UDim2.new(0, 0, 0, 15)
+		icon.BackgroundTransparency = 1
+		icon.Text = def.icon
+		icon.TextSize = 48
+		icon.Font = Enum.Font.GothamBold
+		icon.TextColor3 = def.color
+		icon.Parent = slide
+
+		-- Class name
+		local name = Instance.new("TextLabel")
+		name.Name = "Name"
+		name.Size = UDim2.new(1, -10, 0, 22)
+		name.Position = UDim2.new(0, 5, 0, 90)
+		name.BackgroundTransparency = 1
+		name.Text = def.name
+		name.TextSize = 15
+		name.Font = Enum.Font.GothamBold
+		name.TextColor3 = def.color
+		name.Parent = slide
+
+		-- Short description
+		local desc = Instance.new("TextLabel")
+		desc.Name = "Desc"
+		desc.Size = UDim2.new(1, -12, 0, 30)
+		desc.Position = UDim2.new(0, 6, 0, 115)
+		desc.BackgroundTransparency = 1
+		desc.Text = def.description
+		desc.TextSize = 9
+		desc.Font = Enum.Font.Gotham
+		desc.TextColor3 = Theme.TEXT_MUTED
+		desc.TextWrapped = true
+		desc.TextYAlignment = Enum.TextYAlignment.Top
+		desc.Parent = slide
+
+		if i == RESULT_INDEX then
+			resultSlide = slide
+		end
+	end
+
+	-- Target: center the RESULT card in the visible area
+	local centerX = math.floor((containerW - SMALL_W) / 2)
+	local resultCardStripX = (RESULT_INDEX - 1) * CELL_W
+	local targetStripX = centerX - resultCardStripX
+
+	-- Quint Out = very fast start, very slow ending (dramatic slowdown)
+	local scrollTween = TweenService:Create(strip,
+		TweenInfo.new(3.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(0, targetStripX, 0, stripY) }
+	)
+	scrollTween:Play()
+
+	-- Update card border color as cards scroll by
+	task.spawn(function()
+		while strip.Parent and scrollTween.PlaybackState == Enum.PlaybackState.Playing do
+			-- Which card is closest to center?
+			local stripX = strip.Position.X.Offset
+			local centerInStrip = centerX - stripX + SMALL_W / 2
+			local visibleIdx = math.clamp(math.floor(centerInStrip / CELL_W) + 1, 1, TOTAL_CARDS)
+			local visibleDef = sequence[visibleIdx]
+			if visibleDef then
+				self.gachaCardStroke.Color = visibleDef.color
+			end
+			task.wait(0.03)
+		end
+	end)
+
+	scrollTween.Completed:Connect(function()
+		if not resultSlide or not resultSlide.Parent then return end
+
+		-- Set final stroke color
+		self.gachaCardStroke.Color = classDef.color
+
+		-- === Expand the winning small card to fill the entire container ===
+		-- Calculate the small card's current absolute position relative to the gacha card
+		task.wait(0.2) -- brief pause for anticipation
+
+		-- Expand: small card grows to fill the gacha card
+		-- Its position in strip coordinates
+		local slideLocalX = resultSlide.Position.X.Offset + strip.Position.X.Offset
+		local slideLocalY = strip.Position.Y.Offset
+
+		-- Reparent the winning slide out of the strip into the card directly
+		resultSlide.Parent = card
+		resultSlide.Position = UDim2.new(0, slideLocalX, 0, slideLocalY)
+		resultSlide.Size = UDim2.new(0, SMALL_W, 0, SMALL_H)
+
+		-- Remove the strip (no longer needed)
+		strip:Destroy()
+
+		-- Animate expand to fill
+		local expandTween = TweenService:Create(resultSlide, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 6, 0, 6),
+			Size = UDim2.new(1, -12, 1, -12),
 		})
-		flipOut:Play()
+		expandTween:Play()
 
-		flipOut.Completed:Connect(function()
-			card.BackgroundColor3 = Theme.BG_SURFACE
-			self.gachaCardIcon.Text = classDef.icon
-			self.gachaCardIcon.TextColor3 = classDef.color
-			self.gachaCardName.Text = classDef.name
-			self.gachaCardName.TextColor3 = classDef.color
-			self.gachaCardDesc.Text = classDef.description
-			self.gachaCardStroke.Color = classDef.color
+		-- Also enlarge icon + name text during expand
+		local slideIcon = resultSlide:FindFirstChild("Icon")
+		local slideName = resultSlide:FindFirstChild("Name")
+		local slideDesc = resultSlide:FindFirstChild("Desc")
 
-			local flipIn = TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0.85, 0, 0, 230),
-				Position = UDim2.new(0.075, 0, 0, 65),
-			})
-			flipIn:Play()
+		if slideIcon then
+			TweenService:Create(slideIcon, TweenInfo.new(0.4), {
+				TextSize = 72,
+				Position = UDim2.new(0, 0, 0, 25),
+				Size = UDim2.new(1, 0, 0, 100),
+			}):Play()
+		end
+		if slideName then
+			TweenService:Create(slideName, TweenInfo.new(0.4), {
+				TextSize = 20,
+				Position = UDim2.new(0, 10, 0, 135),
+				Size = UDim2.new(1, -20, 0, 28),
+			}):Play()
+		end
+		if slideDesc then
+			TweenService:Create(slideDesc, TweenInfo.new(0.4), {
+				TextSize = 12,
+				Position = UDim2.new(0, 12, 0, 168),
+				Size = UDim2.new(1, -24, 0, 44),
+			}):Play()
+		end
 
-			flipIn.Completed:Connect(function()
-				TweenService:Create(self.gachaCardStroke, TweenInfo.new(0.25), { Thickness = 4, Transparency = 0 }):Play()
-				task.delay(0.25, function()
-					TweenService:Create(self.gachaCardStroke, TweenInfo.new(0.25), { Thickness = 2, Transparency = 0.3 }):Play()
+		expandTween.Completed:Connect(function()
+			-- Stroke glow burst
+			local winStroke = resultSlide:FindFirstChildOfClass("UIStroke")
+			if winStroke then
+				TweenService:Create(winStroke, TweenInfo.new(0.25), { Thickness = 4, Transparency = 0 }):Play()
+				task.delay(0.3, function()
+					TweenService:Create(winStroke, TweenInfo.new(0.3), { Thickness = 2, Transparency = 0.3 }):Play()
 				end)
+			end
 
-				if isNew then
-					self:showGachaBanner("NEW CLASS UNLOCKED!", Theme.SUCCESS)
-				else
-					local refundText = gemsRefunded and ("+" .. gemsRefunded .. " gems") or ""
-					self:showGachaBanner("DUPLICATE " .. refundText, Theme.WARNING)
+			if isNew then
+				self:showGachaBanner("NEW CLASS UNLOCKED!", Theme.SUCCESS)
+			else
+				local refundText = gemsRefunded and ("+" .. gemsRefunded .. " gems") or ""
+				self:showGachaBanner("DUPLICATE " .. refundText, Theme.WARNING)
+			end
+
+			task.delay(2, function()
+				-- Clean up expanded slide and restore normal labels
+				if resultSlide and resultSlide.Parent then
+					resultSlide:Destroy()
 				end
+				self.gachaCardIcon.Visible = true
+				self.gachaCardName.Visible = true
+				self.gachaCardDesc.Visible = true
+				self.gachaCardIcon.Text = classDef.icon
+				self.gachaCardIcon.TextColor3 = classDef.color
+				self.gachaCardName.Text = classDef.name
+				self.gachaCardName.TextColor3 = classDef.color
+				self.gachaCardDesc.Text = classDef.description
+				self.gachaCardStroke.Color = classDef.color
 
-				task.delay(2, function()
-					self.isGachaPending = false
-					self:refreshGachaAffordability()
-					self:refreshOwnedClassDisplay()
-				end)
+				self.isGachaPending = false
+				self:refreshGachaAffordability()
+				self:refreshOwnedClassDisplay()
 			end)
 		end)
 	end)

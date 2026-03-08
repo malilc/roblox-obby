@@ -1208,14 +1208,16 @@ Shop = {
   - Banner (result text: "NEW CLASS UNLOCKED!" green / "DUPLICATE +3 gems" yellow)
   - Owned Classes section: dark bg panel, header "🔓 คลาสที่ปลดล็อค" + "X/4" count, class icons (58×58) with lock/emoji/checkmark states
 
-#### Gacha Card Flip Animation:
-1. Show mystery card ("?") — 0.5s hold
-2. Flip out: width shrinks to 0 (0.3s, Quad In)
-3. At midpoint: swap to class icon/name/color/description
-4. Flip in: width expands back (0.3s, Back Out)
-5. Glow stroke: class color pulse (thickness 2→4→2)
-6. Banner fade in → fade out after 2.5s
-7. Re-enable PULL after 2s
+#### Gacha Carousel Animation:
+1. Small cards (120×160) slide from right to left inside ClipsDescendants container
+2. 18 cards before result + result card + 5 decoy cards after (user can't predict winner)
+3. Easing: Quint Out (3.5s) — very fast start, dramatic slowdown at end
+4. Card border color updates live to match the passing class card
+5. On stop: result card expands from small (120×160) to fill entire card area (Back Out 0.4s)
+6. Icon/name text scales up during expand, description appears
+7. Glow stroke: class color pulse (thickness 2→4→2)
+8. Banner: "NEW CLASS UNLOCKED!" (green) or "DUPLICATE +3 gems" (yellow)
+9. Re-enable PULL after 2s, restore normal labels
 
 ### RemoteEvents:
 | Event | Direction | Usage |
@@ -2078,7 +2080,7 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
 114. **Class Gacha**: 10 gems per pull → weighted random (Runner=35, Jumper=35, Tank=30) → new unlock OR duplicate refund (3 gems)
 115. **Class Unlock Change**: ClassSelectionUI ไม่มีปุ่ม BUY แล้ว — ใช้ gacha ใน ShopUI แทน; ClassSelectionUI แสดง "Get from Shop" สำหรับคลาสล็อค
 116. **ShopUI Card Grid**: 3-col UIGridLayout (225×270), per-rarity tinted backgrounds (CARD_BG_COLORS), rarity badge pills, price buttons with coin icons
-117. **ShopUI Gacha Tab**: mystery card → PULL button → flip reveal animation → banner → owned classes section (lock/emoji/checkmark toggle)
+117. **ShopUI Gacha Tab**: carousel animation (small cards slide R→L, decelerate, result expands) → PULL button → banner → owned classes section
 118. **SetTestGems Remote**: Testing Menu gem editor — add/set gems via `SetTestGems { action, amount }`, synced through `UpdateGems`
 
 ### 🧪 Unit Testing (Jest Lua)
