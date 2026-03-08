@@ -235,7 +235,7 @@ function TitleCollectionUI:createUI()
 	closeButton.Name = "CloseButton"
 	closeButton.Size = UDim2.new(0, 36, 0, 36)
 	closeButton.Position = UDim2.new(1, -50, 0, 12)
-	closeButton.BackgroundColor3 = Theme.BG_OVERLAY
+	closeButton.BackgroundColor3 = Theme.DANGER
 	closeButton.BorderSizePixel = 0
 	closeButton.Text = ""
 	closeButton.Parent = container
@@ -243,16 +243,16 @@ function TitleCollectionUI:createUI()
 	Theme.applyCorner(closeButton, "sm")
 
 	local closeStroke = Instance.new("UIStroke")
-	closeStroke.Color = Theme.TEXT_MUTED
+	closeStroke.Color = Theme.DANGER
 	closeStroke.Thickness = 1
-	closeStroke.Transparency = 0.5
+	closeStroke.Transparency = 0.3
 	closeStroke.Parent = closeButton
 
 	local closeBtnLabel = Instance.new("TextLabel")
 	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
-	closeBtnLabel.TextColor3 = Theme.TEXT_MUTED
+	closeBtnLabel.TextColor3 = Theme.TEXT_PRIMARY
 	closeBtnLabel.TextSize = 18
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeButton.ZIndex + 1

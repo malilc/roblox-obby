@@ -165,8 +165,8 @@ function DailyBonusUI:showCalendar(data)
 	-- === MAIN PANEL ===
 	local panel = Instance.new("Frame")
 	panel.Name = "DailyLoginPanel"
-	panel.Size = UDim2.new(0, 500, 0, 380)
-	panel.Position = UDim2.new(0.5, -250, 0.5, -110)
+	panel.Size = UDim2.new(0, 500, 0, 410)
+	panel.Position = UDim2.new(0.5, -250, 0.5, -120)
 	panel.BackgroundColor3 = Theme.BG_BASE
 	panel.BorderSizePixel = 0
 	panel.ZIndex = 2
@@ -497,44 +497,62 @@ function DailyBonusUI:showCalendar(data)
 		end)
 	end
 
-	-- === ACTION BUTTON ===
+	-- === ACTION BUTTON (Frame+TextLabel pattern to avoid gradient tinting text) ===
 	local actionBtn = Instance.new("TextButton")
 	actionBtn.Name            = "ActionButton"
 	actionBtn.Size            = UDim2.new(0, 220, 0, 40)
 	actionBtn.Position        = UDim2.new(0.5, -110, 1, -52)
-	actionBtn.BackgroundColor3 = isClaim and COLORS.GOLD or Theme.BG_ELEVATED
+	actionBtn.BackgroundTransparency = 1
 	actionBtn.BorderSizePixel = 0
-	actionBtn.Text            = isClaim and "\u{2728}  CLAIM!" or "OK"
-	actionBtn.TextColor3      = isClaim and Theme.TEXT_DARK or Theme.TEXT_MUTED
-	actionBtn.TextSize        = 16
-	actionBtn.Font            = Enum.Font.GothamBlack
+	actionBtn.Text            = ""
 	actionBtn.ZIndex          = 63
 	actionBtn.Parent          = panel
-	Theme.applyCorner(actionBtn, "sm")
+
+	-- Background frame with gradient
+	local btnBg = Instance.new("Frame")
+	btnBg.Name = "BtnBg"
+	btnBg.Size = UDim2.new(1, 0, 1, 0)
+	btnBg.BackgroundColor3 = isClaim and COLORS.GOLD or Theme.ACCENT_CYAN
+	btnBg.BorderSizePixel = 0
+	btnBg.ZIndex = actionBtn.ZIndex
+	btnBg.Parent = actionBtn
+	Theme.applyCorner(btnBg, "sm")
 
 	local btnGrad = Instance.new("UIGradient")
 	btnGrad.Color = isClaim and ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Theme.PRIMARY),
 		ColorSequenceKeypoint.new(1, Theme.PRIMARY_DARK),
 	}) or ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_ELEVATED),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.ACCENT_CYAN),
+		ColorSequenceKeypoint.new(1, Theme.ACCENT_CYAN:Lerp(Theme.BG_BASE, 0.4)),
 	})
 	btnGrad.Rotation = 90
-	btnGrad.Parent = actionBtn
+	btnGrad.Parent = btnBg
 
-	-- Glow stroke on action button
+	-- Glow stroke on background
 	local actionStroke = Instance.new("UIStroke")
-	actionStroke.Color = isClaim and Theme.HUD_GLOW_GOLD or Theme.BG_ELEVATED
+	actionStroke.Color = isClaim and Theme.HUD_GLOW_GOLD or Theme.ACCENT_CYAN
 	actionStroke.Thickness = Theme.STROKE_THIN
 	actionStroke.Transparency = 0.3
-	actionStroke.Parent = actionBtn
+	actionStroke.Parent = btnBg
+
+	-- Text label (white, not affected by gradient)
+	local btnLabel = Instance.new("TextLabel")
+	btnLabel.Name = "BtnLabel"
+	btnLabel.Size = UDim2.new(1, 0, 1, 0)
+	btnLabel.BackgroundTransparency = 1
+	btnLabel.Text = isClaim and "\u{2728}  CLAIM!" or "OK"
+	btnLabel.TextColor3 = isClaim and Theme.TEXT_DARK or Color3.new(1, 1, 1)
+	btnLabel.TextSize = 16
+	btnLabel.Font = Enum.Font.GothamBlack
+	btnLabel.ZIndex = actionBtn.ZIndex + 1
+	btnLabel.Parent = actionBtn
 
 	-- === ANIMATE IN ===
 	TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.55 }):Play()
 	TweenService:Create(panel, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0.05,
-		Position = UDim2.new(0.5, -250, 0.5, -180),
+		Position = UDim2.new(0.5, -250, 0.5, -200),
 	}):Play()
 	TweenService:Create(panelStroke, TweenInfo.new(0.35), { Transparency = 0.2 }):Play()
 
@@ -550,7 +568,7 @@ function DailyBonusUI:showCalendar(data)
 		TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play()
 		local out = TweenService:Create(panel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			BackgroundTransparency = 1,
-			Position = UDim2.new(0.5, -250, 0.5, -110),
+			Position = UDim2.new(0.5, -250, 0.5, -120),
 		})
 		out:Play()
 		out.Completed:Connect(function()

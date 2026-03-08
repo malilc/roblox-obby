@@ -1075,11 +1075,12 @@ Client รับ DailyBonusClaimed:
   - Today (claim available) → 🪙 (coin)
   - Future days 1-6 → 🎁 `\u{1F381}`
   - Future day 7 → 👑 `\u{1F451}` (purple bg `RGB(120,80,180)`)
-- **Panel size**: 500×360px (เพิ่มจาก 290px เพื่อรองรับ progress bar + timer)
+- **Panel size**: 500×410px (เพิ่มจาก 290px เพื่อรองรับ progress bar + timer)
 - **Progress bar**: track + fill (SUCCESS green) + 7 dots — แสดงหลัง card grid, fill fraction = `claimedDay/7`
 - **Countdown timer**: `task.spawn` loop อัพเดทตัวนับถอยหลัง — auto-cleans เมื่อ `modalGui:Destroy()` (ตรวจสอบ `not label.Parent`)
 - **isClaim mode**: ปุ่ม "✨ CLAIM!" → กด → green overlay ✓ ทับ card → ปิดใน 1.2 วิ
 - **view mode**: ปุ่ม "OK", today card แสดง ✓ สีเขียว, countdown แสดงเวลาถึงรางวัลถัดไป
+- **OK/CLAIM button**: ใช้ Frame+TextLabel pattern (TextButton transparent + Frame gradient bg + TextLabel white text ZIndex+1) — ห้าม UIGradient บน TextButton ตรงๆ
 - guard `_calendarOpen`: ป้องกันเปิด popup ซ้อนกัน
 - **Modal ScreenGui**: popup เปิดใน ScreenGui แยก (`DailyLoginModalGui`, `DisplayOrder=100`, `IgnoreGuiInset=true`) — overlay ครอบคลุมเหนือ HUD elements ทุกตัว — ปิดแล้ว `modalGui:Destroy()` ล้างทุกอย่างพร้อมกัน
 - **Server payload** (CurrencyManager): `FireClient` ส่ง `lastLoginTime` + `cooldownHours` เพื่อให้ client คำนวณ countdown
@@ -1187,7 +1188,7 @@ Shop = {
 - Cleanup: `removePlayer(player)` clears rate limit state
 
 ### ShopUI (Client) — 780×560px:
-- **Header**: "🛒 SHOP" RichText + close (X) button 36x36 (coin/gem pills hidden)
+- **Header**: "🛒 SHOP" RichText + close (X) button 36x36 DANGER red (coin/gem pills hidden)
 - **Tab Bar**: 2 tabs with count badges — `🎯 Items (6)` / `⚔️ Classes (4)`
   - Active: BackgroundTransparency=0.05; Inactive: 0.85
 - **Rarity Legend**: color dots + labels (Common/Uncommon/Rare/Epic) — visible only on Items tab
@@ -1679,6 +1680,8 @@ btnGradient.Parent = button
 7. Corner: modal = `CORNER_LG`, panel/card = `CORNER_MD`, button = `CORNER_SM`
 8. Stroke glow: `STROKE_BOLD` (thickness 4) สำหรับ modal หลัก, `STROKE_MED` (2.5) สำหรับ panel ย่อย
 9. **Emoji ใน Luau**: ใช้ unicode escape `\u{1F381}` แทน emoji ตรงๆ ใน string literals เพื่อหลีกเลี่ยง encoding issues
+10. **Close (X) button**: ทุก panel ใช้ `Theme.DANGER` background + `Theme.TEXT_PRIMARY` text (ห้ามใช้ BG_OVERLAY/TEXT_MUTED — contrast ต่ำเกินมองไม่เห็น)
+11. **Gradient button with text**: ใช้ Frame+TextLabel pattern — `TextButton (transparent, Text="")` → `Frame (gradient bg)` → `TextLabel (white text, ZIndex+1)` — ห้ามใส่ UIGradient บน TextButton โดยตรง (tint ตัวหนังสือ)
 
 ### Checklist สำหรับ UI ใหม่
 
@@ -1691,6 +1694,8 @@ btnGradient.Parent = button
 - [ ] ปุ่มหลัก = gradient (contextual → BG_ELEVATED, 90°) + glow stroke
 - [ ] text = `TEXT_PRIMARY` หรือ `TEXT_MUTED`
 - [ ] UICorner: modal = `CORNER_LG`, panel = `CORNER_MD`, button = `CORNER_SM`
+- [ ] Close (X) button = `Theme.DANGER` bg + `Theme.TEXT_PRIMARY` text + `CORNER_SM`
+- [ ] Gradient buttons ใช้ Frame+TextLabel pattern (ไม่ใช้ UIGradient บน TextButton ตรงๆ)
 - [ ] ลงทะเบียนใน `MainUI.luau` ถ้าเป็น popup
 
 ---
