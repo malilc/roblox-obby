@@ -39,11 +39,11 @@ function ItemUI.new(parent: ScreenGui)
 end
 
 function ItemUI:createUI()
-	-- Main item container (มุมล่างขวา) - กว้างขึ้นสำหรับ 2 slots
+	-- Main item container (กลางล่าง) - กว้างขึ้นสำหรับ 2 slots
 	local container = Instance.new("Frame")
 	container.Name = "ItemContainer"
-	container.Size = UDim2.new(0, 210, 0, 115)
-	container.Position = UDim2.new(1, -220, 1, -125)
+	container.Size = UDim2.new(0, 160, 0, 95)
+	container.Position = UDim2.new(0.5, -80, 1, -105)
 	container.BackgroundTransparency = 1
 	container.Parent = self.parent
 	self.container = container
@@ -173,12 +173,12 @@ end
 
 -- Create a single item slot
 function ItemUI:createSlot(slotIndex: number, parent: Frame)
-	local xOffset = (slotIndex - 1) * 100 + 5 -- Slot 1 at 5, Slot 2 at 105
+	local xOffset = (slotIndex - 1) * 80 -- Slot 1 at 0, Slot 2 at 80
 
 	-- Item slot frame - clickable
 	local slotFrame = Instance.new("TextButton")
 	slotFrame.Name = "ItemSlot" .. slotIndex
-	slotFrame.Size = UDim2.new(0, 90, 0, 90)
+	slotFrame.Size = UDim2.new(0, 70, 0, 70)
 	slotFrame.Position = UDim2.new(0, xOffset, 0, 0)
 	slotFrame.BackgroundColor3 = Theme.BG_ELEVATED
 	slotFrame.BackgroundTransparency = 0.2
@@ -212,13 +212,13 @@ function ItemUI:createSlot(slotIndex: number, parent: Frame)
 	-- Slot number label (มุมบนซ้าย)
 	local slotLabel = Instance.new("TextLabel")
 	slotLabel.Name = "SlotLabel"
-	slotLabel.Size = UDim2.new(0, 24, 0, 24)
-	slotLabel.Position = UDim2.new(0, 4, 0, 4)
+	slotLabel.Size = UDim2.new(0, 18, 0, 18)
+	slotLabel.Position = UDim2.new(0, 3, 0, 3)
 	slotLabel.BackgroundColor3 = Theme.BG_SURFACE
 	slotLabel.BackgroundTransparency = 0.3
 	slotLabel.Text = tostring(slotIndex)
 	slotLabel.TextColor3 = Theme.TEXT_PRIMARY
-	slotLabel.TextSize = 14
+	slotLabel.TextSize = 11
 	slotLabel.Font = Enum.Font.GothamBold
 	slotLabel.Parent = slotFrame
 	self.slotLabels[slotIndex] = slotLabel
@@ -262,7 +262,7 @@ function ItemUI:createSlot(slotIndex: number, parent: Frame)
 	emptyText.BackgroundTransparency = 1
 	emptyText.Text = "?"
 	emptyText.TextColor3 = Theme.TEXT_MUTED
-	emptyText.TextSize = 32
+	emptyText.TextSize = 26
 	emptyText.Font = Enum.Font.GothamBlack
 	emptyText.Parent = slotFrame
 	self.slotEmptyTexts[slotIndex] = emptyText
@@ -277,12 +277,12 @@ function ItemUI:createSlot(slotIndex: number, parent: Frame)
 	-- Keybind hint label (ด้านล่าง)
 	local keybindHint = Instance.new("TextLabel")
 	keybindHint.Name = "KeybindHint"
-	keybindHint.Size = UDim2.new(1, 0, 0, 18)
+	keybindHint.Size = UDim2.new(1, 0, 0, 14)
 	keybindHint.Position = UDim2.new(0, 0, 1, 2)
 	keybindHint.BackgroundTransparency = 1
 	keybindHint.Text = "[" .. slotIndex .. "]"
 	keybindHint.TextColor3 = Theme.TEXT_MUTED
-	keybindHint.TextSize = 12
+	keybindHint.TextSize = 10
 	keybindHint.Font = Enum.Font.GothamMedium
 	keybindHint.Parent = slotFrame
 end
