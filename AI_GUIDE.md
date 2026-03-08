@@ -97,7 +97,7 @@ Workspace/
 ├── GemLeaderboard         # 💎 Physical gem leaderboard board (สร้างอัตโนมัติ, X=22)
 ├── WinLeaderboard         # 🏆 Physical win leaderboard board (สร้างอัตโนมัติ, X=-22)
 ├── Stages/                # Folder เก็บด่านที่ generate
-└── KillBrick              # พื้นที่ตายเมื่อตก
+└── KillBrick              # พื้นที่ตายเมื่อตก (2000×2000, Y=-120, Transparency=1 invisible, CanCollide=false)
 ```
 
 **Environment (Lighting)**:
