@@ -296,31 +296,12 @@ function MatchManager:startRaceTimer(roomId: string)
 	if not room then return end
 	
 	task.spawn(function()
-		local warningsGiven = {}
-		
 		while room and room.state == "Racing" do
 			if not self.rooms[roomId] then break end
-			
-			local elapsed = os.clock() - (room.startTime or os.clock())
-			room.timeRemaining = math.max(0, Config.Match.TimeLimit - elapsed)
-			
-			-- Check for time warnings
-			for _, warningTime in ipairs(Config.Match.TimeWarnings) do
-				if room.timeRemaining <= warningTime and not warningsGiven[warningTime] then
-					warningsGiven[warningTime] = true
-					self:sendTimeWarning(room, warningTime)
-				end
-			end
-			
-			-- Broadcast race update every second
+
+			-- Broadcast race update every second (rankings only, no timer)
 			self:broadcastRaceUpdate(room)
-			
-			-- Time's up
-			if room.timeRemaining <= 0 then
-				self:endMatch(roomId, "timeout")
-				break
-			end
-			
+
 			task.wait(1)
 		end
 	end)
@@ -390,7 +371,6 @@ function MatchManager:broadcastRaceUpdate(room: MatchRoom)
 		end
 
 		self.raceUpdateRemote:FireClient(player, {
-			timeRemaining = room.timeRemaining,
 			rankings = rankingDetails,
 			yourRank = playerRank,
 			totalPlayers = #room.players,

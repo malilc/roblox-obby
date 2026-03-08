@@ -100,7 +100,13 @@ Workspace/
 └── KillBrick              # พื้นที่ตายเมื่อตก
 ```
 
-**สำคัญ**: 
+**Environment (Lighting)**:
+- **Sky**: ใช้ default procedural sky (ไม่มี Sky object) — ท้องฟ้าสีฟ้า+เมฆในตัว
+- **Clouds**: `Terrain > Clouds` — Cover=0.7, Density=0.35, สีขาว
+- **Atmosphere**: Color=(200,220,255) sky blue, Decay=(185,205,245) — ห้ามใช้สีม่วง
+- **Fog**: ปิด (FogStart=0, FogEnd=100000)
+
+**สำคัญ**:
 - `SpawnLocation` ต้องอยู่ใน Workspace โดยตรง ไม่ใช่ใน Folder
 - `SelectionZone` ใช้ loop-based detection (เสถียรกว่า Touched events)
 - `ShopZone` ใช้ circular radius-based detection (ShopZoneManager), Cylinder shape แบนราบ
@@ -1026,17 +1032,19 @@ Match = {
 
 ---
 
-## ⏱️ Match Timer UI
+## ⏱️ Match Timer UI — DISABLED
+
+> **Timer ถูกปิดแล้ว** — ไม่มี countdown, ไม่มี timeout, ไม่มี time warnings
+
+### สิ่งที่เปลี่ยน:
+- `MatchManager.luau` → `startRaceTimer()` ลบ countdown/timeout/warnings ออก — เหลือแค่ broadcast rankings ทุกวินาที
+- `RaceUpdate` payload ไม่มี `timeRemaining` แล้ว — client timer จะไม่แสดง
+- ScoreUI timer frame ยังอยู่ในโค้ด (hidden by default) แต่ไม่ถูกเรียกใช้
 
 ### ไฟล์ที่เกี่ยวข้อง:
-- `src/client/UI/ScoreUI.luau` - timer frame (top-center, hidden by default)
-- `src/client/UI/MainUI.luau` - wires `RaceUpdate` / `TimeWarning` / `ReturnToLobby`
-
-### การทำงาน:
-- Server ส่ง `RaceUpdate` พร้อม `{ timeRemaining, isRunning }` → ScoreUI:showTimer / updateTimer
-- Server ส่ง `TimeWarning` พร้อม `{ timeLeft, isCritical }` → MainUI:showTimeWarning (popup + tween)
-- เมื่อ `timeRemaining <= 30`: timer เปลี่ยนเป็นสีแดง + pulse
-- `ReturnToLobby` → ScoreUI:hideTimer
+- `src/server/MatchManager.luau` - race loop (rankings only, no timer)
+- `src/client/UI/ScoreUI.luau` - timer frame (top-center, hidden, unused)
+- `src/client/UI/MainUI.luau` - wires `RaceUpdate` (no timeRemaining sent)
 
 ---
 
