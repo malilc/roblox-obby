@@ -252,7 +252,7 @@ function DailyBonusUI:showCalendar(data)
 
 	local subText = Instance.new("TextLabel")
 	subText.BackgroundTransparency = 1
-	subText.Text = isClaim and ("Day " .. claimedDay .. " / 7  \u{2022}  +" .. tostring(rewards[claimedDay] or 0) .. " \u{1FA99} + " .. tostring(gemRewards[claimedDay] or 0) .. " \u{1F48E}") or ("Day " .. claimedDay .. " / 7  \u{2022}  Already Claimed \u{2713}")
+	subText.Text = isClaim and ("Day " .. claimedDay .. " / 7  \u{2022}  +" .. tostring(rewards[claimedDay] or 0) .. " \u{1F4B0} + " .. tostring(gemRewards[claimedDay] or 0) .. " \u{1F48E}") or ("Day " .. claimedDay .. " / 7  \u{2022}  Already Claimed \u{2713}")
 	subText.TextSize = 13
 	subText.Font = Enum.Font.GothamBold
 	subText.TextColor3 = COLORS.SUBTITLE
@@ -323,7 +323,7 @@ function DailyBonusUI:showCalendar(data)
 			iconText = "\u{2705}" -- ✅
 			iconSize = 22
 		elseif isToday and isClaim then
-			iconText = "\u{1FA99}" -- 🪙
+			iconText = "\u{1F4B0}" -- 🪙
 			iconSize = 22
 		elseif day == 7 then
 			iconText = "\u{1F451}" -- 👑
@@ -346,7 +346,7 @@ function DailyBonusUI:showCalendar(data)
 
 		-- Coin amount label
 		local reward = rewards[day] or 0
-		local amtText = isPast and "" or ("\u{1FA99} +" .. reward)
+		local amtText = isPast and "" or ("\u{1F4B0} +" .. reward)
 		local amtLbl = Instance.new("TextLabel")
 		amtLbl.BackgroundTransparency = 1
 		amtLbl.Text = amtText
@@ -566,7 +566,7 @@ function DailyBonusUI:showCalendar(data)
 			-- Flash button green with both reward amounts
 			local coinAmt = rewards[claimedDay] or 0
 			local gemAmt = gemRewards[claimedDay] or 0
-			actionBtn.Text = "You earned " .. coinAmt .. " \u{1FA99} + " .. gemAmt .. " \u{1F48E}!"
+			actionBtn.Text = "You earned " .. coinAmt .. " \u{1F4B0} + " .. gemAmt .. " \u{1F48E}!"
 			TweenService:Create(actionBtn, TweenInfo.new(0.2), {
 				BackgroundColor3 = COLORS.GREEN,
 				TextColor3       = Theme.TEXT_DARK,

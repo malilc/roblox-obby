@@ -331,7 +331,7 @@ function SummaryUI:createUI()
 	currencyHeader.Size = UDim2.new(1, 0, 0, 22)
 	currencyHeader.Position = UDim2.new(0, 0, 0, 4)
 	currencyHeader.BackgroundTransparency = 1
-	currencyHeader.Text = "\u{1FA99} CURRENCY EARNED"
+	currencyHeader.Text = "\u{1F4B0} CURRENCY EARNED"
 	currencyHeader.TextColor3 = Theme.MEDAL_GOLD
 	currencyHeader.TextSize = 13
 	currencyHeader.Font = Enum.Font.GothamBold
@@ -342,7 +342,7 @@ function SummaryUI:createUI()
 	self.currencyRows = {}
 
 	-- Coins row
-	local coinsRow = self:createCurrencyRow("coins", "\u{1FA99} Coins", 1, currencyContainer, 28)
+	local coinsRow = self:createCurrencyRow("coins", "\u{1F4B0} Coins", 1, currencyContainer, 28)
 	self.currencyRows.coins = coinsRow
 
 	-- Stage Clear row
@@ -623,7 +623,7 @@ function SummaryUI:createStageTag(stageNum: number, index: number): Frame
 	coinLabel.Size = UDim2.new(1, 0, 0, 14)
 	coinLabel.Position = UDim2.new(0, 0, 0, 17)
 	coinLabel.BackgroundTransparency = 1
-	coinLabel.Text = "\u{1FA99}+" .. stageReward
+	coinLabel.Text = "\u{1F4B0}+" .. stageReward
 	coinLabel.TextColor3 = Theme.MEDAL_GOLD
 	coinLabel.TextSize = 10
 	coinLabel.Font = Enum.Font.GothamBold
