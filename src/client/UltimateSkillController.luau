@@ -127,15 +127,6 @@ function UltimateSkillController:checkUltimateUnlock()
 		end
 	end
 	
-	-- Log all classes with ultimate unlocked
-	for classId, mastery in pairs(classMastery) do
-		if mastery.level >= unlockLevel then
-			local skillConfig = Config.Mastery and Config.Mastery.UltimateSkills and Config.Mastery.UltimateSkills[classId]
-			if skillConfig then
-				Logger.debug("UltimateSkill", classId, "has ultimate unlocked:", skillConfig.name)
-			end
-		end
-	end
 end
 
 function UltimateSkillController:getLocalPlayerMastery(): {[string]: any}?

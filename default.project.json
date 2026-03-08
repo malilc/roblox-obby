@@ -494,13 +494,6 @@
       }
     },
     "StarterGui": {
-      "GameUI": {
-        "$className": "ScreenGui",
-        "$properties": {
-          "ResetOnSpawn": false,
-          "IgnoreGuiInset": false
-        }
-      }
     }
   }
 }

@@ -23,6 +23,7 @@ local SpectatorUI = require(script.Parent.SpectatorUI)
 local DailyBonusUI = require(script.Parent.DailyBonusUI)
 local LeaderboardUI = require(script.Parent.LeaderboardUI)
 local ShopUI = require(script.Parent.ShopUI)
+local SettingsUI = require(script.Parent.SettingsUI)
 local MenuGridUI = require(script.Parent.MenuGridUI)
 
 local LocalPlayer = Players.LocalPlayer
@@ -33,9 +34,10 @@ local PANEL_TO_BUTTON = {
 	classSelectionUI  = "Classes",
 	titleCollectionUI = "Titles",
 	tutorialUI        = "Help",
+	settingsUI        = "Settings",
 }
 
-local MANAGED_PANELS = {"shopUI", "classSelectionUI", "titleCollectionUI", "tutorialUI"}
+local MANAGED_PANELS = {"shopUI", "classSelectionUI", "titleCollectionUI", "tutorialUI", "settingsUI"}
 
 local MainUI = {}
 MainUI.__index = MainUI
@@ -110,6 +112,13 @@ function MainUI.new()
 		end,
 	})
 
+	-- SettingsUI
+	self.settingsUI = SettingsUI.new(screenGui, {
+		onHide = function()
+			self:_syncGridButton("settingsUI", false)
+		end,
+	})
+
 	-- TitleHUD with callback to open collection (hidden — replaced by menu grid)
 	self.titleHUDUI = TitleHUDUI.new(screenGui, function()
 		self:toggleMenuPanel("titleCollectionUI")
@@ -141,7 +150,7 @@ function MainUI.new()
 			self:toggleMenuPanel("tutorialUI")
 		end,
 		onSettings = function()
-			-- stub: no SettingsUI yet
+			self:toggleMenuPanel("settingsUI")
 		end,
 	})
 
