@@ -39,7 +39,7 @@ local function createCheckpoint(position: Vector3): Part
 	checkpoint.Anchored = true
 	checkpoint.Size = Vector3.new(6, 1, 6)
 	checkpoint.Position = position
-	checkpoint.Material = Enum.Material.Neon
+	checkpoint.Material = Enum.Material.SmoothPlastic
 	checkpoint.Color = Color3.fromRGB(0, 255, 127)
 	checkpoint.CanCollide = true
 	
@@ -566,7 +566,7 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 		Size = Vector3.new(15, 2, 10),
 		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
 		Color = Color3.fromRGB(0, 255, 100),
-		Material = Enum.Material.Neon,
+		Material = Enum.Material.SmoothPlastic,
 	})
 	endPart:SetAttribute("IsFinishLine", true)
 	endPart.Parent = stage
@@ -578,7 +578,7 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 		Position = startPosition + Vector3.new(STAGE_LENGTH + 5, 8, 0),
 		Color = Color3.fromRGB(255, 215, 0),
 		Transparency = 0.5,
-		Material = Enum.Material.Neon,
+		Material = Enum.Material.SmoothPlastic,
 	})
 	banner.Parent = stage
 	
@@ -617,7 +617,7 @@ function StageTemplates.createStage6(startPosition: Vector3): Model
 		Size = Vector3.new(STAGE_LENGTH + 20, 2, 30),
 		Position = startPosition + Vector3.new(STAGE_LENGTH / 2, -15, 0),
 		Color = Color3.fromRGB(255, 60, 0),
-		Material = Enum.Material.Neon,
+		Material = Enum.Material.SmoothPlastic,
 	})
 	lavaFloor:SetAttribute("IsKillPart", true)
 	lavaFloor:SetAttribute("IsMoving", true)

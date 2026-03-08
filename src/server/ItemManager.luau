@@ -595,7 +595,7 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	missile.CFrame = CFrame.lookAt(startPos, startPos + direction)
 	missile.Anchored = true
 	missile.CanCollide = false
-	missile.Material = Enum.Material.Neon
+	missile.Material = Enum.Material.SmoothPlastic
 	missile.Color = Color3.fromRGB(255, 80, 30)
 	missile:SetAttribute("Owner", player.UserId)
 	missile.Parent = workspace
@@ -2489,7 +2489,7 @@ function ItemManager:createSwapEffect(position: Vector3)
 	portalRing.Position = position
 	portalRing.Orientation = Vector3.new(0, 0, 90)
 	portalRing.Transparency = 0.3
-	portalRing.Material = Enum.Material.Neon
+	portalRing.Material = Enum.Material.SmoothPlastic
 	portalRing.Color = Color3.fromRGB(180, 80, 255)
 	portalRing.Parent = portalContainer
 	
@@ -2502,7 +2502,7 @@ function ItemManager:createSwapEffect(position: Vector3)
 	portalCenter.Shape = Enum.PartType.Ball
 	portalCenter.Position = position
 	portalCenter.Transparency = 0.6
-	portalCenter.Material = Enum.Material.Neon
+	portalCenter.Material = Enum.Material.SmoothPlastic
 	portalCenter.Color = Color3.fromRGB(150, 50, 200)
 	portalCenter.Parent = portalContainer
 	
@@ -2706,7 +2706,7 @@ function ItemManager:createLightningStrike(position: Vector3)
 		segment.Name = "BoltSegment" .. i
 		segment.Anchored = true
 		segment.CanCollide = false
-		segment.Material = Enum.Material.Neon
+		segment.Material = Enum.Material.SmoothPlastic
 		segment.Color = Color3.fromRGB(255, 255, 200)
 		
 		local direction = (nextPos - lastPos)

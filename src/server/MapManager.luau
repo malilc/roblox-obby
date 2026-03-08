@@ -343,7 +343,7 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 			end
 		end
 
-		-- Item Boxes: Spin + Bob (Neon Cube style)
+		-- Item Boxes: Spin + Bob (Lucky Block style)
 		for _, box in ipairs(itemBoxes) do
 			if box.Parent then
 				local spinSpeed = box:GetAttribute("SpinSpeed") or 2

@@ -259,7 +259,7 @@ end
 | Function | Return Type | Description |
 |----------|-------------|-------------|
 | `createPart(props)` | `Part` | สร้าง Part พร้อม Friction สูง |
-| `createCheckpoint(pos)` | `Part` | สร้าง Checkpoint (Part สีเขียว Neon) |
+| `createCheckpoint(pos)` | `Part` | สร้าง Checkpoint (Part สีเขียว SmoothPlastic) |
 | `createItemPickup(pos)` | `Part` | สร้าง Item pickup (Lucky Block model, asset 129696127925672) |
 
 ### ⚠️ สำคัญ: Checkpoint เป็น Part ไม่ใช่ SpawnLocation

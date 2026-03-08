@@ -375,7 +375,7 @@ function UltimateSkillController:showAirJumpEffect(humanoidRootPart: Part)
 	burst.CanCollide = false
 	burst.Transparency = 0.5
 	burst.Color = Color3.fromRGB(100, 255, 100)
-	burst.Material = Enum.Material.Neon
+	burst.Material = Enum.Material.SmoothPlastic
 	burst.Parent = workspace
 	
 	-- Animate and remove
