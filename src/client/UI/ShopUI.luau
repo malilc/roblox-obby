@@ -15,21 +15,21 @@ ShopUI.__index = ShopUI
 -- ========== CARD COLOR HELPERS ==========
 
 local CARD_BG_COLORS = {
-	Common   = Color3.fromRGB(50, 50, 70),
+	Common   = Color3.fromRGB(35, 55, 42),
 	Uncommon = Color3.fromRGB(25, 65, 45),
-	Rare     = Color3.fromRGB(25, 45, 80),
-	Epic     = Color3.fromRGB(60, 25, 80),
+	Rare     = Color3.fromRGB(25, 45, 65),
+	Epic     = Color3.fromRGB(50, 30, 65),
 }
 
 local BADGE_BG_COLORS = {
-	Common   = Color3.fromRGB(80, 80, 100),
+	Common   = Color3.fromRGB(55, 80, 62),
 	Uncommon = Color3.fromRGB(40, 100, 60),
-	Rare     = Color3.fromRGB(40, 65, 120),
-	Epic     = Color3.fromRGB(90, 40, 120),
+	Rare     = Color3.fromRGB(40, 65, 100),
+	Epic     = Color3.fromRGB(70, 40, 95),
 }
 
 local PRICE_BTN_COLORS = {
-	Common   = Color3.fromRGB(120, 120, 140),
+	Common   = Color3.fromRGB(90, 115, 95),
 	Uncommon = Color3.fromRGB(55, 175, 75),
 	Rare     = Color3.fromRGB(60, 125, 215),
 	Epic     = Color3.fromRGB(165, 65, 195),
@@ -192,7 +192,7 @@ function ShopUI:createHeader(parent: Frame)
 	closeBtn.Name = "CloseButton"
 	closeBtn.Size = UDim2.new(0, 36, 0, 36)
 	closeBtn.Position = UDim2.new(1, -50, 0, 12)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 40, 75)
+	closeBtn.BackgroundColor3 = Theme.BG_OVERLAY
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Text = ""
 	closeBtn.Parent = parent
@@ -227,7 +227,7 @@ function ShopUI:createCurrencyDisplays(parent: Frame)
 	coinDisplay.Name = "CoinDisplay"
 	coinDisplay.Size = UDim2.new(0, 130, 0, 34)
 	coinDisplay.Position = UDim2.new(1, -238, 0, 13)
-	coinDisplay.BackgroundColor3 = Color3.fromRGB(40, 30, 65)
+	coinDisplay.BackgroundColor3 = Theme.BG_OVERLAY
 	coinDisplay.BorderSizePixel = 0
 	coinDisplay.Visible = false
 	coinDisplay.Parent = parent
@@ -275,7 +275,7 @@ function ShopUI:createCurrencyDisplays(parent: Frame)
 	gemDisplay.Name = "GemDisplay"
 	gemDisplay.Size = UDim2.new(0, 90, 0, 34)
 	gemDisplay.Position = UDim2.new(1, -100, 0, 13)
-	gemDisplay.BackgroundColor3 = Color3.fromRGB(40, 30, 65)
+	gemDisplay.BackgroundColor3 = Theme.BG_OVERLAY
 	gemDisplay.BorderSizePixel = 0
 	gemDisplay.Visible = false
 	gemDisplay.Parent = parent
@@ -361,7 +361,7 @@ function ShopUI:createTabBar(parent: Frame)
 		badge.Name = "Badge"
 		badge.Size = UDim2.new(0, 24, 0, 24)
 		badge.Position = UDim2.new(1, -36, 0.5, -12)
-		badge.BackgroundColor3 = Color3.fromRGB(60, 50, 90)
+		badge.BackgroundColor3 = Theme.BG_SURFACE
 		badge.BorderSizePixel = 0
 		badge.Parent = tab
 		Theme.applyCorner(badge, "full")
@@ -402,7 +402,7 @@ function ShopUI:switchTab(tabName: string)
 		else
 			TweenService:Create(tab, TweenInfo.new(0.15), { BackgroundTransparency = 0.85 }):Play()
 			if badge then
-				badge.BackgroundColor3 = Color3.fromRGB(60, 50, 90)
+				badge.BackgroundColor3 = Theme.BG_SURFACE
 			end
 		end
 	end
@@ -903,7 +903,7 @@ function ShopUI:createOwnedClassesSection(parent: Frame)
 	section.Name = "OwnedClassesSection"
 	section.Size = UDim2.new(1, 0, 0, 140)
 	section.Position = UDim2.new(0, 0, 0, 375)
-	section.BackgroundColor3 = Color3.fromRGB(22, 16, 42)
+	section.BackgroundColor3 = Theme.BG_OVERLAY
 	section.BackgroundTransparency = 0.3
 	section.BorderSizePixel = 0
 	section.Parent = parent
@@ -1200,7 +1200,7 @@ function ShopUI:refreshOwnedClassDisplay()
 			icons.frame.BackgroundTransparency = 0.5
 			icons.iconStroke.Color = Theme.BG_ELEVATED
 			icons.iconStroke.Transparency = 0.5
-			icons.nameLabel.TextColor3 = Color3.fromRGB(100, 85, 130)
+			icons.nameLabel.TextColor3 = Theme.TEXT_MUTED
 		end
 	end
 

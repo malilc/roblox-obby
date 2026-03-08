@@ -157,7 +157,7 @@ function TutorialUI:createUI()
 	closeButton.Name = "CloseButton"
 	closeButton.Size = UDim2.new(0, 36, 0, 36)
 	closeButton.Position = UDim2.new(1, -50, 0, 12)
-	closeButton.BackgroundColor3 = Color3.fromRGB(50, 40, 75)
+	closeButton.BackgroundColor3 = Theme.BG_OVERLAY
 	closeButton.BorderSizePixel = 0
 	closeButton.Text = ""
 	closeButton.Parent = panel

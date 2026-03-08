@@ -15,8 +15,8 @@ local COLORS = {
 	SUBTITLE    = Color3.fromRGB(80, 55, 10),
 	FUTURE_TEXT = Theme.TEXT_MUTED,
 	CARD_BADGE  = Color3.fromRGB(80, 180, 110),
-	DAY7_SPECIAL = Color3.fromRGB(120, 80, 180),
-	GEM          = Color3.fromRGB(200, 120, 255),
+	DAY7_SPECIAL = Color3.fromRGB(45, 120, 70),
+	GEM          = Color3.fromRGB(200, 120, 255),  -- gem purple stays
 }
 
 local DailyBonusUI = {}

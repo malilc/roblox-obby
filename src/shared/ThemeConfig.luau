@@ -1,5 +1,5 @@
 -- ThemeConfig.luau
--- Central design token file for Fall Guys-style UI
+-- Central design token file for Nature Park-style UI
 -- All UI files MUST require this and use these tokens instead of inline Color3 values
 --
 -- Usage:
@@ -9,12 +9,12 @@
 local Theme = {}
 
 -- ============================================================
--- BACKGROUNDS (deep purple family)
+-- BACKGROUNDS (forest green family)
 -- ============================================================
-Theme.BG_BASE     = Color3.fromRGB(45,  30,  75)   -- main panel background
-Theme.BG_SURFACE  = Color3.fromRGB(65,  50, 105)   -- card / section background
-Theme.BG_ELEVATED = Color3.fromRGB(85,  68, 135)   -- hover / selected state
-Theme.BG_OVERLAY  = Color3.fromRGB(25,  15,  50)   -- modal dim overlay / darkest bg
+Theme.BG_BASE     = Color3.fromRGB(35,  62,  48)   -- main panel background (forest green)
+Theme.BG_SURFACE  = Color3.fromRGB(48,  80,  62)   -- card / section background
+Theme.BG_ELEVATED = Color3.fromRGB(62, 100,  75)   -- hover / selected state
+Theme.BG_OVERLAY  = Color3.fromRGB(22,  42,  32)   -- modal dim overlay / darkest bg
 
 -- ============================================================
 -- BRAND COLORS
@@ -22,15 +22,15 @@ Theme.BG_OVERLAY  = Color3.fromRGB(25,  15,  50)   -- modal dim overlay / darkes
 Theme.PRIMARY      = Color3.fromRGB(255, 220,   0)  -- bright yellow — main CTA buttons
 Theme.PRIMARY_DARK = Color3.fromRGB(200, 165,   0)  -- darker yellow — hover / pressed
 Theme.SECONDARY    = Color3.fromRGB(255,  85,  50)  -- orange-red — destructive / energy
-Theme.ACCENT_CYAN  = Color3.fromRGB( 80, 220, 255)  -- cyan — info / highlight
+Theme.ACCENT_CYAN  = Color3.fromRGB( 85, 195, 130)  -- leaf green — info / highlight / glow border
 Theme.ACCENT_PINK  = Color3.fromRGB(255, 100, 180)  -- pink — fun accent / special
 
 -- ============================================================
 -- TEXT
 -- ============================================================
-Theme.TEXT_PRIMARY = Color3.fromRGB(255, 255, 255)  -- white — on any dark background
-Theme.TEXT_MUTED   = Color3.fromRGB(195, 178, 230)  -- light purple-white — secondary text
-Theme.TEXT_DARK    = Color3.fromRGB( 45,  30,  75)  -- dark purple — for light backgrounds (rare)
+Theme.TEXT_PRIMARY = Color3.fromRGB(245, 245, 240)  -- warm white — on any dark background
+Theme.TEXT_MUTED   = Color3.fromRGB(170, 195, 175)  -- sage green-white — secondary text
+Theme.TEXT_DARK    = Color3.fromRGB( 35,  62,  48)  -- dark green — for light backgrounds (rare)
 
 -- ============================================================
 -- SEMANTIC COLORS
@@ -38,7 +38,7 @@ Theme.TEXT_DARK    = Color3.fromRGB( 45,  30,  75)  -- dark purple — for light
 Theme.SUCCESS = Color3.fromRGB( 80, 230, 120)  -- bright green — equip, success, positive
 Theme.DANGER  = Color3.fromRGB(255,  70,  70)  -- bright red — leave, locked, danger
 Theme.WARNING = Color3.fromRGB(255, 200,   0)  -- yellow — time warning, can-buy state
-Theme.INFO    = Color3.fromRGB( 80, 200, 255)  -- cyan — info, mastery progress
+Theme.INFO    = Color3.fromRGB( 80, 190, 140)  -- soft green — info, mastery progress
 
 -- ============================================================
 -- RARITY COLORS (used for items, titles, rewards)
@@ -67,11 +67,11 @@ Theme.MEDAL_BRONZE = Color3.fromRGB(205, 127,  50)
 -- ============================================================
 -- HUD GRADIENT COLORS
 -- ============================================================
-Theme.HUD_SCORE_START    = Color3.fromRGB(40, 180, 255)   -- bright cyan
-Theme.HUD_SCORE_END      = Color3.fromRGB(20, 80, 200)    -- deep blue
+Theme.HUD_SCORE_START    = Color3.fromRGB(60, 180, 100)   -- fresh green
+Theme.HUD_SCORE_END      = Color3.fromRGB(30, 110,  55)   -- deep green
 Theme.HUD_CURRENCY_START = Color3.fromRGB(255, 210, 50)   -- bright gold
 Theme.HUD_CURRENCY_END   = Color3.fromRGB(230, 150, 0)    -- deep amber
-Theme.HUD_GLOW_CYAN      = Color3.fromRGB(100, 230, 255)  -- timer glow
+Theme.HUD_GLOW_CYAN      = Color3.fromRGB(100, 220, 140)  -- timer glow (green)
 Theme.HUD_GLOW_GOLD      = Color3.fromRGB(255, 230, 100)  -- currency glow
 Theme.HUD_GEM_START      = Color3.fromRGB(180,  80, 255)  -- bright purple (gem gradient)
 Theme.HUD_GEM_END        = Color3.fromRGB(120,  40, 200)  -- deep purple (gem gradient)

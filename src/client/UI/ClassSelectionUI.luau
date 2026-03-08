@@ -354,7 +354,7 @@ function ClassSelectionUI:createUI()
 	closeBtn.Name = "CloseButton"
 	closeBtn.Size = UDim2.new(0, 36, 0, 36)
 	closeBtn.Position = UDim2.new(1, -50, 0, 12)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 40, 75)
+	closeBtn.BackgroundColor3 = Theme.BG_OVERLAY
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Text = ""
 	closeBtn.Parent = container
@@ -494,15 +494,15 @@ function ClassSelectionUI:createUI()
 
 	local confirmGradient = Instance.new("UIGradient")
 	confirmGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 80, 220)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 50, 170)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 90)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 110, 60)),
 	})
 	confirmGradient.Rotation = 0
 	confirmGradient.Parent = confirmBg
 	self.confirmGradient = confirmGradient
 
 	local confirmStroke = Instance.new("UIStroke")
-	confirmStroke.Color = Color3.fromRGB(160, 100, 240)
+	confirmStroke.Color = Color3.fromRGB(80, 190, 110)
 	confirmStroke.Thickness = Theme.STROKE_THIN
 	confirmStroke.Transparency = 0.3
 	confirmStroke.Parent = confirmBg
@@ -1094,18 +1094,18 @@ function ClassSelectionUI:setConfirmButtonState(text: string, isEnabled: boolean
 		elseif text == "EQUIPPED" then
 			-- EQUIPPED — purple gradient (disabled but styled)
 			self.confirmGradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 80, 220)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 50, 170)),
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 90)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 110, 60)),
 			})
 			if self.confirmStroke then
-				self.confirmStroke.Color = Color3.fromRGB(160, 100, 240)
+				self.confirmStroke.Color = Color3.fromRGB(80, 190, 110)
 				self.confirmStroke.Transparency = 0.3
 			end
 		else
 			-- NOT ENOUGH — dark gray gradient
 			self.confirmGradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(85, 68, 135)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 40, 90)),
+				ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+				ColorSequenceKeypoint.new(1, Theme.BG_OVERLAY),
 			})
 			if self.confirmStroke then
 				self.confirmStroke.Color = COLORS.STROKE_DEFAULT
