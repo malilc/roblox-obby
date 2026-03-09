@@ -92,6 +92,38 @@ local Config = {
 		RequestCooldown = 0.5,
 	},
 
+	-- Game Pass definitions (set gamePassId to actual Roblox Game Pass IDs)
+	GamePasses = {
+		DoubleCoin = {
+			id = "DoubleCoin",
+			name = "2x Coins",
+			description = "Earn double coins from every stage! Stack your riches faster.",
+			icon = "\u{1F4B0}",
+			gamePassId = 1740745787,
+			robuxPrice = 99,
+			layoutOrder = 1,
+		},
+		VIP = {
+			id = "VIP",
+			name = "VIP",
+			description = "Exclusive VIP badge, special chat tag, and a golden name glow!",
+			icon = "\u{2B50}",
+			gamePassId = 1741108491,
+			robuxPrice = 199,
+			layoutOrder = 2,
+		},
+		ExtraSlot = {
+			id = "ExtraSlot",
+			name = "Extra Slot",
+			description = "Unlock a 3rd item slot! Carry more items into the race.",
+			icon = "\u{1F392}",
+			gamePassId = 1740769746,
+			robuxPrice = 149,
+			layoutOrder = 3,
+		},
+	},
+	GamePassOrder = { "DoubleCoin", "VIP", "ExtraSlot" },
+
 	-- Class Mastery Settings
 	Mastery = {
 		MaxLevel = 20,

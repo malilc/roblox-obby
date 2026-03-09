@@ -151,6 +151,12 @@
         },
         "ShopUpdate": {
           "$className": "RemoteEvent"
+        },
+        "GamePassUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "CheckGamePass": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

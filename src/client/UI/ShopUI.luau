@@ -1,6 +1,8 @@
--- ShopUI: Shop popup with Items tab + Class Gacha tab
+-- ShopUI: Shop popup with Items tab + Class Gacha tab + Game Pass tab
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -43,12 +45,14 @@ function ShopUI.new(parent: ScreenGui, callbacks: {onShow: (() -> ())?}?)
 	self.activeTab = "Items"
 	self.itemButtons = {} :: {[string]: {btn: TextButton, label: TextLabel}}
 	self.isGachaPending = false
+	self.gamePassButtons = {} :: {[string]: any}
 
 	-- Player state (synced from server)
 	self.playerCurrency = 0
 	self.playerGems = 0
 	self.unlockedClasses = {}
 	self.itemSlots = {nil, nil}
+	self.ownedGamePasses = {} :: {[string]: boolean}
 
 	-- Remotes
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -57,6 +61,8 @@ function ShopUI.new(parent: ScreenGui, callbacks: {onShow: (() -> ())?}?)
 	self.buyShopItemRemote = remotes:WaitForChild("BuyShopItem")
 	self.gachaClassPullRemote = remotes:WaitForChild("GachaClassPull")
 	self.shopUpdateRemote = remotes:WaitForChild("ShopUpdate")
+	self.gamePassUpdateRemote = remotes:WaitForChild("GamePassUpdate")
+	self.checkGamePassRemote = remotes:WaitForChild("CheckGamePass")
 
 	self:createUI()
 	self:setupRemotes()
@@ -87,6 +93,10 @@ end
 
 local function countClasses(): number
 	return #ClassTypes.ClassOrder
+end
+
+local function countGamePasses(): number
+	return #Config.GamePassOrder
 end
 
 -- ========== CREATE UI ==========
@@ -148,6 +158,9 @@ function ShopUI:createUI()
 
 	-- ===== CLASSES CONTENT (gacha) =====
 	self:createClassesContent(mainFrame)
+
+	-- ===== GAME PASS CONTENT =====
+	self:createGamePassContent(mainFrame)
 
 	-- Status label (bottom)
 	local statusLabel = Instance.new("TextLabel")
@@ -324,11 +337,12 @@ function ShopUI:createTabBar(parent: Frame)
 	self.tabBadges = {}
 
 	local tabDefs = {
-		{ name = "Items",   icon = "\u{1F3AF}", count = countItems(),   color = Theme.PRIMARY },
-		{ name = "Classes", icon = "\u{2694}\u{FE0F}",  count = countClasses(), color = Theme.HUD_GEM_START },
+		{ name = "Items",    icon = "\u{1F3AF}", count = countItems(),      color = Theme.PRIMARY },
+		{ name = "Classes",  icon = "\u{2694}\u{FE0F}",  count = countClasses(),    color = Theme.HUD_GEM_START },
+		{ name = "GamePass", icon = "\u{2B50}",  count = countGamePasses(), color = Theme.ACCENT_CYAN },
 	}
 
-	local tabWidth = math.floor((780 - 44 - 12) / 2) -- half width minus gap
+	local tabWidth = math.floor((780 - 44 - 24) / 3) -- third width minus gaps
 
 	for idx, tabDef in ipairs(tabDefs) do
 		local tab = Instance.new("TextButton")
@@ -387,11 +401,6 @@ end
 function ShopUI:switchTab(tabName: string)
 	self.activeTab = tabName
 
-	local tabColors = {
-		Items = Theme.PRIMARY,
-		Classes = Theme.HUD_GEM_START,
-	}
-
 	for name, tab in pairs(self.tabButtons) do
 		local badge = self.tabBadges[name]
 		if name == tabName then
@@ -415,6 +424,9 @@ function ShopUI:switchTab(tabName: string)
 	end
 	if self.classesContent then
 		self.classesContent.Visible = (tabName == "Classes")
+	end
+	if self.gamePassContent then
+		self.gamePassContent.Visible = (tabName == "GamePass")
 	end
 end
 
@@ -1061,6 +1073,279 @@ function ShopUI:createOwnedClassesSection(parent: Frame)
 	self.ownedClassesSection = section
 end
 
+-- ========== GAME PASS TAB ==========
+
+local GAMEPASS_CARD_COLORS = {
+	DoubleCoin = { bg = Color3.fromRGB(50, 60, 30), accent = Color3.fromRGB(255, 200, 50) },
+	VIP        = { bg = Color3.fromRGB(55, 40, 25), accent = Color3.fromRGB(255, 180, 50) },
+	ExtraSlot  = { bg = Color3.fromRGB(30, 45, 60), accent = Color3.fromRGB(100, 180, 255) },
+}
+
+function ShopUI:createGamePassContent(parent: Frame)
+	local content = Instance.new("ScrollingFrame")
+	content.Name = "GamePassContent"
+	content.Size = UDim2.new(1, -44, 1, -115)
+	content.Position = UDim2.new(0, 22, 0, 108)
+	content.BackgroundTransparency = 1
+	content.BorderSizePixel = 0
+	content.ScrollBarThickness = 4
+	content.ScrollBarImageColor3 = Theme.ACCENT_CYAN
+	content.Visible = false
+	content.Parent = parent
+	self.gamePassContent = content
+
+	-- Section title
+	local sectionTitle = Instance.new("TextLabel")
+	sectionTitle.Size = UDim2.new(1, 0, 0, 30)
+	sectionTitle.Position = UDim2.new(0, 0, 0, 5)
+	sectionTitle.BackgroundTransparency = 1
+	sectionTitle.Text = "\u{2B50}  GAME PASSES"
+	sectionTitle.TextColor3 = Theme.TEXT_PRIMARY
+	sectionTitle.TextSize = 22
+	sectionTitle.Font = Enum.Font.GothamBold
+	sectionTitle.Parent = content
+
+	local subtitle = Instance.new("TextLabel")
+	subtitle.Size = UDim2.new(1, 0, 0, 18)
+	subtitle.Position = UDim2.new(0, 0, 0, 38)
+	subtitle.BackgroundTransparency = 1
+	subtitle.Text = "Permanent upgrades — buy once, keep forever!"
+	subtitle.TextColor3 = Theme.TEXT_MUTED
+	subtitle.TextSize = 13
+	subtitle.Font = Enum.Font.Gotham
+	subtitle.Parent = content
+
+	-- Game pass cards grid
+	local grid = Instance.new("Frame")
+	grid.Name = "GamePassGrid"
+	grid.Size = UDim2.new(1, 0, 0, 340)
+	grid.Position = UDim2.new(0, 0, 0, 68)
+	grid.BackgroundTransparency = 1
+	grid.Parent = content
+
+	local gridLayout = Instance.new("UIGridLayout")
+	gridLayout.CellSize = UDim2.new(0, 225, 0, 310)
+	gridLayout.CellPadding = UDim2.new(0, 14, 0, 14)
+	gridLayout.FillDirection = Enum.FillDirection.Horizontal
+	gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	gridLayout.Parent = grid
+
+	for _, passId in ipairs(Config.GamePassOrder) do
+		local passDef = Config.GamePasses[passId]
+		if passDef then
+			self:createGamePassCard(grid, passDef)
+		end
+	end
+
+	-- Update canvas size
+	gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		content.CanvasSize = UDim2.new(0, 0, 0, 68 + gridLayout.AbsoluteContentSize.Y + 20)
+	end)
+	content.CanvasSize = UDim2.new(0, 0, 0, 430)
+end
+
+function ShopUI:createGamePassCard(parent: Frame, passDef: any)
+	local colors = GAMEPASS_CARD_COLORS[passDef.id] or { bg = Theme.BG_SURFACE, accent = Theme.ACCENT_CYAN }
+	local isOwned = self.ownedGamePasses[passDef.id] == true
+
+	-- Card frame
+	local card = Instance.new("Frame")
+	card.Name = "GamePass_" .. passDef.id
+	card.BackgroundColor3 = colors.bg
+	card.BorderSizePixel = 0
+	card.LayoutOrder = passDef.layoutOrder or 1
+	card.Parent = parent
+	Theme.applyCorner(card, "md")
+
+	local cardStroke = Instance.new("UIStroke")
+	cardStroke.Color = colors.accent
+	cardStroke.Thickness = 2
+	cardStroke.Transparency = 0.3
+	cardStroke.Parent = card
+
+	-- "GAME PASS" badge (top right)
+	local badge = Instance.new("Frame")
+	badge.Name = "PassBadge"
+	badge.Size = UDim2.new(0, 90, 0, 22)
+	badge.Position = UDim2.new(1, -98, 0, 8)
+	badge.BackgroundColor3 = colors.accent
+	badge.BackgroundTransparency = 0.15
+	badge.BorderSizePixel = 0
+	badge.Parent = card
+	Theme.applyCorner(badge, "full")
+
+	local badgeLabel = Instance.new("TextLabel")
+	badgeLabel.Size = UDim2.new(1, 0, 1, 0)
+	badgeLabel.BackgroundTransparency = 1
+	badgeLabel.Text = "GAME PASS"
+	badgeLabel.TextColor3 = Theme.TEXT_PRIMARY
+	badgeLabel.TextSize = 9
+	badgeLabel.Font = Enum.Font.GothamBold
+	badgeLabel.Parent = badge
+
+	-- Large icon
+	local icon = Instance.new("TextLabel")
+	icon.Name = "Icon"
+	icon.Size = UDim2.new(1, 0, 0, 80)
+	icon.Position = UDim2.new(0, 0, 0, 35)
+	icon.BackgroundTransparency = 1
+	icon.Text = passDef.icon
+	icon.TextSize = 56
+	icon.Parent = card
+
+	-- Pass name
+	local name = Instance.new("TextLabel")
+	name.Name = "PassName"
+	name.Size = UDim2.new(1, -16, 0, 28)
+	name.Position = UDim2.new(0, 8, 0, 118)
+	name.BackgroundTransparency = 1
+	name.Text = passDef.name
+	name.TextColor3 = colors.accent
+	name.TextSize = 20
+	name.Font = Enum.Font.GothamBold
+	name.Parent = card
+
+	-- Description
+	local desc = Instance.new("TextLabel")
+	desc.Name = "Description"
+	desc.Size = UDim2.new(1, -24, 0, 52)
+	desc.Position = UDim2.new(0, 12, 0, 150)
+	desc.BackgroundTransparency = 1
+	desc.Text = passDef.description
+	desc.TextColor3 = Theme.TEXT_MUTED
+	desc.TextSize = 12
+	desc.Font = Enum.Font.Gotham
+	desc.TextWrapped = true
+	desc.TextYAlignment = Enum.TextYAlignment.Top
+	desc.Parent = card
+
+	-- Buy button (bottom)
+	local buyBtn = Instance.new("TextButton")
+	buyBtn.Name = "BuyBtn"
+	buyBtn.Size = UDim2.new(1, -24, 0, 44)
+	buyBtn.Position = UDim2.new(0, 12, 1, -56)
+	buyBtn.BackgroundTransparency = 1
+	buyBtn.Text = ""
+	buyBtn.Parent = card
+
+	local buyBg = Instance.new("Frame")
+	buyBg.Name = "BuyBg"
+	buyBg.Size = UDim2.new(1, 0, 1, 0)
+	buyBg.BorderSizePixel = 0
+	buyBg.Parent = buyBtn
+	Theme.applyCorner(buyBg, "full")
+
+	-- Robux icon
+	local robuxLabel = Instance.new("TextLabel")
+	robuxLabel.Name = "RobuxIcon"
+	robuxLabel.Size = UDim2.new(0, 22, 1, 0)
+	robuxLabel.Position = UDim2.new(0.5, -32, 0, 0)
+	robuxLabel.BackgroundTransparency = 1
+	robuxLabel.Text = "R$"
+	robuxLabel.TextColor3 = Theme.TEXT_PRIMARY
+	robuxLabel.TextSize = 14
+	robuxLabel.Font = Enum.Font.GothamBold
+	robuxLabel.ZIndex = buyBg.ZIndex + 1
+	robuxLabel.Parent = buyBtn
+
+	local priceLabel = Instance.new("TextLabel")
+	priceLabel.Name = "PriceLabel"
+	priceLabel.Size = UDim2.new(0.5, 0, 1, 0)
+	priceLabel.Position = UDim2.new(0.5, -8, 0, 0)
+	priceLabel.BackgroundTransparency = 1
+	priceLabel.Text = tostring(passDef.robuxPrice)
+	priceLabel.TextColor3 = Theme.TEXT_PRIMARY
+	priceLabel.TextSize = 20
+	priceLabel.Font = Enum.Font.GothamBold
+	priceLabel.TextXAlignment = Enum.TextXAlignment.Left
+	priceLabel.ZIndex = buyBg.ZIndex + 1
+	priceLabel.Parent = buyBtn
+
+	-- Owned overlay
+	local ownedBadge = Instance.new("Frame")
+	ownedBadge.Name = "OwnedBadge"
+	ownedBadge.Size = UDim2.new(1, -24, 0, 44)
+	ownedBadge.Position = UDim2.new(0, 12, 1, -56)
+	ownedBadge.BackgroundColor3 = Theme.SUCCESS
+	ownedBadge.BackgroundTransparency = 0.15
+	ownedBadge.BorderSizePixel = 0
+	ownedBadge.Visible = false
+	ownedBadge.Parent = card
+	Theme.applyCorner(ownedBadge, "full")
+
+	local ownedLabel = Instance.new("TextLabel")
+	ownedLabel.Size = UDim2.new(1, 0, 1, 0)
+	ownedLabel.BackgroundTransparency = 1
+	ownedLabel.Text = "\u{2714}  OWNED"
+	ownedLabel.TextColor3 = Theme.TEXT_PRIMARY
+	ownedLabel.TextSize = 18
+	ownedLabel.Font = Enum.Font.GothamBold
+	ownedLabel.Parent = ownedBadge
+
+	-- Set initial state
+	if isOwned then
+		buyBtn.Visible = false
+		ownedBadge.Visible = true
+		buyBg.BackgroundColor3 = Theme.BG_OVERLAY
+		cardStroke.Transparency = 0.6
+	else
+		buyBtn.Visible = true
+		ownedBadge.Visible = false
+		buyBg.BackgroundColor3 = colors.accent
+		cardStroke.Transparency = 0.3
+	end
+
+	-- Buy click → prompt native Roblox purchase
+	buyBtn.MouseButton1Click:Connect(function()
+		if self.ownedGamePasses[passDef.id] then return end
+		if passDef.gamePassId == 0 then
+			self:showStatusMessage("Game Pass not configured yet!", Theme.WARNING)
+			return
+		end
+		local player = Players.LocalPlayer
+		MarketplaceService:PromptGamePassPurchase(player, passDef.gamePassId)
+	end)
+
+	-- Hover effects
+	card.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			TweenService:Create(cardStroke, TweenInfo.new(0.1), { Transparency = 0, Thickness = 3 }):Play()
+		end
+	end)
+	card.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			local t = self.ownedGamePasses[passDef.id] and 0.6 or 0.3
+			TweenService:Create(cardStroke, TweenInfo.new(0.1), { Transparency = t, Thickness = 2 }):Play()
+		end
+	end)
+
+	self.gamePassButtons[passDef.id] = {
+		card = card,
+		buyBtn = buyBtn,
+		buyBg = buyBg,
+		ownedBadge = ownedBadge,
+		cardStroke = cardStroke,
+		colors = colors,
+	}
+end
+
+function ShopUI:refreshGamePassDisplay()
+	for passId, data in pairs(self.gamePassButtons) do
+		local isOwned = self.ownedGamePasses[passId] == true
+		if isOwned then
+			data.buyBtn.Visible = false
+			data.ownedBadge.Visible = true
+			data.cardStroke.Transparency = 0.6
+		else
+			data.buyBtn.Visible = true
+			data.ownedBadge.Visible = false
+			data.buyBg.BackgroundColor3 = data.colors.accent
+			data.cardStroke.Transparency = 0.3
+		end
+	end
+end
+
 function ShopUI:onGachaPull()
 	if self.isGachaPending then return end
 	self.isGachaPending = true
@@ -1452,6 +1737,22 @@ function ShopUI:setupRemotes()
 			self:refreshGachaAffordability()
 		end
 	end)
+
+	-- Game pass ownership update from server
+	self.gamePassUpdateRemote.OnClientEvent:Connect(function(data)
+		if data.ownedPasses then
+			self.ownedGamePasses = data.ownedPasses
+			self:refreshGamePassDisplay()
+		end
+	end)
+
+	-- Listen for native Roblox purchase completion
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, wasPurchased)
+		if wasPurchased then
+			-- Ask server to verify and sync
+			self.checkGamePassRemote:FireServer()
+		end
+	end)
 end
 
 function ShopUI:onShopUpdate(data: {[string]: any})
@@ -1460,6 +1761,9 @@ function ShopUI:onShopUpdate(data: {[string]: any})
 		self.playerGems = data.gems or 0
 		self.unlockedClasses = data.unlockedClasses or {}
 		self.itemSlots = data.itemSlots or {nil, nil}
+		if data.ownedGamePasses then
+			self.ownedGamePasses = data.ownedGamePasses
+		end
 		self:refreshAllDisplays()
 
 	elseif data.type == "itemPurchase" then
@@ -1507,6 +1811,7 @@ function ShopUI:refreshAllDisplays()
 	self:refreshItemAffordability()
 	self:refreshGachaAffordability()
 	self:refreshOwnedClassDisplay()
+	self:refreshGamePassDisplay()
 end
 
 function ShopUI:refreshCoinDisplay()
