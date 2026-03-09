@@ -17,24 +17,24 @@ ShopUI.__index = ShopUI
 -- ========== CARD COLOR HELPERS ==========
 
 local CARD_BG_COLORS = {
-	Common   = Color3.fromRGB(35, 55, 42),
-	Uncommon = Color3.fromRGB(25, 65, 45),
-	Rare     = Color3.fromRGB(25, 45, 65),
-	Epic     = Color3.fromRGB(50, 30, 65),
+	Common   = Color3.fromRGB(250, 250, 252),
+	Uncommon = Color3.fromRGB(248, 255, 248),
+	Rare     = Color3.fromRGB(245, 248, 255),
+	Epic     = Color3.fromRGB(252, 245, 255),
 }
 
 local BADGE_BG_COLORS = {
-	Common   = Color3.fromRGB(55, 80, 62),
-	Uncommon = Color3.fromRGB(40, 100, 60),
-	Rare     = Color3.fromRGB(40, 65, 100),
-	Epic     = Color3.fromRGB(70, 40, 95),
+	Common   = Color3.fromRGB(220, 225, 232),
+	Uncommon = Color3.fromRGB(200, 240, 210),
+	Rare     = Color3.fromRGB(200, 215, 250),
+	Epic     = Color3.fromRGB(230, 205, 250),
 }
 
 local PRICE_BTN_COLORS = {
-	Common   = Color3.fromRGB(90, 115, 95),
-	Uncommon = Color3.fromRGB(55, 175, 75),
-	Rare     = Color3.fromRGB(60, 125, 215),
-	Epic     = Color3.fromRGB(165, 65, 195),
+	Common   = Color3.fromRGB(130, 135, 145),
+	Uncommon = Color3.fromRGB(60, 180, 90),
+	Rare     = Color3.fromRGB(60, 130, 230),
+	Epic     = Color3.fromRGB(170, 70, 210),
 }
 
 function ShopUI.new(parent: ScreenGui, callbacks: {onShow: (() -> ())?}?)
@@ -120,16 +120,16 @@ function ShopUI:createUI()
 	-- Gradient background
 	local mainGrad = Instance.new("UIGradient")
 	mainGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	mainGrad.Rotation = 135
+	mainGrad.Rotation = 180
 	mainGrad.Parent = mainFrame
 
 	local borderStroke = Instance.new("UIStroke")
 	borderStroke.Color = Theme.ACCENT_CYAN
-	borderStroke.Thickness = Theme.STROKE_BOLD
-	borderStroke.Transparency = 0.4
+	borderStroke.Thickness = Theme.STROKE_MED
+	borderStroke.Transparency = 0.5
 	borderStroke.Parent = mainFrame
 
 	-- Drop shadow
@@ -137,8 +137,8 @@ function ShopUI:createUI()
 	mainShadow.Name = "Shadow"
 	mainShadow.Size = UDim2.new(1, 6, 1, 6)
 	mainShadow.Position = UDim2.new(0, -3, 0, 4)
-	mainShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	mainShadow.BackgroundTransparency = 0.6
+	mainShadow.BackgroundColor3 = Theme.CARD_SHADOW
+	mainShadow.BackgroundTransparency = 0.7
 	mainShadow.BorderSizePixel = 0
 	mainShadow.ZIndex = mainFrame.ZIndex - 1
 	mainShadow.Parent = mainFrame
@@ -221,7 +221,7 @@ function ShopUI:createHeader(parent: Frame)
 	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
-	closeBtnLabel.TextColor3 = Theme.TEXT_PRIMARY
+	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	closeBtnLabel.TextSize = 18
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeBtn.ZIndex + 1
@@ -406,7 +406,7 @@ function ShopUI:switchTab(tabName: string)
 		if name == tabName then
 			TweenService:Create(tab, TweenInfo.new(0.15), { BackgroundTransparency = 0.05 }):Play()
 			if badge then
-				badge.BackgroundColor3 = Color3.fromRGB(90, 75, 30)
+				badge.BackgroundColor3 = Color3.fromRGB(255, 245, 200)
 			end
 		else
 			TweenService:Create(tab, TweenInfo.new(0.15), { BackgroundTransparency = 0.85 }):Play()
@@ -655,7 +655,7 @@ function ShopUI:createItemCard(parent: ScrollingFrame, itemDef: any, layoutOrder
 	buyLabel.Position = UDim2.new(0.5, -10, 0, 0)
 	buyLabel.BackgroundTransparency = 1
 	buyLabel.Text = tostring(price)
-	buyLabel.TextColor3 = Theme.TEXT_PRIMARY
+	buyLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	buyLabel.TextSize = 18
 	buyLabel.Font = Enum.Font.GothamBold
 	buyLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -734,7 +734,7 @@ function ShopUI:refreshItemAffordability()
 		else
 			data.bg.BackgroundColor3 = data.priceBtnColor
 			data.label.Text = tostring(data.price)
-			data.label.TextColor3 = Theme.TEXT_PRIMARY
+			data.label.TextColor3 = Theme.TEXT_ON_ACCENT
 			data.priceIconBg.Visible = true
 		end
 
@@ -812,7 +812,7 @@ function ShopUI:createClassesContent(parent: Frame)
 	pullLabel.Size = UDim2.new(1, 0, 1, 0)
 	pullLabel.BackgroundTransparency = 1
 	pullLabel.Text = "\u{1F3B2}  PULL (" .. Config.Shop.Gacha.CostGems .. " \u{1F48E})"
-	pullLabel.TextColor3 = Theme.TEXT_PRIMARY
+	pullLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	pullLabel.TextSize = 22
 	pullLabel.Font = Enum.Font.GothamBold
 	pullLabel.ZIndex = pullBg.ZIndex + 1
@@ -1054,7 +1054,7 @@ function ShopUI:createOwnedClassesSection(parent: Frame)
 		checkLabel.Size = UDim2.new(1, 0, 1, 0)
 		checkLabel.BackgroundTransparency = 1
 		checkLabel.Text = "\u{2713}"
-		checkLabel.TextColor3 = Theme.TEXT_PRIMARY
+		checkLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 		checkLabel.TextSize = 11
 		checkLabel.Font = Enum.Font.GothamBold
 		checkLabel.Parent = checkBadge
@@ -1076,9 +1076,9 @@ end
 -- ========== GAME PASS TAB ==========
 
 local GAMEPASS_CARD_COLORS = {
-	DoubleCoin = { bg = Color3.fromRGB(50, 60, 30), accent = Color3.fromRGB(255, 200, 50) },
-	VIP        = { bg = Color3.fromRGB(55, 40, 25), accent = Color3.fromRGB(255, 180, 50) },
-	ExtraSlot  = { bg = Color3.fromRGB(30, 45, 60), accent = Color3.fromRGB(100, 180, 255) },
+	DoubleCoin = { bg = Color3.fromRGB(255, 252, 235), accent = Color3.fromRGB(255, 200, 50) },
+	VIP        = { bg = Color3.fromRGB(255, 248, 230), accent = Color3.fromRGB(255, 180, 50) },
+	ExtraSlot  = { bg = Color3.fromRGB(235, 245, 255), accent = Color3.fromRGB(100, 180, 255) },
 }
 
 function ShopUI:createGamePassContent(parent: Frame)
@@ -1179,7 +1179,7 @@ function ShopUI:createGamePassCard(parent: Frame, passDef: any)
 	badgeLabel.Size = UDim2.new(1, 0, 1, 0)
 	badgeLabel.BackgroundTransparency = 1
 	badgeLabel.Text = "GAME PASS"
-	badgeLabel.TextColor3 = Theme.TEXT_PRIMARY
+	badgeLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	badgeLabel.TextSize = 9
 	badgeLabel.Font = Enum.Font.GothamBold
 	badgeLabel.Parent = badge
@@ -1243,7 +1243,7 @@ function ShopUI:createGamePassCard(parent: Frame, passDef: any)
 	robuxLabel.Position = UDim2.new(0.5, -32, 0, 0)
 	robuxLabel.BackgroundTransparency = 1
 	robuxLabel.Text = "R$"
-	robuxLabel.TextColor3 = Theme.TEXT_PRIMARY
+	robuxLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	robuxLabel.TextSize = 14
 	robuxLabel.Font = Enum.Font.GothamBold
 	robuxLabel.ZIndex = buyBg.ZIndex + 1
@@ -1255,7 +1255,7 @@ function ShopUI:createGamePassCard(parent: Frame, passDef: any)
 	priceLabel.Position = UDim2.new(0.5, -8, 0, 0)
 	priceLabel.BackgroundTransparency = 1
 	priceLabel.Text = tostring(passDef.robuxPrice)
-	priceLabel.TextColor3 = Theme.TEXT_PRIMARY
+	priceLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	priceLabel.TextSize = 20
 	priceLabel.Font = Enum.Font.GothamBold
 	priceLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1278,7 +1278,7 @@ function ShopUI:createGamePassCard(parent: Frame, passDef: any)
 	ownedLabel.Size = UDim2.new(1, 0, 1, 0)
 	ownedLabel.BackgroundTransparency = 1
 	ownedLabel.Text = "\u{2714}  OWNED"
-	ownedLabel.TextColor3 = Theme.TEXT_PRIMARY
+	ownedLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	ownedLabel.TextSize = 18
 	ownedLabel.Font = Enum.Font.GothamBold
 	ownedLabel.Parent = ownedBadge

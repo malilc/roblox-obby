@@ -35,7 +35,7 @@ local RARITY_COLORS = {
 	Legendary = Theme.RARITY_LEGENDARY,
 }
 
--- Dark theme palette (Fall Guys style) mapped from Theme tokens
+-- Light bright palette mapped from Theme tokens
 local COLORS = {
 	BG_PRIMARY = Theme.BG_BASE,
 	BG_CARD = Theme.BG_SURFACE,
@@ -192,17 +192,17 @@ function TitleCollectionUI:createUI()
 	-- Gradient background
 	local containerGrad = Instance.new("UIGradient")
 	containerGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	containerGrad.Rotation = 135
+	containerGrad.Rotation = 180
 	containerGrad.Parent = container
 
 	-- Glow stroke
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.ACCENT_CYAN
-	stroke.Thickness = Theme.STROKE_BOLD
-	stroke.Transparency = 0.4
+	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.5
 	stroke.Parent = container
 
 	-- Drop shadow
@@ -210,8 +210,8 @@ function TitleCollectionUI:createUI()
 	containerShadow.Name = "Shadow"
 	containerShadow.Size = UDim2.new(1, 6, 1, 6)
 	containerShadow.Position = UDim2.new(0, -3, 0, 4)
-	containerShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	containerShadow.BackgroundTransparency = 0.6
+	containerShadow.BackgroundColor3 = Theme.CARD_SHADOW
+	containerShadow.BackgroundTransparency = 0.7
 	containerShadow.BorderSizePixel = 0
 	containerShadow.ZIndex = container.ZIndex - 1
 	containerShadow.Parent = container
@@ -252,7 +252,7 @@ function TitleCollectionUI:createUI()
 	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
-	closeBtnLabel.TextColor3 = Theme.TEXT_PRIMARY
+	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	closeBtnLabel.TextSize = 18
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeButton.ZIndex + 1
@@ -312,7 +312,7 @@ function TitleCollectionUI:createUI()
 	unequipButton.BackgroundColor3 = COLORS.BG_UNEQUIP
 	unequipButton.BorderSizePixel = 0
 	unequipButton.Text = "UNEQUIP"
-	unequipButton.TextColor3 = COLORS.TEXT_WHITE
+	unequipButton.TextColor3 = Theme.TEXT_ON_ACCENT
 	unequipButton.TextSize = 13
 	unequipButton.Font = Enum.Font.GothamBold
 	unequipButton.Parent = bannerFrame
@@ -527,7 +527,7 @@ function TitleCollectionUI:updateFilterButtons()
 	for filterId, button in pairs(self.filterButtons) do
 		local isSelected = filterId == self.activeFilter
 		button.BackgroundColor3 = if isSelected then COLORS.BG_FILTER_ACTIVE else COLORS.BG_FILTER
-		button.TextColor3 = if isSelected then COLORS.TEXT_WHITE else COLORS.TEXT_SECONDARY
+		button.TextColor3 = if isSelected then Theme.TEXT_ON_ACCENT else COLORS.TEXT_SECONDARY
 	end
 end
 
@@ -548,7 +548,7 @@ function TitleCollectionUI:updateSearchClearButtonState()
 	self.clearSearchButton.Active = hasSearchText
 	self.clearSearchButton.AutoButtonColor = hasSearchText
 	self.clearSearchButton.BackgroundColor3 = if hasSearchText then COLORS.BG_FILTER_ACTIVE else COLORS.BG_FILTER
-	self.clearSearchButton.TextColor3 = if hasSearchText then COLORS.TEXT_WHITE else COLORS.TEXT_MUTED
+	self.clearSearchButton.TextColor3 = if hasSearchText then Theme.TEXT_ON_ACCENT else COLORS.TEXT_MUTED
 end
 
 function TitleCollectionUI:setFilter(filterId: string)
@@ -916,7 +916,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		actionButton.Size = UDim2.new(0, 100, 0, 32)
 		actionButton.Position = UDim2.new(1, -112, 0.5, -16)
 		actionButton.BorderSizePixel = 0
-		actionButton.TextColor3 = COLORS.TEXT_WHITE
+		actionButton.TextColor3 = Theme.TEXT_ON_ACCENT
 		actionButton.TextSize = 13
 		actionButton.Font = Enum.Font.GothamBold
 		actionButton.Parent = card

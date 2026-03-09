@@ -64,10 +64,10 @@ function SummaryUI:createUI()
 	-- Gradient background
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	gradient.Rotation = 135
+	gradient.Rotation = 180
 	gradient.Parent = mainFrame
 
 	-- Border glow (gold)
@@ -83,8 +83,8 @@ function SummaryUI:createUI()
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 8, 1, 8)
 	shadow.Position = UDim2.new(0, -4, 0, 4)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	shadow.BackgroundTransparency = 0.55
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
+	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = mainFrame.ZIndex - 1
 	shadow.Parent = mainFrame
@@ -250,7 +250,7 @@ function SummaryUI:createUI()
 	statsHeader.Position = UDim2.new(0, 0, 0, 4)
 	statsHeader.BackgroundTransparency = 1
 	statsHeader.Text = "\u{1F4CA} STATS"
-	statsHeader.TextColor3 = Theme.ACCENT_CYAN
+	statsHeader.TextColor3 = Theme.TEXT_PRIMARY
 	statsHeader.TextSize = 12
 	statsHeader.Font = Enum.Font.GothamBold
 	statsHeader.ZIndex = 52
@@ -452,7 +452,7 @@ function SummaryUI:createUI()
 	okLabel.Size = UDim2.new(1, 0, 1, 0)
 	okLabel.BackgroundTransparency = 1
 	okLabel.Text = "\u{2705} OK"
-	okLabel.TextColor3 = Theme.TEXT_PRIMARY
+	okLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	okLabel.TextSize = 18
 	okLabel.Font = Enum.Font.GothamBold
 	okLabel.ZIndex = 52
@@ -868,7 +868,7 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 		if breakdown and value then
 			breakdown.Text = ""
 			value.Text = "+" .. stageRewardsTotal
-			value.TextColor3 = Theme.ACCENT_CYAN
+			value.TextColor3 = Theme.TEXT_PRIMARY
 
 			value.TextSize = 11
 			TweenService:Create(value, TweenInfo.new(0.2, Enum.EasingStyle.Back), {

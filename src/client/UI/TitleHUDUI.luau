@@ -12,7 +12,7 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local TitleHUDUI = {}
 TitleHUDUI.__index = TitleHUDUI
 
--- Dark theme colors
+-- Light bright colors
 local COLORS = {
 	BG = Theme.BG_SURFACE,
 	BG_TRANSPARENCY = 0.1,
@@ -134,7 +134,7 @@ function TitleHUDUI:createUI()
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 4, 1, 4)
 	shadow.Position = UDim2.new(0, -2, 0, 3)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
 	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = container.ZIndex - 1

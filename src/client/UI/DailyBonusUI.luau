@@ -11,11 +11,11 @@ local COLORS = {
 	GREEN       = Theme.SUCCESS,
 	DARK        = Theme.BG_OVERLAY,
 	DIM         = Theme.BG_SURFACE,
-	PAST_CARD   = Color3.fromRGB(25, 70, 45),
+	PAST_CARD   = Color3.fromRGB(235, 238, 242),
 	SUBTITLE    = Color3.fromRGB(80, 55, 10),
 	FUTURE_TEXT = Theme.TEXT_MUTED,
 	CARD_BADGE  = Color3.fromRGB(80, 180, 110),
-	DAY7_SPECIAL = Color3.fromRGB(45, 120, 70),
+	DAY7_SPECIAL = Color3.fromRGB(255, 248, 230),
 	GEM          = Color3.fromRGB(200, 120, 255),  -- gem purple stays
 }
 
@@ -68,10 +68,10 @@ function DailyBonusUI:_createHudButton()
 	-- Gradient background
 	local btnGrad = Instance.new("UIGradient")
 	btnGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	btnGrad.Rotation = 135
+	btnGrad.Rotation = 180
 	btnGrad.Parent = btn
 
 	local stroke = Instance.new("UIStroke")
@@ -182,10 +182,10 @@ function DailyBonusUI:showCalendar(data)
 
 	local panelGrad = Instance.new("UIGradient")
 	panelGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	panelGrad.Rotation = 135
+	panelGrad.Rotation = 180
 	panelGrad.Parent = panel
 
 	-- Drop shadow
@@ -193,8 +193,8 @@ function DailyBonusUI:showCalendar(data)
 	panelShadow.Name = "Shadow"
 	panelShadow.Size = UDim2.new(1, 6, 1, 6)
 	panelShadow.Position = UDim2.new(0, -3, 0, 4)
-	panelShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	panelShadow.BackgroundTransparency = 0.6
+	panelShadow.BackgroundColor3 = Theme.CARD_SHADOW
+	panelShadow.BackgroundTransparency = 0.7
 	panelShadow.BorderSizePixel = 0
 	panelShadow.ZIndex = panel.ZIndex - 1
 	panelShadow.Parent = panel

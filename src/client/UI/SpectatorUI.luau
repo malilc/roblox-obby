@@ -135,7 +135,7 @@ function SpectatorUI:createUI()
 	topLabel.BackgroundColor3 = Theme.BG_BASE
 	topLabel.BackgroundTransparency = 0.3
 	topLabel.Text = "SPECTATING"
-	topLabel.TextColor3 = Theme.ACCENT_CYAN
+	topLabel.TextColor3 = Theme.TEXT_PRIMARY
 	topLabel.TextSize = 16
 	topLabel.Font = Enum.Font.GothamBold
 	topLabel.ZIndex = 9
@@ -181,10 +181,10 @@ function SpectatorUI:createUI()
 	-- Rankings gradient
 	local rankGradient = Instance.new("UIGradient")
 	rankGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	rankGradient.Rotation = 135
+	rankGradient.Rotation = 180
 	rankGradient.Parent = rankingsPanel
 
 	-- Rankings glow stroke
@@ -199,8 +199,8 @@ function SpectatorUI:createUI()
 	rankShadow.Name = "Shadow"
 	rankShadow.Size = UDim2.new(1, 6, 1, 6)
 	rankShadow.Position = UDim2.new(0, -3, 0, 4)
-	rankShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	rankShadow.BackgroundTransparency = 0.6
+	rankShadow.BackgroundColor3 = Theme.CARD_SHADOW
+	rankShadow.BackgroundTransparency = 0.7
 	rankShadow.BorderSizePixel = 0
 	rankShadow.ZIndex = rankingsPanel.ZIndex - 1
 	rankShadow.Parent = rankingsPanel
@@ -496,11 +496,11 @@ function SpectatorUI:updateRankings(data: {[string]: any})
 			and self.activePlayers[self.selectedPlayerIndex].Name == ranking.playerName
 
 		if ranking.playerName == LocalPlayer.Name then
-			entry.TextColor3 = Theme.PRIMARY
+			entry.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.55)
 		elseif isFollowed then
-			entry.TextColor3 = Theme.ACCENT_CYAN
+			entry.TextColor3 = Theme.TEXT_PRIMARY
 		elseif ranking.finished then
-			entry.TextColor3 = Theme.SUCCESS
+			entry.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
 		else
 			entry.TextColor3 = Theme.TEXT_MUTED
 		end

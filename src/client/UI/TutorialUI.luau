@@ -36,7 +36,7 @@ function TutorialUI:createUI()
 	helpButton.BackgroundColor3 = Theme.BG_BASE
 	helpButton.BackgroundTransparency = 0.2
 	helpButton.Text = "?"
-	helpButton.TextColor3 = Theme.ACCENT_CYAN
+	helpButton.TextColor3 = Theme.darkenForText(Theme.ACCENT_CYAN, 0.45)
 	helpButton.TextSize = 22
 	helpButton.Font = Enum.Font.GothamBold
 	helpButton.AutoButtonColor = false
@@ -57,10 +57,10 @@ function TutorialUI:createUI()
 	-- Help button gradient
 	local helpGradient = Instance.new("UIGradient")
 	helpGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	helpGradient.Rotation = 135
+	helpGradient.Rotation = 180
 	helpGradient.Parent = helpButton
 
 	helpButton.MouseButton1Click:Connect(function()
@@ -80,7 +80,7 @@ function TutorialUI:createUI()
 	hintLabel.BackgroundColor3 = Theme.BG_BASE
 	hintLabel.BackgroundTransparency = 0.2
 	hintLabel.Text = "  Tap ? for help!"
-	hintLabel.TextColor3 = Theme.ACCENT_CYAN
+	hintLabel.TextColor3 = Theme.darkenForText(Theme.ACCENT_CYAN, 0.45)
 	hintLabel.TextSize = 13
 	hintLabel.Font = Enum.Font.GothamBold
 	hintLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -113,17 +113,17 @@ function TutorialUI:createUI()
 	-- Panel gradient
 	local panelGradient = Instance.new("UIGradient")
 	panelGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	panelGradient.Rotation = 135
+	panelGradient.Rotation = 180
 	panelGradient.Parent = panel
 
 	-- Panel glow stroke
 	local panelStroke = Instance.new("UIStroke")
 	panelStroke.Color = Theme.ACCENT_CYAN
-	panelStroke.Thickness = Theme.STROKE_BOLD
-	panelStroke.Transparency = 0.4
+	panelStroke.Thickness = Theme.STROKE_MED
+	panelStroke.Transparency = 0.5
 	panelStroke.Parent = panel
 
 	-- Panel drop shadow
@@ -131,8 +131,8 @@ function TutorialUI:createUI()
 	panelShadow.Name = "Shadow"
 	panelShadow.Size = UDim2.new(1, 6, 1, 6)
 	panelShadow.Position = UDim2.new(0, -3, 0, 4)
-	panelShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	panelShadow.BackgroundTransparency = 0.6
+	panelShadow.BackgroundColor3 = Theme.CARD_SHADOW
+	panelShadow.BackgroundTransparency = 0.7
 	panelShadow.BorderSizePixel = 0
 	panelShadow.ZIndex = panel.ZIndex - 1
 	panelShadow.Parent = panel
@@ -173,7 +173,7 @@ function TutorialUI:createUI()
 	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
-	closeBtnLabel.TextColor3 = Theme.TEXT_PRIMARY
+	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	closeBtnLabel.TextSize = 18
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeButton.ZIndex + 1
@@ -232,8 +232,8 @@ function TutorialUI:createUI()
 	contentFrame.Name = "ContentFrame"
 	contentFrame.Size = UDim2.new(1, -30, 1, -120)
 	contentFrame.Position = UDim2.new(0, 15, 0, 108)
-	contentFrame.BackgroundColor3 = Theme.BG_OVERLAY
-	contentFrame.BackgroundTransparency = 0.05
+	contentFrame.BackgroundColor3 = Theme.BG_SURFACE
+	contentFrame.BackgroundTransparency = 0.1
 	contentFrame.BorderSizePixel = 0
 	contentFrame.ZIndex = 12
 	contentFrame.Parent = panel
@@ -241,6 +241,12 @@ function TutorialUI:createUI()
 	local contentCorner = Instance.new("UICorner")
 	contentCorner.CornerRadius = Theme.CORNER_SM
 	contentCorner.Parent = contentFrame
+
+	local contentStroke = Instance.new("UIStroke")
+	contentStroke.Color = Theme.BG_ELEVATED
+	contentStroke.Thickness = Theme.STROKE_THIN
+	contentStroke.Transparency = 0.3
+	contentStroke.Parent = contentFrame
 
 	-- Content text (font ใหญ่ขึ้น + line height ดีขึ้น)
 	local contentLabel = Instance.new("TextLabel")

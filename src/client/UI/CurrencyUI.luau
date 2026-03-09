@@ -18,7 +18,7 @@ local function createDropShadow(pill: Frame)
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 4, 1, 4)
 	shadow.Position = UDim2.new(0, -2, 0, 3)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
 	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = pill.ZIndex - 1
@@ -139,7 +139,7 @@ function CurrencyUI:createUI()
 	shine.Name = "Shine"
 	shine.Size = UDim2.new(0.3, 0, 1.2, 0)
 	shine.Position = UDim2.new(-0.3, 0, -0.1, 0)
-	shine.BackgroundColor3 = Theme.TEXT_PRIMARY
+	shine.BackgroundColor3 = Color3.new(1, 1, 1)
 	shine.BackgroundTransparency = 0.5
 	shine.BorderSizePixel = 0
 	shine.Rotation = 25
@@ -162,7 +162,7 @@ function CurrencyUI:createUI()
 		size = UDim2.new(1, -50, 1, 0),
 		position = UDim2.new(0, 44, 0, 0),
 		text = "0",
-		textColor = Theme.TEXT_PRIMARY,
+		textColor = Theme.TEXT_ON_ACCENT,
 		textSize = 22,
 		font = Enum.Font.GothamBlack,
 		textXAlignment = Enum.TextXAlignment.Left,
@@ -248,7 +248,7 @@ function CurrencyUI:playCurrencyAnimation()
 	self.currencyLabel.TextColor3 = Color3.fromRGB(255, 255, 150)
 	task.delay(0.15, function()
 		local colorTween = TweenService:Create(self.currencyLabel, TweenInfo.new(0.25), {
-			TextColor3 = Theme.TEXT_PRIMARY
+			TextColor3 = Theme.TEXT_ON_ACCENT
 		})
 		colorTween:Play()
 	end)

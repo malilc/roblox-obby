@@ -12,14 +12,14 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local ClassSelectionUI = {}
 ClassSelectionUI.__index = ClassSelectionUI
 
--- Color palette (dark theme via ThemeConfig)
+-- Color palette (light bright theme via ThemeConfig)
 local COLORS = {
 	BG_PRIMARY = Theme.BG_BASE,
 	BG_CARD = Theme.BG_SURFACE,
 	BG_CARD_LOCKED = Theme.BG_BASE,
 	TEXT_PRIMARY = Theme.TEXT_PRIMARY,
 	TEXT_SECONDARY = Theme.TEXT_MUTED,
-	TEXT_ACCENT = Theme.ACCENT_CYAN,
+	TEXT_ACCENT = Theme.darkenForText(Theme.ACCENT_CYAN, 0.32),
 	STROKE_DEFAULT = Theme.BG_ELEVATED,
 	BTN_EQUIP = Theme.SUCCESS,
 	BTN_PURCHASE = Theme.PRIMARY,
@@ -33,7 +33,7 @@ local COLORS = {
 	BAR_NEUTRAL = Theme.TEXT_MUTED,
 	BAR_BG = Theme.BG_ELEVATED,
 	MASTERY_BAR = Theme.INFO,
-	MASTERY_MAX = Theme.PRIMARY,
+	MASTERY_MAX = Theme.darkenForText(Theme.PRIMARY, 0.50),
 	INDICATOR_BG = Theme.BG_SURFACE,
 	INDICATOR_HOVER = Theme.BG_ELEVATED,
 	TOAST_BG = Theme.BG_SURFACE,
@@ -310,17 +310,17 @@ function ClassSelectionUI:createUI()
 	-- Gradient background
 	local containerGrad = Instance.new("UIGradient")
 	containerGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	containerGrad.Rotation = 135
+	containerGrad.Rotation = 180
 	containerGrad.Parent = container
 
 	-- Glow stroke
 	local containerStroke = Instance.new("UIStroke")
 	containerStroke.Color = Theme.ACCENT_CYAN
-	containerStroke.Thickness = Theme.STROKE_BOLD
-	containerStroke.Transparency = 0.4
+	containerStroke.Thickness = Theme.STROKE_MED
+	containerStroke.Transparency = 0.5
 	containerStroke.Parent = container
 
 	-- Drop shadow
@@ -328,8 +328,8 @@ function ClassSelectionUI:createUI()
 	containerShadow.Name = "Shadow"
 	containerShadow.Size = UDim2.new(1, 6, 1, 6)
 	containerShadow.Position = UDim2.new(0, -3, 0, 4)
-	containerShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	containerShadow.BackgroundTransparency = 0.6
+	containerShadow.BackgroundColor3 = Theme.CARD_SHADOW
+	containerShadow.BackgroundTransparency = 0.7
 	containerShadow.BorderSizePixel = 0
 	containerShadow.ZIndex = container.ZIndex - 1
 	containerShadow.Parent = container
@@ -370,7 +370,7 @@ function ClassSelectionUI:createUI()
 	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
-	closeBtnLabel.TextColor3 = Theme.TEXT_PRIMARY
+	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	closeBtnLabel.TextSize = 18
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeBtn.ZIndex + 1
@@ -459,7 +459,7 @@ function ClassSelectionUI:createUI()
 	confirmText.Size = UDim2.new(1, 0, 1, 0)
 	confirmText.BackgroundTransparency = 1
 	confirmText.Text = "EQUIP"
-	confirmText.TextColor3 = Theme.TEXT_PRIMARY
+	confirmText.TextColor3 = Theme.TEXT_ON_ACCENT
 	confirmText.TextSize = 18
 	confirmText.Font = Enum.Font.GothamBold
 	confirmText.ZIndex = confirmBg.ZIndex + 1
@@ -528,7 +528,7 @@ function ClassSelectionUI:createClassListItem(parent: ScrollingFrame, classId: s
 	nameLabel.Position = UDim2.new(0, 46, 0, 6)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = classDef.name
-	nameLabel.TextColor3 = classDef.color
+	nameLabel.TextColor3 = Theme.darkenForText(classDef.color)
 	nameLabel.TextSize = 14
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -716,7 +716,7 @@ function ClassSelectionUI:createDetailPanel(container: Frame)
 	passiveName.Position = UDim2.new(0, 20, 0, 160)
 	passiveName.BackgroundTransparency = 1
 	passiveName.Text = ""
-	passiveName.TextColor3 = Theme.PRIMARY_DARK
+	passiveName.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.50)
 	passiveName.TextSize = 14
 	passiveName.Font = Enum.Font.GothamBold
 	passiveName.TextXAlignment = Enum.TextXAlignment.Left
@@ -859,7 +859,7 @@ function ClassSelectionUI:updateDetailPanel()
 	-- Header
 	self.detailIcon.Text = classDef.icon
 	self.detailName.Text = classDef.name
-	self.detailName.TextColor3 = classDef.color
+	self.detailName.TextColor3 = Theme.darkenForText(classDef.color)
 	self.detailDescription.Text = classDef.description
 
 	-- Stat bars
@@ -876,7 +876,7 @@ function ClassSelectionUI:updateDetailPanel()
 			pctText = "0%"
 		end
 		pctLabel.Text = pctText
-		pctLabel.TextColor3 = barColor
+		pctLabel.TextColor3 = Theme.darkenForText(barColor, 0.55)
 	end
 
 	updateStatBar(self.detailSpeedBar, self.detailSpeedPct, classDef.walkSpeedMod)
@@ -887,7 +887,7 @@ function ClassSelectionUI:updateDetailPanel()
 		self.detailResistBar.Size = UDim2.new(classDef.knockbackResistance, 0, 1, 0)
 		self.detailResistBar.BackgroundColor3 = COLORS.MASTERY_MAX
 		self.detailResistPct.Text = string.format("%d%%", math.floor(classDef.knockbackResistance * 100))
-		self.detailResistPct.TextColor3 = COLORS.MASTERY_MAX
+		self.detailResistPct.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.50)
 		self.detailResistBar.Parent.Visible = true
 		self.detailResistPct.Visible = true
 		-- Show the label too
@@ -1023,7 +1023,7 @@ function ClassSelectionUI:createCurrentClassIndicator()
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 4, 1, 4)
 	shadow.Position = UDim2.new(0, -2, 0, 3)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
 	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = indicator.ZIndex - 1
@@ -1171,7 +1171,7 @@ function ClassSelectionUI:setConfirmButtonState(text: string, isEnabled: boolean
 	self.confirmButton.Active = isEnabled
 	if self.confirmText then
 		self.confirmText.Text = text
-		self.confirmText.TextColor3 = Theme.TEXT_PRIMARY
+		self.confirmText.TextColor3 = Theme.TEXT_ON_ACCENT
 	end
 
 	-- Gradient colors per state (BackgroundColor3 stays white, UIGradient does coloring)
@@ -1499,7 +1499,7 @@ function ClassSelectionUI:updateIndicator(classId: string)
 
 	self.indicatorIcon.Text = classDef.icon
 	self.indicatorName.Text = classDef.name
-	self.indicatorName.TextColor3 = classDef.color
+	self.indicatorName.TextColor3 = Theme.darkenForText(classDef.color)
 
 	-- Update class-color gradient on indicator
 	if self.indicatorGradient then

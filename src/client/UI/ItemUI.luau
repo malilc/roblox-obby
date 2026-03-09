@@ -93,7 +93,7 @@ function ItemUI:createUI()
 	tooltipName.Position = UDim2.new(0, 10, 0, 8)
 	tooltipName.BackgroundTransparency = 1
 	tooltipName.Text = "Item Name"
-	tooltipName.TextColor3 = Theme.TEXT_PRIMARY
+	tooltipName.TextColor3 = Theme.TEXT_ON_ACCENT
 	tooltipName.TextSize = 18
 	tooltipName.Font = Enum.Font.GothamBold
 	tooltipName.TextXAlignment = Enum.TextXAlignment.Left
