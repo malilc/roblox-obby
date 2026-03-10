@@ -12,7 +12,7 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local TitleHUDUI = {}
 TitleHUDUI.__index = TitleHUDUI
 
--- Dark theme colors
+-- Light bright colors
 local COLORS = {
 	BG = Theme.BG_SURFACE,
 	BG_TRANSPARENCY = 0.1,
@@ -75,17 +75,22 @@ local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: C
 	return result
 end
 
-function TitleHUDUI.new(parent: ScreenGui, onOpenCollection: (() -> ())?)
+function TitleHUDUI.new(parent: ScreenGui, onOpenCollection: (() -> ())?, options: {hidden: boolean?}?)
 	local self = setmetatable({}, TitleHUDUI)
 
 	self.parent = parent
 	self.remotes = Remotes
 	self.onOpenCollection = onOpenCollection
 	self.activeTitle = nil :: {id: string, name: string, classId: string, level: number, rarity: string, description: string?}?
+	self._hidden = options and options.hidden or false
 
 	self:createUI()
 	self:setupRemotes()
 	self:updateActiveTitle(nil)
+
+	if self._hidden then
+		self.container.Visible = false
+	end
 
 	return self
 end
@@ -95,7 +100,7 @@ function TitleHUDUI:createUI()
 	local container = Instance.new("Frame")
 	container.Name = "TitleHUDContainer"
 	container.Size = UDim2.new(0, 210, 0, 36)
-	container.Position = UDim2.new(0, 10, 0, 184)
+	container.Position = UDim2.new(0, 10, 0, 396)
 	container.BackgroundColor3 = COLORS.BG
 	container.BackgroundTransparency = COLORS.BG_TRANSPARENCY
 	container.BorderSizePixel = 0
@@ -129,7 +134,7 @@ function TitleHUDUI:createUI()
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 4, 1, 4)
 	shadow.Position = UDim2.new(0, -2, 0, 3)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
 	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = container.ZIndex - 1

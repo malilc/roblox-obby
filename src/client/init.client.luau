@@ -71,10 +71,10 @@ local function showWelcomeMessage()
 	welcomeFrame.BorderSizePixel = 0
 	welcomeFrame.Parent = welcomeGui
 
-	-- B1: Gradient overlay BG_SURFACE → BG_BASE
+	-- B1: Gradient overlay (sky→green, top-to-bottom)
 	local bgGradient = Instance.new("UIGradient")
-	bgGradient.Color = ColorSequence.new(Theme.BG_SURFACE, Theme.BG_BASE)
-	bgGradient.Rotation = 135
+	bgGradient.Color = ColorSequence.new(Theme.PANEL_GRAD_TOP, Theme.PANEL_GRAD_BTM)
+	bgGradient.Rotation = 180
 	bgGradient.Parent = welcomeFrame
 
 	-- B1: Corner + glow stroke
@@ -94,15 +94,15 @@ local function showWelcomeMessage()
 	titleLabel.Position = UDim2.new(0, 0, 0, 18)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "🏃 OBBY CHALLENGE 🏃"
-	titleLabel.TextColor3 = Theme.ACCENT_CYAN
+	titleLabel.TextColor3 = Theme.TEXT_PRIMARY
 	titleLabel.TextSize = 36
 	titleLabel.Font = Enum.Font.GothamBlack
 	titleLabel.Parent = welcomeFrame
 
 	local titleStroke = Instance.new("UIStroke")
-	titleStroke.Color = Theme.HUD_SCORE_END
-	titleStroke.Thickness = 1.5
-	titleStroke.Transparency = 0.4
+	titleStroke.Color = Theme.ACCENT_CYAN
+	titleStroke.Thickness = 2
+	titleStroke.Transparency = 0.15
 	titleStroke.Parent = titleLabel
 
 	-- B2: RichText info with colored keywords
@@ -111,10 +111,10 @@ local function showWelcomeMessage()
 	infoLabel.Position = UDim2.new(0, 20, 0, 78)
 	infoLabel.BackgroundTransparency = 1
 	infoLabel.RichText = true
-	infoLabel.Text = 'Step on the <font color="#50DCFF"><b>BLUE ZONE</b></font> to select stages!\n'
-		.. 'Use <font color="#FFC800"><b>[1]</b></font> <font color="#FFC800"><b>[2]</b></font> to use Items!\n'
-		.. 'Complete all stages to <font color="#50E678"><b>win!</b></font>'
-	infoLabel.TextColor3 = Theme.TEXT_MUTED
+	infoLabel.Text = 'Step on the <font color="#1177AA"><b>BLUE ZONE</b></font> to select stages!\n'
+		.. 'Use <font color="#806000"><b>[1]</b></font> <font color="#806000"><b>[2]</b></font> to use Items!\n'
+		.. 'Complete all stages to <font color="#1A7A3A"><b>win!</b></font>'
+	infoLabel.TextColor3 = Theme.TEXT_PRIMARY
 	infoLabel.TextSize = 16
 	infoLabel.Font = Enum.Font.Gotham
 	infoLabel.TextWrapped = true
@@ -156,7 +156,7 @@ local function showWelcomeMessage()
 	buttonText.Size = UDim2.new(1, 0, 1, 0)
 	buttonText.BackgroundTransparency = 1
 	buttonText.Text = "GOT IT!"
-	buttonText.TextColor3 = Theme.TEXT_PRIMARY
+	buttonText.TextColor3 = Theme.TEXT_ON_ACCENT
 	buttonText.TextSize = 18
 	buttonText.Font = Enum.Font.GothamBold
 	buttonText.ZIndex = buttonBg.ZIndex + 1

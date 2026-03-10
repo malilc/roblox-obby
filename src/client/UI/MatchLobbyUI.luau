@@ -44,17 +44,17 @@ function MatchLobbyUI:createUI()
 	-- Gradient background
 	local containerGrad = Instance.new("UIGradient")
 	containerGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	containerGrad.Rotation = 135
+	containerGrad.Rotation = 180
 	containerGrad.Parent = container
 
 	-- Glow stroke
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.ACCENT_CYAN
-	stroke.Thickness = Theme.STROKE_BOLD
-	stroke.Transparency = 0.2
+	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.5
 	stroke.Parent = container
 
 	-- Drop shadow
@@ -62,8 +62,8 @@ function MatchLobbyUI:createUI()
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 6, 1, 6)
 	shadow.Position = UDim2.new(0, -3, 0, 4)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	shadow.BackgroundTransparency = 0.6
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
+	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = container.ZIndex - 1
 	shadow.Parent = container
@@ -125,7 +125,7 @@ function MatchLobbyUI:createUI()
 	closeBtn.BackgroundColor3 = Theme.DANGER
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Text = "X"
-	closeBtn.TextColor3 = Theme.TEXT_PRIMARY
+	closeBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	closeBtn.TextSize = 20
 	closeBtn.Font = Enum.Font.GothamBold
 	closeBtn.Parent = header
@@ -187,7 +187,7 @@ function MatchLobbyUI:createUI()
 	countdown.BackgroundTransparency = 0.5
 	countdown.BorderSizePixel = 0
 	countdown.Text = "Waiting for players..."
-	countdown.TextColor3 = Theme.TEXT_PRIMARY
+	countdown.TextColor3 = Theme.TEXT_ON_ACCENT
 	countdown.TextSize = 22
 	countdown.Font = Enum.Font.GothamBold
 	countdown.Parent = container
@@ -213,7 +213,7 @@ function MatchLobbyUI:createUI()
 	createBtn.BackgroundColor3 = Theme.SUCCESS
 	createBtn.BorderSizePixel = 0
 	createBtn.Text = "CREATE MATCH"
-	createBtn.TextColor3 = Theme.TEXT_PRIMARY
+	createBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	createBtn.TextSize = 16
 	createBtn.Font = Enum.Font.GothamBold
 	createBtn.Parent = buttonsFrame
@@ -247,7 +247,7 @@ function MatchLobbyUI:createUI()
 	leaveBtn.BackgroundColor3 = Theme.DANGER
 	leaveBtn.BorderSizePixel = 0
 	leaveBtn.Text = "LEAVE"
-	leaveBtn.TextColor3 = Theme.TEXT_PRIMARY
+	leaveBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	leaveBtn.TextSize = 16
 	leaveBtn.Font = Enum.Font.GothamBold
 	leaveBtn.Visible = false
@@ -308,10 +308,10 @@ function MatchLobbyUI:createRaceTimerUI()
 	-- Timer gradient
 	local timerGrad = Instance.new("UIGradient")
 	timerGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	timerGrad.Rotation = 135
+	timerGrad.Rotation = 180
 	timerGrad.Parent = timerFrame
 
 	local timerStroke = Instance.new("UIStroke")
@@ -326,7 +326,7 @@ function MatchLobbyUI:createRaceTimerUI()
 	timerShadow.Name = "Shadow"
 	timerShadow.Size = UDim2.new(1, 4, 1, 4)
 	timerShadow.Position = UDim2.new(0, -2, 0, 3)
-	timerShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	timerShadow.BackgroundColor3 = Theme.CARD_SHADOW
 	timerShadow.BackgroundTransparency = 0.7
 	timerShadow.BorderSizePixel = 0
 	timerShadow.ZIndex = timerFrame.ZIndex - 1
@@ -348,7 +348,7 @@ function MatchLobbyUI:createRaceTimerUI()
 	timerLabel.Position = UDim2.new(0, 45, 0, 0)
 	timerLabel.BackgroundTransparency = 1
 	timerLabel.Text = "15:00"
-	timerLabel.TextColor3 = Theme.SUCCESS
+	timerLabel.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
 	timerLabel.TextSize = 28
 	timerLabel.Font = Enum.Font.GothamBold
 	timerLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -393,7 +393,7 @@ function MatchLobbyUI:createTimeWarningUI()
 	warningLabel.Size = UDim2.new(1, 0, 1, 0)
 	warningLabel.BackgroundTransparency = 1
 	warningLabel.Text = "5 minutes remaining!"
-	warningLabel.TextColor3 = Theme.TEXT_PRIMARY
+	warningLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	warningLabel.TextSize = 32
 	warningLabel.Font = Enum.Font.GothamBlack
 	warningLabel.Parent = warningFrame
@@ -421,10 +421,10 @@ function MatchLobbyUI:createRaceRankingUI()
 	-- Rank gradient
 	local rankGrad = Instance.new("UIGradient")
 	rankGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	rankGrad.Rotation = 135
+	rankGrad.Rotation = 180
 	rankGrad.Parent = rankFrame
 
 	-- Rank glow stroke
@@ -439,7 +439,7 @@ function MatchLobbyUI:createRaceRankingUI()
 	rankShadow.Name = "Shadow"
 	rankShadow.Size = UDim2.new(1, 4, 1, 4)
 	rankShadow.Position = UDim2.new(0, -2, 0, 3)
-	rankShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	rankShadow.BackgroundColor3 = Theme.CARD_SHADOW
 	rankShadow.BackgroundTransparency = 0.7
 	rankShadow.BorderSizePixel = 0
 	rankShadow.ZIndex = rankFrame.ZIndex - 1
@@ -630,16 +630,16 @@ function MatchLobbyUI:onRaceUpdate(data)
 
 	-- Change timer color based on time remaining
 	if data.timeRemaining <= 30 then
-		self.timerLabel.TextColor3 = Theme.DANGER
+		self.timerLabel.TextColor3 = Theme.darkenForText(Theme.DANGER, 0.65)
 		self.timerStroke.Color = Theme.DANGER
 	elseif data.timeRemaining <= 60 then
-		self.timerLabel.TextColor3 = Theme.WARNING
+		self.timerLabel.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
 		self.timerStroke.Color = Theme.WARNING
 	elseif data.timeRemaining <= 300 then
-		self.timerLabel.TextColor3 = Theme.WARNING
+		self.timerLabel.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
 		self.timerStroke.Color = Theme.SUCCESS
 	else
-		self.timerLabel.TextColor3 = Theme.SUCCESS
+		self.timerLabel.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
 		self.timerStroke.Color = Theme.SUCCESS
 	end
 

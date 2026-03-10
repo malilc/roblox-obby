@@ -32,7 +32,7 @@ function ShopZoneManager:setup()
 	local shopZone = lobby:FindFirstChild("ShopZone")
 	if not shopZone then return end
 
-	-- Add "SHOP" billboard label
+	-- Add "SHOP" billboard label (offset above the shop model, behind the zone)
 	if not shopZone:FindFirstChild("ShopLabelBillboard") then
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "ShopLabelBillboard"
@@ -120,7 +120,8 @@ function ShopZoneManager:loadShopModel(shopZone: Part)
 	elseif model:IsA("BasePart") then
 		targetY = 100 + model.Size.Y / 2
 	end
-	local targetPos = Vector3.new(shopZone.Position.X, targetY, shopZone.Position.Z)
+	-- Place model at original shop position (zone is offset forward from model)
+	local targetPos = Vector3.new(shopZone.Position.X, targetY, shopZone.Position.Z+10)
 
 	if model:IsA("Model") then
 		-- Use PivotTo for Models (works with or without PrimaryPart)
@@ -137,7 +138,7 @@ function ShopZoneManager:loadShopModel(shopZone: Part)
 	result:Destroy()
 end
 
--- Check if player is inside the shop zone bounding box
+-- Check if player is inside the shop zone (circular radius check)
 function ShopZoneManager:isPlayerInZone(player: Player, zone: Part): boolean
 	local character = player.Character
 	if not character then return false end
@@ -147,15 +148,16 @@ function ShopZoneManager:isPlayerInZone(player: Player, zone: Part): boolean
 
 	local playerPos = humanoidRootPart.Position
 	local zonePos = zone.Position
-	local zoneSize = zone.Size
 
-	local halfSize = zoneSize / 2
-	local minBound = zonePos - halfSize
-	local maxBound = zonePos + halfSize
+	-- Cylinder rotated flat: use the largest axis as diameter
+	local radius = math.max(zone.Size.X, zone.Size.Y, zone.Size.Z) / 2
+	local dx = playerPos.X - zonePos.X
+	local dz = playerPos.Z - zonePos.Z
+	local distXZ = math.sqrt(dx * dx + dz * dz)
 
-	return playerPos.X >= minBound.X and playerPos.X <= maxBound.X
-		and playerPos.Y >= minBound.Y - 5 and playerPos.Y <= maxBound.Y + 10
-		and playerPos.Z >= minBound.Z and playerPos.Z <= maxBound.Z
+	return distXZ <= radius
+		and playerPos.Y >= zonePos.Y - 5
+		and playerPos.Y <= zonePos.Y + 10
 end
 
 -- Player entered shop zone

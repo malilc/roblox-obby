@@ -18,7 +18,7 @@ local function createDropShadow(pill: Frame)
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 4, 1, 4)
 	shadow.Position = UDim2.new(0, -2, 0, 3)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
 	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = pill.ZIndex - 1
@@ -47,7 +47,7 @@ function ScoreUI:createUI()
 	local gemFrame = UIFactory.createPanel(self.parent, {
 		name = "GemFrame",
 		size = UDim2.new(0, 130, 0, 44),
-		position = UDim2.new(0, 10, 0, 10),
+		position = UDim2.new(0, 10, 1, -100),
 		bgColor = Theme.HUD_GEM_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",
@@ -125,7 +125,7 @@ function ScoreUI:createUI()
 	gemLabel.Position = UDim2.new(0, 44, 0, 0)
 	gemLabel.BackgroundTransparency = 1
 	gemLabel.Text = "0"
-	gemLabel.TextColor3 = Theme.TEXT_PRIMARY
+	gemLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	gemLabel.TextSize = 22
 	gemLabel.Font = Enum.Font.GothamBlack
 	gemLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -143,7 +143,7 @@ function ScoreUI:createUI()
 	local stageFrame = Instance.new("Frame")
 	stageFrame.Name = "StageFrame"
 	stageFrame.Size = UDim2.new(0, 160, 0, 28)
-	stageFrame.Position = UDim2.new(0, 10, 0, 106)
+	stageFrame.Position = UDim2.new(0, 10, 1, -132)
 	stageFrame.BackgroundColor3 = Theme.BG_OVERLAY
 	stageFrame.BackgroundTransparency = 0.3
 	stageFrame.BorderSizePixel = 0
@@ -255,7 +255,7 @@ function ScoreUI:createUI()
 	-- Timer gradient
 	local timerGradient = Instance.new("UIGradient")
 	timerGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 60, 160)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 30, 100))
 	})
 	timerGradient.Rotation = 135
@@ -286,7 +286,7 @@ function ScoreUI:createUI()
 	timerLabel.Position = UDim2.new(0, 32, 0, 0)
 	timerLabel.BackgroundTransparency = 1
 	timerLabel.Text = "15:00"
-	timerLabel.TextColor3 = Theme.TEXT_PRIMARY
+	timerLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 	timerLabel.TextSize = 20
 	timerLabel.Font = Enum.Font.GothamBold
 	timerLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -348,7 +348,7 @@ function ScoreUI:playGemAnimation()
 	self.gemLabel.TextColor3 = Color3.fromRGB(255, 220, 255)
 	task.delay(0.15, function()
 		local colorTween = TweenService:Create(self.gemLabel, TweenInfo.new(0.25), {
-			TextColor3 = Theme.TEXT_PRIMARY
+			TextColor3 = Theme.TEXT_ON_ACCENT
 		})
 		colorTween:Play()
 	end)
@@ -447,7 +447,7 @@ function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
 	if isFinished then
 		icon.Text = "\xF0\x9F\x8E\x89"
 		text.Text = "FINISH!"
-		text.TextColor3 = Theme.PRIMARY
+		text.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.55)
 
 		-- Gold stroke
 		local stroke = Instance.new("UIStroke")
@@ -458,7 +458,7 @@ function ScoreUI:showStageComplete(stageIndex: number, isFinished: boolean?)
 	else
 		icon.Text = "\xE2\x9C\x85"
 		text.Text = "STAGE " .. stageIndex .. " CLEAR!"
-		text.TextColor3 = Theme.SUCCESS
+		text.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
 
 		-- Green stroke
 		local stroke = Instance.new("UIStroke")
@@ -597,7 +597,7 @@ function ScoreUI:updateTimer(seconds: number)
 			end)
 		end
 	else
-		self.timerLabel.TextColor3 = Theme.TEXT_PRIMARY
+		self.timerLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 		self.timerStroke.Color = Theme.HUD_GLOW_CYAN
 	end
 end

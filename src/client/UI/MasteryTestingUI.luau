@@ -49,10 +49,10 @@ function MasteryTestingUI:createUI()
 	-- Gradient background
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	gradient.Rotation = 135
+	gradient.Rotation = 180
 	gradient.Parent = mainFrame
 
 	local stroke = Instance.new("UIStroke")
@@ -68,7 +68,7 @@ function MasteryTestingUI:createUI()
 	title.Position = UDim2.new(0, 10, 0, 10)
 	title.BackgroundTransparency = 1
 	title.Text = "MASTERY TESTING [M]"
-	title.TextColor3 = Theme.WARNING
+	title.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
 	title.TextSize = 22
 	title.Font = Enum.Font.GothamBold
 	title.TextXAlignment = Enum.TextXAlignment.Left
@@ -82,7 +82,7 @@ function MasteryTestingUI:createUI()
 	closeBtn.BackgroundColor3 = Theme.DANGER
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Text = "X"
-	closeBtn.TextColor3 = Theme.TEXT_PRIMARY
+	closeBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	closeBtn.TextSize = 16
 	closeBtn.Font = Enum.Font.GothamBold
 	closeBtn.Parent = mainFrame
@@ -136,7 +136,7 @@ function MasteryTestingUI:createUI()
 	setAllBtn.BackgroundColor3 = Theme.SUCCESS
 	setAllBtn.BorderSizePixel = 0
 	setAllBtn.Text = "SET ALL LV 20"
-	setAllBtn.TextColor3 = Theme.TEXT_PRIMARY
+	setAllBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	setAllBtn.TextSize = 14
 	setAllBtn.Font = Enum.Font.GothamBold
 	setAllBtn.Parent = buttonsFrame
@@ -157,7 +157,7 @@ function MasteryTestingUI:createUI()
 	resetAllBtn.BackgroundColor3 = Theme.DANGER
 	resetAllBtn.BorderSizePixel = 0
 	resetAllBtn.Text = "RESET ALL"
-	resetAllBtn.TextColor3 = Theme.TEXT_PRIMARY
+	resetAllBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	resetAllBtn.TextSize = 14
 	resetAllBtn.Font = Enum.Font.GothamBold
 	resetAllBtn.Parent = buttonsFrame
@@ -234,7 +234,7 @@ function MasteryTestingUI:createClassEntry(parent: Frame, classId: string, class
 	decreaseBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	decreaseBtn.BorderSizePixel = 0
 	decreaseBtn.Text = "-"
-	decreaseBtn.TextColor3 = Theme.TEXT_PRIMARY
+	decreaseBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	decreaseBtn.TextSize = 20
 	decreaseBtn.Font = Enum.Font.GothamBold
 	decreaseBtn.Parent = entry
@@ -256,7 +256,7 @@ function MasteryTestingUI:createClassEntry(parent: Frame, classId: string, class
 	increaseBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	increaseBtn.BorderSizePixel = 0
 	increaseBtn.Text = "+"
-	increaseBtn.TextColor3 = Theme.TEXT_PRIMARY
+	increaseBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	increaseBtn.TextSize = 20
 	increaseBtn.Font = Enum.Font.GothamBold
 	increaseBtn.Parent = entry
@@ -278,7 +278,7 @@ function MasteryTestingUI:createClassEntry(parent: Frame, classId: string, class
 	maxBtn.BackgroundColor3 = Theme.WARNING
 	maxBtn.BorderSizePixel = 0
 	maxBtn.Text = "MAX"
-	maxBtn.TextColor3 = Theme.TEXT_PRIMARY
+	maxBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	maxBtn.TextSize = 12
 	maxBtn.Font = Enum.Font.GothamBold
 	maxBtn.Parent = entry
@@ -352,7 +352,7 @@ function MasteryTestingUI:updateDisplay()
 			
 			-- Highlight if at max level (20 = ultimate unlock)
 			if level >= 20 then
-				entry.levelLabel.TextColor3 = Theme.WARNING
+				entry.levelLabel.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
 			else
 				entry.levelLabel.TextColor3 = Theme.TEXT_MUTED
 			end

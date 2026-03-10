@@ -21,8 +21,8 @@ local PIXELS_PER_STUD = 80
 local BOARD_SIZE = Vector3.new(10, 14, 0.5)
 
 -- Board positions — flanking SelectionZone (X=0, Z=30)
-local WIN_BOARD_POS = Vector3.new(-22, 109, 30)
-local GEM_BOARD_POS = Vector3.new(22, 109, 30)
+local WIN_BOARD_POS = Vector3.new(-22, 106, 30)
+local GEM_BOARD_POS = Vector3.new(22, 106, 30)
 
 local WHITE = Theme.TEXT_PRIMARY
 local SILVER = Color3.fromRGB(200, 200, 220)

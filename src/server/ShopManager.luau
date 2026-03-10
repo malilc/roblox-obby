@@ -1,6 +1,7 @@
--- ShopManager: จัดการ Shop purchases + Class Gacha
+-- ShopManager: จัดการ Shop purchases + Class Gacha + Game Pass
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
@@ -24,8 +25,14 @@ function ShopManager.new(currencyManager, itemManager, classManager, gameManager
 	self.gachaClassPullRemote = remotes:WaitForChild("GachaClassPull")
 	self.shopUpdateRemote = remotes:WaitForChild("ShopUpdate")
 	self.showShopRemote = remotes:WaitForChild("ShowShop")
+	self.gamePassUpdateRemote = remotes:WaitForChild("GamePassUpdate")
+	self.checkGamePassRemote = remotes:WaitForChild("CheckGamePass")
+
+	-- Cache of owned game passes per player
+	self.playerGamePasses = {} :: {[Player]: {[string]: boolean}}
 
 	self:setupRemotes()
+	self:setupGamePassListeners()
 
 	Logger.info("ShopManager", "Initialized")
 	return self
@@ -43,6 +50,12 @@ function ShopManager:setupRemotes()
 	-- Send state sync when shop opens
 	self.showShopRemote.OnServerEvent:Connect(function(player)
 		self:sendStateSync(player)
+	end)
+
+	-- Client requests game pass ownership re-check (after purchase)
+	self.checkGamePassRemote.OnServerEvent:Connect(function(player)
+		self:checkAllGamePasses(player)
+		self:sendGamePassUpdate(player)
 	end)
 end
 
@@ -227,21 +240,74 @@ function ShopManager:rollGachaClass(): string
 	return pool[#pool].classId
 end
 
+-- ========== GAME PASS ==========
+
+function ShopManager:setupGamePassListeners()
+	-- Listen for native Roblox game pass purchase completion
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, wasPurchased)
+		if not wasPurchased then return end
+
+		-- Find which pass was purchased
+		for id, passDef in pairs(Config.GamePasses) do
+			if passDef.gamePassId == passId then
+				if not self.playerGamePasses[player] then
+					self.playerGamePasses[player] = {}
+				end
+				self.playerGamePasses[player][id] = true
+				self:sendGamePassUpdate(player)
+				Logger.info("ShopManager", player.Name, "purchased game pass:", id)
+				break
+			end
+		end
+	end)
+end
+
+function ShopManager:checkAllGamePasses(player: Player)
+	local owned = {}
+	for id, passDef in pairs(Config.GamePasses) do
+		if passDef.gamePassId ~= 0 then
+			local success, hasPass = pcall(function()
+				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passDef.gamePassId)
+			end)
+			if success and hasPass then
+				owned[id] = true
+			end
+		end
+	end
+	self.playerGamePasses[player] = owned
+end
+
+function ShopManager:hasGamePass(player: Player, passId: string): boolean
+	local passes = self.playerGamePasses[player]
+	return passes ~= nil and passes[passId] == true
+end
+
+function ShopManager:sendGamePassUpdate(player: Player)
+	self.gamePassUpdateRemote:FireClient(player, {
+		ownedPasses = self.playerGamePasses[player] or {},
+	})
+end
+
 -- ========== STATE SYNC ==========
 
 function ShopManager:sendStateSync(player: Player)
+	-- Check game passes on shop open
+	self:checkAllGamePasses(player)
+
 	self.shopUpdateRemote:FireClient(player, {
 		type = "stateSync",
 		currency = self.currencyManager:getCurrency(player),
 		gems = self.currencyManager:getGems(player),
 		unlockedClasses = self.currencyManager:getUnlockedClasses(player),
 		itemSlots = self.itemManager:getPlayerSlots(player),
+		ownedGamePasses = self.playerGamePasses[player] or {},
 	})
 end
 
 -- Cleanup when player leaves
 function ShopManager:removePlayer(player: Player)
 	self.lastRequestTime[player] = nil
+	self.playerGamePasses[player] = nil
 end
 
 return ShopManager

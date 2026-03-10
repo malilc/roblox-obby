@@ -154,6 +154,12 @@
         },
         "ItemEffect": {
           "$className": "RemoteEvent"
+        },
+        "GamePassUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "CheckGamePass": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {
@@ -198,89 +204,36 @@
           ],
           "Neutral": true,
           "Color": [
-            1,
-            0.87,
-            0
+            0.65,
+            0.50,
+            0.30
           ],
-          "Material": "SmoothPlastic"
+          "Material": "Slate"
         }
       },
       "Lobby": {
         "$className": "Folder",
+
         "FallFloor": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.35, 0.18, 0.75],
-            "Material": "SmoothPlastic",
+            "Color": [0.30, 0.75, 0.20],
+            "Material": "Grass",
             "Size": [100, 2, 100],
             "Position": [0, 99, 0],
             "Transparency": 0
           }
         },
-        "FallCeiling": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Color": [0.5, 0.38, 0.85],
-            "Material": "SmoothPlastic",
-            "Size": [100, 1, 100],
-            "Position": [0, 129, 0],
-            "Transparency": 0.2
-          }
-        },
-        "GlassWall_North": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Color": [1, 0.2, 0.8],
-            "Material": "Neon",
-            "Size": [98, 30, 1],
-            "Position": [0, 114, -49],
-            "Transparency": 0.75
-          }
-        },
-        "GlassWall_South": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Color": [0.2, 0.87, 1],
-            "Material": "Neon",
-            "Size": [98, 30, 1],
-            "Position": [0, 114, 49],
-            "Transparency": 0.75
-          }
-        },
-        "GlassWall_East": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Color": [1, 0.2, 0.8],
-            "Material": "Neon",
-            "Size": [1, 30, 98],
-            "Position": [49, 114, 0],
-            "Transparency": 0.75
-          }
-        },
-        "GlassWall_West": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Color": [0.2, 0.87, 1],
-            "Material": "Neon",
-            "Size": [1, 30, 98],
-            "Position": [-49, 114, 0],
-            "Transparency": 0.75
-          }
-        },
+
         "SelectionZone": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.87, 0],
-            "Material": "Neon",
+            "Color": [0.95, 0.95, 0.60],
+            "Material": "SmoothPlastic",
             "Size": [20, 0.5, 20],
-            "Position": [0, 101, 30],
+            "Position": [0, 100.1, 30],
             "Transparency": 0.3,
             "CanCollide": false
           }
@@ -289,173 +242,218 @@
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.2, 0.87, 1],
-            "Material": "Neon",
-            "Size": [16, 0.5, 16],
-            "Position": [30, 101, 15],
+            "Shape": "Cylinder",
+            "Color": [0.85, 0.55, 0.20],
+            "Material": "SmoothPlastic",
+            "Size": [0.5, 12, 12],
+            "CFrame": [30, 100.1, 5, 0, 1, 0, 1, 0, 0, 0, 0, -1],
             "Transparency": 0.3,
             "CanCollide": false
           }
         },
-        "FrameCorner_NE": {
+
+        "DirtPath_Main": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.87, 0],
-            "Material": "SmoothPlastic",
-            "Size": [3, 34, 3],
-            "Position": [50, 114, -50]
+            "Color": [0.65, 0.50, 0.30],
+            "Material": "Slate",
+            "Size": [8, 0.15, 50],
+            "Position": [0, 100.08, 10],
+            "Transparency": 0
           }
         },
-        "FrameCorner_NW": {
+        "DirtPath_ShopBranch": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.87, 0],
-            "Material": "SmoothPlastic",
-            "Size": [3, 34, 3],
-            "Position": [-50, 114, -50]
+            "Color": [0.65, 0.50, 0.30],
+            "Material": "Slate",
+            "Size": [24, 0.15, 6],
+            "Position": [16, 100.08, 5],
+            "Transparency": 0
           }
         },
-        "FrameCorner_SE": {
+        "Stage_Platform": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.87, 0],
-            "Material": "SmoothPlastic",
-            "Size": [3, 34, 3],
-            "Position": [50, 114, 50]
+            "Color": [0.60, 0.58, 0.55],
+            "Material": "Concrete",
+            "Size": [24, 1.5, 24],
+            "Position": [0, 100.75, 30]
           }
         },
-        "FrameCorner_SW": {
+        "Stage_PillarNE": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.87, 0],
-            "Material": "SmoothPlastic",
-            "Size": [3, 34, 3],
-            "Position": [-50, 114, 50]
+            "Color": [0.55, 0.52, 0.48],
+            "Material": "Concrete",
+            "Size": [2, 8, 2],
+            "Position": [11, 105.5, 41]
           }
         },
-        "FloorNeon_N": {
+        "Stage_PillarNW": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.2, 0.8],
-            "Material": "Neon",
-            "Size": [98, 0.3, 0.5],
-            "Position": [0, 100, -49],
-            "CanCollide": false
+            "Color": [0.55, 0.52, 0.48],
+            "Material": "Concrete",
+            "Size": [2, 8, 2],
+            "Position": [-11, 105.5, 41]
           }
         },
-        "FloorNeon_S": {
+        "Stage_PillarSE": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.2, 0.8],
-            "Material": "Neon",
-            "Size": [98, 0.3, 0.5],
-            "Position": [0, 100, 49],
-            "CanCollide": false
+            "Color": [0.55, 0.52, 0.48],
+            "Material": "Concrete",
+            "Size": [2, 8, 2],
+            "Position": [11, 105.5, 19]
           }
         },
-        "FloorNeon_E": {
+        "Stage_PillarSW": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0, 0.8, 1.0],
-            "Material": "Neon",
-            "Size": [0.5, 0.3, 98],
-            "Position": [49, 100, 0],
-            "CanCollide": false
+            "Color": [0.55, 0.52, 0.48],
+            "Material": "Concrete",
+            "Size": [2, 8, 2],
+            "Position": [-11, 105.5, 19]
           }
         },
-        "FloorNeon_W": {
+        "Stage_Roof": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0, 0.8, 1.0],
-            "Material": "Neon",
-            "Size": [0.5, 0.3, 98],
-            "Position": [-49, 100, 0],
-            "CanCollide": false
+            "Color": [0.45, 0.28, 0.12],
+            "Material": "Wood",
+            "Size": [26, 1, 26],
+            "Position": [0, 109.5, 30]
           }
         },
-        "CeilLight_1": {
+        "Stage_RailBack": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.2, 0.87, 1],
-            "Material": "Neon",
-            "Size": [80, 0.3, 2],
-            "Position": [0, 128.5, -30],
-            "CanCollide": false
+            "Color": [0.55, 0.52, 0.48],
+            "Material": "Concrete",
+            "Size": [24, 2.5, 0.8],
+            "Position": [0, 102.75, 41.5]
           }
         },
-        "CeilLight_2": {
+        "Stage_RailLeft": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.2, 0.87, 1],
-            "Material": "Neon",
-            "Size": [80, 0.3, 2],
-            "Position": [0, 128.5, 0],
-            "CanCollide": false
+            "Color": [0.55, 0.52, 0.48],
+            "Material": "Concrete",
+            "Size": [0.8, 2.5, 16],
+            "Position": [-12, 102.75, 33]
           }
         },
-        "CeilLight_3": {
+        "Stage_RailRight": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [0.2, 0.87, 1],
-            "Material": "Neon",
-            "Size": [80, 0.3, 2],
-            "Position": [0, 128.5, 30],
-            "CanCollide": false
+            "Color": [0.55, 0.52, 0.48],
+            "Material": "Concrete",
+            "Size": [0.8, 2.5, 16],
+            "Position": [12, 102.75, 33]
           }
         },
-        "DecoStar_NE": {
+        "Stage_StepFront": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.5, 0],
-            "Material": "Neon",
-            "Size": [3, 3, 3],
-            "Position": [50, 132, -50],
-            "CanCollide": false
+            "Color": [0.60, 0.58, 0.55],
+            "Material": "Concrete",
+            "Size": [12, 0.75, 3],
+            "Position": [0, 100.38, 17]
           }
         },
-        "DecoStar_NW": {
+
+        "Hedge_North": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.5, 0],
-            "Material": "Neon",
-            "Size": [3, 3, 3],
-            "Position": [-50, 132, -50],
-            "CanCollide": false
+            "Color": [0.15, 0.55, 0.10],
+            "Material": "Grass",
+            "Size": [98, 3, 2],
+            "Position": [0, 101.5, -49]
           }
         },
-        "DecoStar_SE": {
+        "Hedge_South": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.5, 0],
-            "Material": "Neon",
-            "Size": [3, 3, 3],
-            "Position": [50, 132, 50],
-            "CanCollide": false
+            "Color": [0.15, 0.55, 0.10],
+            "Material": "Grass",
+            "Size": [98, 3, 2],
+            "Position": [0, 101.5, 49]
           }
         },
-        "DecoStar_SW": {
+        "Hedge_East": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [1, 0.5, 0],
-            "Material": "Neon",
-            "Size": [3, 3, 3],
-            "Position": [-50, 132, 50],
-            "CanCollide": false
+            "Color": [0.15, 0.55, 0.10],
+            "Material": "Grass",
+            "Size": [2, 3, 98],
+            "Position": [49, 101.5, 0]
+          }
+        },
+        "Hedge_West": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [0.15, 0.55, 0.10],
+            "Material": "Grass",
+            "Size": [2, 3, 98],
+            "Position": [-49, 101.5, 0]
+          }
+        },
+
+        "InvisWall_North": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [100, 20, 1],
+            "Position": [0, 110, -50],
+            "Transparency": 1,
+            "CanCollide": true
+          }
+        },
+        "InvisWall_South": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [100, 20, 1],
+            "Position": [0, 110, 50],
+            "Transparency": 1,
+            "CanCollide": true
+          }
+        },
+        "InvisWall_East": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [1, 20, 100],
+            "Position": [50, 110, 0],
+            "Transparency": 1,
+            "CanCollide": true
+          }
+        },
+        "InvisWall_West": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [1, 20, 100],
+            "Position": [-50, 110, 0],
+            "Transparency": 1,
+            "CanCollide": true
           }
         }
       },
@@ -489,14 +487,14 @@
     "Lighting": {
       "$properties": {
         "Ambient": [
-          0.2,
-          0.2,
-          0.25
+          0.45,
+          0.45,
+          0.40
         ],
-        "Brightness": 2,
+        "Brightness": 3,
         "GlobalShadows": true,
         "Outlines": false,
-        "ClockTime": 14
+        "ClockTime": 11
       }
     },
     "SoundService": {
@@ -505,13 +503,6 @@
       }
     },
     "StarterGui": {
-      "GameUI": {
-        "$className": "ScreenGui",
-        "$properties": {
-          "ResetOnSpawn": false,
-          "IgnoreGuiInset": false
-        }
-      }
     }
   }
 }

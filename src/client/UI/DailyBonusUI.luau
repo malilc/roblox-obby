@@ -11,24 +11,27 @@ local COLORS = {
 	GREEN       = Theme.SUCCESS,
 	DARK        = Theme.BG_OVERLAY,
 	DIM         = Theme.BG_SURFACE,
-	PAST_CARD   = Color3.fromRGB(25, 70, 45),
+	PAST_CARD   = Color3.fromRGB(235, 238, 242),
 	SUBTITLE    = Color3.fromRGB(80, 55, 10),
 	FUTURE_TEXT = Theme.TEXT_MUTED,
 	CARD_BADGE  = Color3.fromRGB(80, 180, 110),
-	DAY7_SPECIAL = Color3.fromRGB(120, 80, 180),
-	GEM          = Color3.fromRGB(200, 120, 255),
+	DAY7_SPECIAL = Color3.fromRGB(255, 248, 230),
+	GEM          = Color3.fromRGB(200, 120, 255),  -- gem purple stays
 }
 
 local DailyBonusUI = {}
 DailyBonusUI.__index = DailyBonusUI
 
-function DailyBonusUI.new(parent: ScreenGui)
+function DailyBonusUI.new(parent: ScreenGui, callbacks: {hideHudButton: boolean?}?)
 	local self = setmetatable({}, DailyBonusUI)
 	self.parent        = parent
 	self.lastData      = nil   -- stores last received streak data from server
 	self._calendarOpen = false -- guard: prevent multiple calendar popups
+	self._callbacks    = callbacks
 
-	self:_createHudButton()
+	if not (callbacks and callbacks.hideHudButton) then
+		self:_createHudButton()
+	end
 
 	task.spawn(function()
 		local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -65,10 +68,10 @@ function DailyBonusUI:_createHudButton()
 	-- Gradient background
 	local btnGrad = Instance.new("UIGradient")
 	btnGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	btnGrad.Rotation = 135
+	btnGrad.Rotation = 180
 	btnGrad.Parent = btn
 
 	local stroke = Instance.new("UIStroke")
@@ -162,8 +165,8 @@ function DailyBonusUI:showCalendar(data)
 	-- === MAIN PANEL ===
 	local panel = Instance.new("Frame")
 	panel.Name = "DailyLoginPanel"
-	panel.Size = UDim2.new(0, 500, 0, 380)
-	panel.Position = UDim2.new(0.5, -250, 0.5, -110)
+	panel.Size = UDim2.new(0, 500, 0, 410)
+	panel.Position = UDim2.new(0.5, -250, 0.5, -120)
 	panel.BackgroundColor3 = Theme.BG_BASE
 	panel.BorderSizePixel = 0
 	panel.ZIndex = 2
@@ -179,10 +182,10 @@ function DailyBonusUI:showCalendar(data)
 
 	local panelGrad = Instance.new("UIGradient")
 	panelGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
 	})
-	panelGrad.Rotation = 135
+	panelGrad.Rotation = 180
 	panelGrad.Parent = panel
 
 	-- Drop shadow
@@ -190,8 +193,8 @@ function DailyBonusUI:showCalendar(data)
 	panelShadow.Name = "Shadow"
 	panelShadow.Size = UDim2.new(1, 6, 1, 6)
 	panelShadow.Position = UDim2.new(0, -3, 0, 4)
-	panelShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	panelShadow.BackgroundTransparency = 0.6
+	panelShadow.BackgroundColor3 = Theme.CARD_SHADOW
+	panelShadow.BackgroundTransparency = 0.7
 	panelShadow.BorderSizePixel = 0
 	panelShadow.ZIndex = panel.ZIndex - 1
 	panelShadow.Parent = panel
@@ -249,7 +252,7 @@ function DailyBonusUI:showCalendar(data)
 
 	local subText = Instance.new("TextLabel")
 	subText.BackgroundTransparency = 1
-	subText.Text = isClaim and ("Day " .. claimedDay .. " / 7  \u{2022}  +" .. tostring(rewards[claimedDay] or 0) .. " \u{1FA99} + " .. tostring(gemRewards[claimedDay] or 0) .. " \u{1F48E}") or ("Day " .. claimedDay .. " / 7  \u{2022}  Already Claimed \u{2713}")
+	subText.Text = isClaim and ("Day " .. claimedDay .. " / 7  \u{2022}  +" .. tostring(rewards[claimedDay] or 0) .. " \u{1F4B0} + " .. tostring(gemRewards[claimedDay] or 0) .. " \u{1F48E}") or ("Day " .. claimedDay .. " / 7  \u{2022}  Already Claimed \u{2713}")
 	subText.TextSize = 13
 	subText.Font = Enum.Font.GothamBold
 	subText.TextColor3 = COLORS.SUBTITLE
@@ -320,7 +323,7 @@ function DailyBonusUI:showCalendar(data)
 			iconText = "\u{2705}" -- ✅
 			iconSize = 22
 		elseif isToday and isClaim then
-			iconText = "\u{1FA99}" -- 🪙
+			iconText = "\u{1F4B0}" -- 🪙
 			iconSize = 22
 		elseif day == 7 then
 			iconText = "\u{1F451}" -- 👑
@@ -343,7 +346,7 @@ function DailyBonusUI:showCalendar(data)
 
 		-- Coin amount label
 		local reward = rewards[day] or 0
-		local amtText = isPast and "" or ("\u{1FA99} +" .. reward)
+		local amtText = isPast and "" or ("\u{1F4B0} +" .. reward)
 		local amtLbl = Instance.new("TextLabel")
 		amtLbl.BackgroundTransparency = 1
 		amtLbl.Text = amtText
@@ -494,44 +497,62 @@ function DailyBonusUI:showCalendar(data)
 		end)
 	end
 
-	-- === ACTION BUTTON ===
+	-- === ACTION BUTTON (Frame+TextLabel pattern to avoid gradient tinting text) ===
 	local actionBtn = Instance.new("TextButton")
 	actionBtn.Name            = "ActionButton"
 	actionBtn.Size            = UDim2.new(0, 220, 0, 40)
 	actionBtn.Position        = UDim2.new(0.5, -110, 1, -52)
-	actionBtn.BackgroundColor3 = isClaim and COLORS.GOLD or Theme.BG_ELEVATED
+	actionBtn.BackgroundTransparency = 1
 	actionBtn.BorderSizePixel = 0
-	actionBtn.Text            = isClaim and "\u{2728}  CLAIM!" or "OK"
-	actionBtn.TextColor3      = isClaim and Theme.TEXT_DARK or Theme.TEXT_MUTED
-	actionBtn.TextSize        = 16
-	actionBtn.Font            = Enum.Font.GothamBlack
+	actionBtn.Text            = ""
 	actionBtn.ZIndex          = 63
 	actionBtn.Parent          = panel
-	Theme.applyCorner(actionBtn, "sm")
+
+	-- Background frame with gradient
+	local btnBg = Instance.new("Frame")
+	btnBg.Name = "BtnBg"
+	btnBg.Size = UDim2.new(1, 0, 1, 0)
+	btnBg.BackgroundColor3 = isClaim and COLORS.GOLD or Theme.ACCENT_CYAN
+	btnBg.BorderSizePixel = 0
+	btnBg.ZIndex = actionBtn.ZIndex
+	btnBg.Parent = actionBtn
+	Theme.applyCorner(btnBg, "sm")
 
 	local btnGrad = Instance.new("UIGradient")
 	btnGrad.Color = isClaim and ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Theme.PRIMARY),
 		ColorSequenceKeypoint.new(1, Theme.PRIMARY_DARK),
 	}) or ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_ELEVATED),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE),
+		ColorSequenceKeypoint.new(0, Theme.ACCENT_CYAN),
+		ColorSequenceKeypoint.new(1, Theme.ACCENT_CYAN:Lerp(Theme.BG_BASE, 0.4)),
 	})
 	btnGrad.Rotation = 90
-	btnGrad.Parent = actionBtn
+	btnGrad.Parent = btnBg
 
-	-- Glow stroke on action button
+	-- Glow stroke on background
 	local actionStroke = Instance.new("UIStroke")
-	actionStroke.Color = isClaim and Theme.HUD_GLOW_GOLD or Theme.BG_ELEVATED
+	actionStroke.Color = isClaim and Theme.HUD_GLOW_GOLD or Theme.ACCENT_CYAN
 	actionStroke.Thickness = Theme.STROKE_THIN
 	actionStroke.Transparency = 0.3
-	actionStroke.Parent = actionBtn
+	actionStroke.Parent = btnBg
+
+	-- Text label (white, not affected by gradient)
+	local btnLabel = Instance.new("TextLabel")
+	btnLabel.Name = "BtnLabel"
+	btnLabel.Size = UDim2.new(1, 0, 1, 0)
+	btnLabel.BackgroundTransparency = 1
+	btnLabel.Text = isClaim and "\u{2728}  CLAIM!" or "OK"
+	btnLabel.TextColor3 = isClaim and Theme.TEXT_DARK or Color3.new(1, 1, 1)
+	btnLabel.TextSize = 16
+	btnLabel.Font = Enum.Font.GothamBlack
+	btnLabel.ZIndex = actionBtn.ZIndex + 1
+	btnLabel.Parent = actionBtn
 
 	-- === ANIMATE IN ===
 	TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.55 }):Play()
 	TweenService:Create(panel, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0.05,
-		Position = UDim2.new(0.5, -250, 0.5, -180),
+		Position = UDim2.new(0.5, -250, 0.5, -200),
 	}):Play()
 	TweenService:Create(panelStroke, TweenInfo.new(0.35), { Transparency = 0.2 }):Play()
 
@@ -541,12 +562,13 @@ function DailyBonusUI:showCalendar(data)
 		if closing then return end
 		closing = true
 		self._calendarOpen = false
+		self._closeCalendar = nil
 		-- Mark as viewed so HUD button opens view mode next time
 		if self.lastData then self.lastData.claimed = false end
 		TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play()
 		local out = TweenService:Create(panel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			BackgroundTransparency = 1,
-			Position = UDim2.new(0.5, -250, 0.5, -110),
+			Position = UDim2.new(0.5, -250, 0.5, -120),
 		})
 		out:Play()
 		out.Completed:Connect(function()
@@ -554,12 +576,15 @@ function DailyBonusUI:showCalendar(data)
 		end)
 	end
 
+	-- Store close function so hideCalendar() can call it externally
+	self._closeCalendar = close
+
 	actionBtn.MouseButton1Click:Connect(function()
 		if isClaim then
 			-- Flash button green with both reward amounts
 			local coinAmt = rewards[claimedDay] or 0
 			local gemAmt = gemRewards[claimedDay] or 0
-			actionBtn.Text = "You earned " .. coinAmt .. " \u{1FA99} + " .. gemAmt .. " \u{1F48E}!"
+			actionBtn.Text = "You earned " .. coinAmt .. " \u{1F4B0} + " .. gemAmt .. " \u{1F48E}!"
 			TweenService:Create(actionBtn, TweenInfo.new(0.2), {
 				BackgroundColor3 = COLORS.GREEN,
 				TextColor3       = Theme.TEXT_DARK,
@@ -615,6 +640,12 @@ function DailyBonusUI:showCalendar(data)
 		task.delay(10, function()
 			if modalGui and modalGui.Parent then close() end
 		end)
+	end
+end
+
+function DailyBonusUI:hideCalendar()
+	if self._closeCalendar then
+		self._closeCalendar()
 	end
 end
 

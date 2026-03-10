@@ -1,6 +1,7 @@
 -- Stage Templates Generator
 -- สร้าง 7 ด่านสำหรับ Obby (1 Easy + 2 Normal + 4 Hard)
 
+local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
@@ -38,7 +39,7 @@ local function createCheckpoint(position: Vector3): Part
 	checkpoint.Anchored = true
 	checkpoint.Size = Vector3.new(6, 1, 6)
 	checkpoint.Position = position
-	checkpoint.Material = Enum.Material.Neon
+	checkpoint.Material = Enum.Material.SmoothPlastic
 	checkpoint.Color = Color3.fromRGB(0, 255, 127)
 	checkpoint.CanCollide = true
 	
@@ -54,66 +55,105 @@ local function createCheckpoint(position: Vector3): Part
 	return checkpoint
 end
 
--- Helper function สร้าง Item Box (Neon Cube Style - Cyberpunk)
+-- Pre-load Lucky Block model template (asset 129696127925672)
+local _luckyBlockTemplate: Model? = nil
+local function getLuckyBlockTemplate(): Model?
+	if _luckyBlockTemplate then return _luckyBlockTemplate end
+	local ok, asset = pcall(function()
+		return InsertService:LoadAsset(129696127925672)
+	end)
+	if ok and asset then
+		local model = asset:FindFirstChildWhichIsA("Model")
+		if model then
+			-- Strip scripts, prompts, and other unwanted objects
+			for _, desc in model:GetDescendants() do
+				if desc:IsA("BaseScript") or desc:IsA("ProximityPrompt") or desc:IsA("ClickDetector") then
+					desc:Destroy()
+				end
+			end
+			model.Parent = nil
+			_luckyBlockTemplate = model
+			asset:Destroy()
+		end
+	else
+		warn("[StageTemplates] Failed to load Lucky Block asset: " .. tostring(asset))
+	end
+	return _luckyBlockTemplate
+end
+
+-- Helper function สร้าง Item Box (Lucky Block Model)
 local function createItemPickup(position: Vector3): Part
-	-- สร้าง Part หลัก - Neon Cube
+	-- Invisible hitbox Part (anchor for animation + touch detection)
 	local pickup = Instance.new("Part")
 	pickup.Name = "ItemBox"
 	pickup.Anchored = true
 	pickup.CanCollide = false
 	pickup.Size = Vector3.new(3, 3, 3)
-	pickup.Transparency = 0
-	pickup.Material = Enum.Material.Neon
-	pickup.Color = Color3.fromRGB(150, 100, 255) -- สีม่วง-ฟ้า (cyberpunk style)
-	
-	-- ยกขึ้น 3 studs
+	pickup.Transparency = 1
+
 	local raisedPosition = position + Vector3.new(0, 3, 0)
 	pickup.Position = raisedPosition
-	
-	-- เพิ่ม Friction สูงเพื่อไม่ให้ลื่น
-	pickup.CustomPhysicalProperties = PhysicalProperties.new(
-		0.7,  -- Density
-		2.0,  -- Friction
-		0.1,  -- Elasticity
-		1.0,  -- FrictionWeight
-		0.5   -- ElasticityWeight
-	)
-	
-	-- Particle effect - สีน้ำเงิน/ม่วง cyberpunk
+
+	-- Attach Lucky Block model
+	local template = getLuckyBlockTemplate()
+	if template then
+		local model = template:Clone()
+		-- Scale and position the model to fit the hitbox
+		model:PivotTo(CFrame.new(raisedPosition))
+		model.Parent = pickup
+
+		-- Weld all parts to the anchor so they follow animation
+		for _, part in model:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.Anchored = false
+				part.CanCollide = false
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = pickup
+				weld.Part1 = part
+				weld.Parent = part
+			end
+		end
+	else
+		-- Fallback: visible yellow box if model failed to load
+		pickup.Transparency = 0
+		pickup.Material = Enum.Material.SmoothPlastic
+		pickup.Color = Color3.fromRGB(255, 200, 40)
+	end
+
+	-- Subtle sparkle particles
 	local particles = Instance.new("ParticleEmitter")
-	particles.Lifetime = NumberRange.new(0.5, 1)
-	particles.Rate = 15
-	particles.Speed = NumberRange.new(2, 5)
+	particles.Lifetime = NumberRange.new(0.4, 0.8)
+	particles.Rate = 6
+	particles.Speed = NumberRange.new(1, 2)
 	particles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(0, 0.3),
 		NumberSequenceKeypoint.new(1, 0)
 	})
 	particles.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 150, 255)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 100, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 200, 255)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 100)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 200, 50)),
 	})
-	particles.LightEmission = 1
+	particles.LightEmission = 0.8
 	particles.SpreadAngle = Vector2.new(180, 180)
 	particles.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0, 0.3),
 		NumberSequenceKeypoint.new(1, 1)
 	})
 	particles.Parent = pickup
-	
-	-- PointLight สีฟ้า-ม่วง
+
+	-- Soft warm glow
 	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(100, 150, 255)
-	light.Brightness = 2
-	light.Range = 10
+	light.Color = Color3.fromRGB(255, 210, 80)
+	light.Brightness = 1
+	light.Range = 8
 	light.Parent = pickup
-	
-	-- Item Box attributes (ไม่ใช่ Coin - จะได้ random item)
+
+	-- Item Box attributes
 	pickup:SetAttribute("IsItemBox", true)
-	pickup:SetAttribute("IsCoin", false) -- ไม่ใช่เหรียญ - จะได้ item แทน
+	pickup:SetAttribute("IsCoin", false)
 	pickup:SetAttribute("SpinSpeed", 2)
-	pickup:SetAttribute("OriginalY", raisedPosition.Y) -- สำหรับ bobbing animation
-	
+	pickup:SetAttribute("OriginalY", raisedPosition.Y)
+
 	return pickup
 end
 
@@ -526,7 +566,7 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 		Size = Vector3.new(15, 2, 10),
 		Position = startPosition + Vector3.new(STAGE_LENGTH, 0, 0),
 		Color = Color3.fromRGB(0, 255, 100),
-		Material = Enum.Material.Neon,
+		Material = Enum.Material.SmoothPlastic,
 	})
 	endPart:SetAttribute("IsFinishLine", true)
 	endPart.Parent = stage
@@ -538,7 +578,7 @@ function StageTemplates.createStage5(startPosition: Vector3): Model
 		Position = startPosition + Vector3.new(STAGE_LENGTH + 5, 8, 0),
 		Color = Color3.fromRGB(255, 215, 0),
 		Transparency = 0.5,
-		Material = Enum.Material.Neon,
+		Material = Enum.Material.SmoothPlastic,
 	})
 	banner.Parent = stage
 	
@@ -577,7 +617,7 @@ function StageTemplates.createStage6(startPosition: Vector3): Model
 		Size = Vector3.new(STAGE_LENGTH + 20, 2, 30),
 		Position = startPosition + Vector3.new(STAGE_LENGTH / 2, -15, 0),
 		Color = Color3.fromRGB(255, 60, 0),
-		Material = Enum.Material.Neon,
+		Material = Enum.Material.SmoothPlastic,
 	})
 	lavaFloor:SetAttribute("IsKillPart", true)
 	lavaFloor:SetAttribute("IsMoving", true)

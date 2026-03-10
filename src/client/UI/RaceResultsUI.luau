@@ -44,17 +44,17 @@ function RaceResultsUI:createUI()
 	-- Gradient background
 	local containerGradient = Instance.new("UIGradient")
 	containerGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	containerGradient.Rotation = 135
+	containerGradient.Rotation = 180
 	containerGradient.Parent = container
 
 	-- Border/Glow
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.MEDAL_GOLD
-	stroke.Thickness = Theme.STROKE_BOLD
-	stroke.Transparency = 0.2
+	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.5
 	stroke.Parent = container
 
 	-- Drop shadow
@@ -62,8 +62,8 @@ function RaceResultsUI:createUI()
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 6, 1, 6)
 	shadow.Position = UDim2.new(0, -3, 0, 4)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	shadow.BackgroundTransparency = 0.6
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
+	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = container.ZIndex - 1
 	shadow.Parent = container
@@ -98,7 +98,7 @@ function RaceResultsUI:createUI()
 	title.Position = UDim2.new(0, 0, 0, 10)
 	title.BackgroundTransparency = 1
 	title.Text = "RACE FINISHED!"
-	title.TextColor3 = Theme.TEXT_PRIMARY
+	title.TextColor3 = Theme.TEXT_ON_ACCENT
 	title.TextSize = 32
 	title.Font = Enum.Font.GothamBlack
 	title.Parent = container
@@ -161,7 +161,7 @@ function RaceResultsUI:createUI()
 	closeBtn.BackgroundColor3 = Theme.SUCCESS
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Text = "CONTINUE"
-	closeBtn.TextColor3 = Theme.TEXT_PRIMARY
+	closeBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	closeBtn.TextSize = 18
 	closeBtn.Font = Enum.Font.GothamBold
 	closeBtn.Parent = container
@@ -333,10 +333,10 @@ function RaceResultsUI:createResultEntry(index: number, result: {
 
 	if result.finished then
 		status.Text = "FINISHED"
-		status.TextColor3 = Theme.SUCCESS
+		status.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
 	else
 		status.Text = "Stage " .. result.stage
-		status.TextColor3 = Theme.WARNING
+		status.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
 	end
 
 	status.TextSize = 14

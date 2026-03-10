@@ -66,14 +66,20 @@ function StageSelectionUI:createUI()
 	mainFrame.Parent = self.parent
 	self.mainFrame = mainFrame
 
-	-- Add gradient background
-	createGradient(mainFrame, Theme.BG_BASE, Theme.BG_SURFACE)
+	-- Add gradient background (sky→green, top-to-bottom)
+	local mainGrad = Instance.new("UIGradient")
+	mainGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM),
+	})
+	mainGrad.Rotation = 180
+	mainGrad.Parent = mainFrame
 
 	-- Glow stroke
 	local borderStroke = Instance.new("UIStroke")
 	borderStroke.Color = Theme.ACCENT_CYAN
-	borderStroke.Thickness = Theme.STROKE_BOLD
-	borderStroke.Transparency = 0.2
+	borderStroke.Thickness = Theme.STROKE_MED
+	borderStroke.Transparency = 0.5
 	borderStroke.Parent = mainFrame
 
 	local corner = Instance.new("UICorner")
@@ -85,8 +91,8 @@ function StageSelectionUI:createUI()
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 6, 1, 6)
 	shadow.Position = UDim2.new(0, -3, 0, 4)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	shadow.BackgroundTransparency = 0.6
+	shadow.BackgroundColor3 = Theme.CARD_SHADOW
+	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = mainFrame.ZIndex - 1
 	shadow.Parent = mainFrame
@@ -231,7 +237,7 @@ function StageSelectionUI:createUI()
 		badge.BackgroundColor3 = diffInfo.badgeColor
 		badge.BackgroundTransparency = 0.2
 		badge.Text = diffInfo.label
-		badge.TextColor3 = Theme.TEXT_PRIMARY
+		badge.TextColor3 = Theme.TEXT_ON_ACCENT
 		badge.TextSize = 8
 		badge.Font = Enum.Font.GothamBold
 		badge.ZIndex = button.ZIndex + 1
@@ -262,7 +268,7 @@ function StageSelectionUI:createUI()
 		numberLabel.Text = "[" .. i .. "]"
 		numberLabel.TextSize = 16
 		numberLabel.Font = Enum.Font.GothamBold
-		numberLabel.TextColor3 = Theme.TEXT_PRIMARY
+		numberLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 		numberLabel.TextStrokeTransparency = 0.5
 		numberLabel.Parent = button
 
@@ -275,7 +281,7 @@ function StageSelectionUI:createUI()
 		nameLabel.Text = stageData.name
 		nameLabel.TextSize = 11
 		nameLabel.Font = Enum.Font.Gotham
-		nameLabel.TextColor3 = Theme.TEXT_PRIMARY
+		nameLabel.TextColor3 = Theme.TEXT_ON_ACCENT
 		nameLabel.TextStrokeTransparency = 0.7
 		nameLabel.Parent = button
 
@@ -345,7 +351,7 @@ function StageSelectionUI:createUI()
 		orderBadge.BackgroundColor3 = Theme.SUCCESS
 		orderBadge.BackgroundTransparency = 0
 		orderBadge.Text = ""
-		orderBadge.TextColor3 = Theme.TEXT_PRIMARY
+		orderBadge.TextColor3 = Theme.TEXT_ON_ACCENT
 		orderBadge.TextSize = 13
 		orderBadge.Font = Enum.Font.GothamBold
 		orderBadge.ZIndex = button.ZIndex + 2
@@ -426,7 +432,7 @@ function StageSelectionUI:createUI()
 	randomButton.BackgroundTransparency = 0
 	randomButton.BorderSizePixel = 0
 	randomButton.Text = "\u{1F3B2} RANDOM"
-	randomButton.TextColor3 = Theme.TEXT_PRIMARY
+	randomButton.TextColor3 = Theme.TEXT_ON_ACCENT
 	randomButton.TextSize = 20
 	randomButton.Font = Enum.Font.GothamBold
 	randomButton.TextStrokeTransparency = 0.3
@@ -455,7 +461,7 @@ function StageSelectionUI:createUI()
 	startButton.BackgroundTransparency = 0
 	startButton.BorderSizePixel = 0
 	startButton.Text = "\u{1F680} START"
-	startButton.TextColor3 = Theme.TEXT_PRIMARY
+	startButton.TextColor3 = Theme.TEXT_ON_ACCENT
 	startButton.TextSize = 20
 	startButton.Font = Enum.Font.GothamBold
 	startButton.TextStrokeTransparency = 0.3
@@ -475,7 +481,7 @@ function StageSelectionUI:createUI()
 
 	-- เริ่มต้น disable ปุ่ม Start — ใช้สีเข้มแทน transparency เพื่อไม่ให้พื้นหลังม่วงทะลุ
 	startButton.Active = false
-	startButton.BackgroundColor3 = Color3.fromRGB(40, 80, 50)
+	startButton.BackgroundColor3 = Color3.fromRGB(200, 208, 218)
 	startButton.TextTransparency = 0.4
 	if startStroke then
 		startStroke.Transparency = 0.8
@@ -520,7 +526,7 @@ function StageSelectionUI:createUI()
 	countdownNumber.Position = UDim2.new(0.5, 0, 0, 20)
 	countdownNumber.BackgroundTransparency = 1
 	countdownNumber.Text = "3"
-	countdownNumber.TextColor3 = Theme.TEXT_PRIMARY
+	countdownNumber.TextColor3 = Theme.TEXT_ON_ACCENT
 	countdownNumber.TextSize = 120
 	countdownNumber.Font = Enum.Font.GothamBold
 	countdownNumber.TextStrokeTransparency = 0 -- stroke ชัดเต็มที่
@@ -537,7 +543,7 @@ function StageSelectionUI:createUI()
 	countdownMessage.Position = UDim2.new(0.5, 0, 0, 170)
 	countdownMessage.BackgroundTransparency = 1
 	countdownMessage.Text = "Starting..."
-	countdownMessage.TextColor3 = Theme.TEXT_PRIMARY
+	countdownMessage.TextColor3 = Theme.TEXT_ON_ACCENT
 	countdownMessage.TextSize = 24
 	countdownMessage.Font = Enum.Font.GothamBold
 	countdownMessage.TextStrokeTransparency = 0
@@ -770,7 +776,7 @@ function StageSelectionUI:updateStartButtonState()
 
 		-- Animation - disable button (เปลี่ยนสีเป็นเขียวเข้ม)
 		local disableTween = TweenService:Create(self.startButton, TweenInfo.new(0.2), {
-			BackgroundColor3 = Color3.fromRGB(40, 80, 50),
+			BackgroundColor3 = Color3.fromRGB(200, 208, 218),
 			TextTransparency = 0.4
 		})
 		disableTween:Play()

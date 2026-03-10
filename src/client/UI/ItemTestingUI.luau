@@ -48,7 +48,7 @@ function ItemTestingUI:createUI()
 	toggleButton.Position = UDim2.new(1, -130, 0, 10)
 	toggleButton.BackgroundColor3 = Theme.DANGER
 	toggleButton.Text = "🧪 Testing"
-	toggleButton.TextColor3 = Theme.TEXT_PRIMARY
+	toggleButton.TextColor3 = Theme.TEXT_ON_ACCENT
 	toggleButton.TextSize = 14
 	toggleButton.Font = Enum.Font.GothamBold
 	toggleButton.Parent = screenGui
@@ -76,10 +76,10 @@ function ItemTestingUI:createUI()
 	-- Gradient background
 	local mainGradient = Instance.new("UIGradient")
 	mainGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	mainGradient.Rotation = 135
+	mainGradient.Rotation = 180
 	mainGradient.Parent = mainFrame
 
 	local mainStroke = Instance.new("UIStroke")
@@ -165,7 +165,7 @@ function ItemTestingUI:createItemButtons()
 	separator.Size = UDim2.new(1, 0, 0, 25)
 	separator.BackgroundTransparency = 1
 	separator.Text = "── Tools ──"
-	separator.TextColor3 = Theme.PRIMARY
+	separator.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.55)
 	separator.TextSize = 14
 	separator.Font = Enum.Font.GothamBold
 	separator.LayoutOrder = layoutOrder + 50
@@ -177,7 +177,7 @@ function ItemTestingUI:createItemButtons()
 	spawnDummyButton.Size = UDim2.new(1, 0, 0, 45)
 	spawnDummyButton.BackgroundColor3 = Theme.BG_ELEVATED
 	spawnDummyButton.Text = "🤖 Spawn Test Dummy"
-	spawnDummyButton.TextColor3 = Theme.TEXT_PRIMARY
+	spawnDummyButton.TextColor3 = Theme.TEXT_ON_ACCENT
 	spawnDummyButton.TextSize = 15
 	spawnDummyButton.Font = Enum.Font.GothamBold
 	spawnDummyButton.LayoutOrder = layoutOrder + 51
@@ -198,7 +198,7 @@ function ItemTestingUI:createItemButtons()
 	removeDummyButton.Size = UDim2.new(1, 0, 0, 45)
 	removeDummyButton.BackgroundColor3 = Theme.BG_ELEVATED
 	removeDummyButton.Text = "❌ Remove All Dummies"
-	removeDummyButton.TextColor3 = Theme.TEXT_PRIMARY
+	removeDummyButton.TextColor3 = Theme.TEXT_ON_ACCENT
 	removeDummyButton.TextSize = 15
 	removeDummyButton.Font = Enum.Font.GothamBold
 	removeDummyButton.LayoutOrder = layoutOrder + 52
@@ -219,7 +219,7 @@ function ItemTestingUI:createItemButtons()
 	clearButton.Size = UDim2.new(1, 0, 0, 45)
 	clearButton.BackgroundColor3 = Theme.BG_OVERLAY
 	clearButton.Text = "🗑️ Clear All Items"
-	clearButton.TextColor3 = Theme.TEXT_PRIMARY
+	clearButton.TextColor3 = Theme.TEXT_ON_ACCENT
 	clearButton.TextSize = 15
 	clearButton.Font = Enum.Font.GothamBold
 	clearButton.LayoutOrder = layoutOrder + 100
@@ -239,7 +239,7 @@ function ItemTestingUI:createItemButtons()
 	dlSeparator.Size = UDim2.new(1, 0, 0, 25)
 	dlSeparator.BackgroundTransparency = 1
 	dlSeparator.Text = "── Daily Login ──"
-	dlSeparator.TextColor3 = Theme.PRIMARY
+	dlSeparator.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.55)
 	dlSeparator.TextSize = 14
 	dlSeparator.Font = Enum.Font.GothamBold
 	dlSeparator.LayoutOrder = layoutOrder + 101
@@ -250,7 +250,7 @@ function ItemTestingUI:createItemButtons()
 	dailyLoginBtn.Size = UDim2.new(1, 0, 0, 45)
 	dailyLoginBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	dailyLoginBtn.Text = "\u{1F381} Reset Daily Login"
-	dailyLoginBtn.TextColor3 = Theme.TEXT_PRIMARY
+	dailyLoginBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	dailyLoginBtn.TextSize = 15
 	dailyLoginBtn.Font = Enum.Font.GothamBold
 	dailyLoginBtn.LayoutOrder = layoutOrder + 102
@@ -281,7 +281,7 @@ function ItemTestingUI:createItemButtons()
 	soloSeparator.Size = UDim2.new(1, 0, 0, 25)
 	soloSeparator.BackgroundTransparency = 1
 	soloSeparator.Text = "── Game Testing ──"
-	soloSeparator.TextColor3 = Theme.PRIMARY
+	soloSeparator.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.55)
 	soloSeparator.TextSize = 14
 	soloSeparator.Font = Enum.Font.GothamBold
 	soloSeparator.LayoutOrder = layoutOrder + 200
@@ -293,7 +293,7 @@ function ItemTestingUI:createItemButtons()
 	soloWinsBtn.Size = UDim2.new(1, 0, 0, 45)
 	soloWinsBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	soloWinsBtn.Text = "🏆 Solo Wins: OFF"
-	soloWinsBtn.TextColor3 = Theme.TEXT_PRIMARY
+	soloWinsBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	soloWinsBtn.TextSize = 15
 	soloWinsBtn.Font = Enum.Font.GothamBold
 	soloWinsBtn.LayoutOrder = layoutOrder + 201
@@ -310,7 +310,7 @@ function ItemTestingUI:createItemButtons()
 			soloWinsBtn.TextColor3 = Theme.MEDAL_GOLD
 		else
 			soloWinsBtn.Text = "🏆 Solo Wins: OFF"
-			soloWinsBtn.TextColor3 = Theme.TEXT_PRIMARY
+			soloWinsBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 		end
 		local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 		if remotes then
@@ -328,7 +328,7 @@ function ItemTestingUI:createItemButtons()
 	soloStartBtn.Size = UDim2.new(1, 0, 0, 45)
 	soloStartBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	soloStartBtn.Text = "🚀 Solo Start (Random)"
-	soloStartBtn.TextColor3 = Theme.TEXT_PRIMARY
+	soloStartBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	soloStartBtn.TextSize = 15
 	soloStartBtn.Font = Enum.Font.GothamBold
 	soloStartBtn.LayoutOrder = layoutOrder + 202
@@ -386,7 +386,7 @@ function ItemTestingUI:createItemButtons()
 		addGemBtn.Size = UDim2.new(1, 0, 0, 38)
 		addGemBtn.BackgroundColor3 = Theme.BG_ELEVATED
 		addGemBtn.Text = "💎 +" .. amount .. " Gems"
-		addGemBtn.TextColor3 = Theme.TEXT_PRIMARY
+		addGemBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 		addGemBtn.TextSize = 15
 		addGemBtn.Font = Enum.Font.GothamBold
 		addGemBtn.LayoutOrder = layoutOrder + 252 + idx
@@ -408,7 +408,7 @@ function ItemTestingUI:createItemButtons()
 	resetGemsBtn.Size = UDim2.new(1, 0, 0, 38)
 	resetGemsBtn.BackgroundColor3 = Theme.BG_OVERLAY
 	resetGemsBtn.Text = "🔄 Reset Gems (0)"
-	resetGemsBtn.TextColor3 = Theme.TEXT_PRIMARY
+	resetGemsBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	resetGemsBtn.TextSize = 15
 	resetGemsBtn.Font = Enum.Font.GothamBold
 	resetGemsBtn.LayoutOrder = layoutOrder + 256
@@ -429,7 +429,7 @@ function ItemTestingUI:createItemButtons()
 	masterySeparator.Size = UDim2.new(1, 0, 0, 25)
 	masterySeparator.BackgroundTransparency = 1
 	masterySeparator.Text = "── Mastery ──"
-	masterySeparator.TextColor3 = Theme.PRIMARY
+	masterySeparator.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.55)
 	masterySeparator.TextSize = 14
 	masterySeparator.Font = Enum.Font.GothamBold
 	masterySeparator.LayoutOrder = layoutOrder + 300
@@ -448,7 +448,7 @@ function ItemTestingUI:createItemButtons()
 	setAllBtn.Size = UDim2.new(1, 0, 0, 45)
 	setAllBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	setAllBtn.Text = "⬆️ Set All Lv 20"
-	setAllBtn.TextColor3 = Theme.TEXT_PRIMARY
+	setAllBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	setAllBtn.TextSize = 15
 	setAllBtn.Font = Enum.Font.GothamBold
 	setAllBtn.LayoutOrder = layoutOrder + 400
@@ -469,7 +469,7 @@ function ItemTestingUI:createItemButtons()
 	resetAllBtn.Size = UDim2.new(1, 0, 0, 45)
 	resetAllBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	resetAllBtn.Text = "🔄 Reset All Lv 1"
-	resetAllBtn.TextColor3 = Theme.TEXT_PRIMARY
+	resetAllBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	resetAllBtn.TextSize = 15
 	resetAllBtn.Font = Enum.Font.GothamBold
 	resetAllBtn.LayoutOrder = layoutOrder + 401
@@ -545,7 +545,7 @@ function ItemTestingUI:createMasteryEntry(classId: string, order: number)
 	decBtn.Position = UDim2.new(1, -140, 0.5, -14)
 	decBtn.BackgroundColor3 = Theme.BG_OVERLAY
 	decBtn.Text = "-"
-	decBtn.TextColor3 = Theme.TEXT_PRIMARY
+	decBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	decBtn.TextSize = 16
 	decBtn.Font = Enum.Font.GothamBold
 	decBtn.Parent = entry
@@ -561,7 +561,7 @@ function ItemTestingUI:createMasteryEntry(classId: string, order: number)
 	incBtn.Position = UDim2.new(1, -105, 0.5, -14)
 	incBtn.BackgroundColor3 = Theme.BG_OVERLAY
 	incBtn.Text = "+"
-	incBtn.TextColor3 = Theme.TEXT_PRIMARY
+	incBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	incBtn.TextSize = 16
 	incBtn.Font = Enum.Font.GothamBold
 	incBtn.Parent = entry
@@ -577,7 +577,7 @@ function ItemTestingUI:createMasteryEntry(classId: string, order: number)
 	maxBtn.Position = UDim2.new(1, -68, 0.5, -14)
 	maxBtn.BackgroundColor3 = Theme.BG_OVERLAY
 	maxBtn.Text = "MAX"
-	maxBtn.TextColor3 = Theme.TEXT_PRIMARY
+	maxBtn.TextColor3 = Theme.TEXT_ON_ACCENT
 	maxBtn.TextSize = 11
 	maxBtn.Font = Enum.Font.GothamBold
 	maxBtn.Parent = entry
@@ -654,7 +654,7 @@ function ItemTestingUI:updateMasteryDisplay(classId: string)
 	local level = self.masteryLevels[classId] or 1
 	entry.levelLabel.Text = "Lv. " .. level
 	if level >= 20 then
-		entry.levelLabel.TextColor3 = Theme.PRIMARY
+		entry.levelLabel.TextColor3 = Theme.darkenForText(Theme.PRIMARY, 0.55)
 	else
 		entry.levelLabel.TextColor3 = Theme.TEXT_PRIMARY
 	end

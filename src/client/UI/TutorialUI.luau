@@ -9,7 +9,7 @@ local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 local TutorialUI = {}
 TutorialUI.__index = TutorialUI
 
-function TutorialUI.new(parent: ScreenGui, callbacks: {onShow: (() -> ())?}?)
+function TutorialUI.new(parent: ScreenGui, callbacks: {onShow: (() -> ())?, onHide: (() -> ())?, hideHelpButton: boolean?}?)
 	local self = setmetatable({}, TutorialUI)
 
 	self.parent = parent
@@ -36,7 +36,7 @@ function TutorialUI:createUI()
 	helpButton.BackgroundColor3 = Theme.BG_BASE
 	helpButton.BackgroundTransparency = 0.2
 	helpButton.Text = "?"
-	helpButton.TextColor3 = Theme.ACCENT_CYAN
+	helpButton.TextColor3 = Theme.darkenForText(Theme.ACCENT_CYAN, 0.45)
 	helpButton.TextSize = 22
 	helpButton.Font = Enum.Font.GothamBold
 	helpButton.AutoButtonColor = false
@@ -57,15 +57,20 @@ function TutorialUI:createUI()
 	-- Help button gradient
 	local helpGradient = Instance.new("UIGradient")
 	helpGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	helpGradient.Rotation = 135
+	helpGradient.Rotation = 180
 	helpGradient.Parent = helpButton
 
 	helpButton.MouseButton1Click:Connect(function()
 		self:toggle()
 	end)
+
+	-- Hide help button if managed by MenuGridUI
+	if self.callbacks.hideHelpButton then
+		helpButton.Visible = false
+	end
 
 	-- === Hint label (ผู้เล่นใหม่) ===
 	local hintLabel = Instance.new("TextLabel")
@@ -75,7 +80,7 @@ function TutorialUI:createUI()
 	hintLabel.BackgroundColor3 = Theme.BG_BASE
 	hintLabel.BackgroundTransparency = 0.2
 	hintLabel.Text = "  Tap ? for help!"
-	hintLabel.TextColor3 = Theme.ACCENT_CYAN
+	hintLabel.TextColor3 = Theme.darkenForText(Theme.ACCENT_CYAN, 0.45)
 	hintLabel.TextSize = 13
 	hintLabel.Font = Enum.Font.GothamBold
 	hintLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -88,36 +93,17 @@ function TutorialUI:createUI()
 	hintCorner.CornerRadius = Theme.CORNER_SM
 	hintCorner.Parent = hintLabel
 
-	-- === Main Panel (ซ่อนไว้) ===
-	local overlay = Instance.new("TextButton")
-	overlay.Name = "TutorialOverlay"
-	overlay.Size = UDim2.new(2, 0, 2, 0)
-	overlay.Position = UDim2.new(-0.5, 0, -0.5, 0)
-	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	overlay.BackgroundTransparency = 0.3
-	overlay.Text = ""
-	overlay.AutoButtonColor = false
-	overlay.Visible = false
-	overlay.ZIndex = 10
-	overlay.Parent = self.parent
-	self.overlay = overlay
-
-	overlay.MouseButton1Click:Connect(function()
-		self:hide()
-	end)
-
-	-- Panel ใหญ่ขึ้น (680x500)
-	local panelWidth = 680
-	local panelHeight = 500
+	-- === Main Panel (directly on ScreenGui, no overlay) ===
 	local panel = Instance.new("Frame")
 	panel.Name = "TutorialPanel"
-	panel.Size = UDim2.new(0, panelWidth, 0, panelHeight)
-	panel.Position = UDim2.new(0.5, -panelWidth / 2, 0.5, -panelHeight / 2)
+	panel.Size = UDim2.new(0, 680, 0, 500)
+	panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.BackgroundColor3 = Theme.BG_BASE
-	panel.BackgroundTransparency = 0
+	panel.BackgroundTransparency = 0.02
 	panel.BorderSizePixel = 0
-	panel.ZIndex = 11
-	panel.Parent = overlay
+	panel.Visible = false
+	panel.Parent = self.parent
 	self.panel = panel
 
 	local panelCorner = Instance.new("UICorner")
@@ -127,17 +113,17 @@ function TutorialUI:createUI()
 	-- Panel gradient
 	local panelGradient = Instance.new("UIGradient")
 	panelGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.BG_SURFACE),
-		ColorSequenceKeypoint.new(1, Theme.BG_BASE)
+		ColorSequenceKeypoint.new(0, Theme.PANEL_GRAD_TOP),
+		ColorSequenceKeypoint.new(1, Theme.PANEL_GRAD_BTM)
 	})
-	panelGradient.Rotation = 135
+	panelGradient.Rotation = 180
 	panelGradient.Parent = panel
 
 	-- Panel glow stroke
 	local panelStroke = Instance.new("UIStroke")
 	panelStroke.Color = Theme.ACCENT_CYAN
 	panelStroke.Thickness = Theme.STROKE_MED
-	panelStroke.Transparency = 0.2
+	panelStroke.Transparency = 0.5
 	panelStroke.Parent = panel
 
 	-- Panel drop shadow
@@ -145,8 +131,8 @@ function TutorialUI:createUI()
 	panelShadow.Name = "Shadow"
 	panelShadow.Size = UDim2.new(1, 6, 1, 6)
 	panelShadow.Position = UDim2.new(0, -3, 0, 4)
-	panelShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	panelShadow.BackgroundTransparency = 0.6
+	panelShadow.BackgroundColor3 = Theme.CARD_SHADOW
+	panelShadow.BackgroundTransparency = 0.7
 	panelShadow.BorderSizePixel = 0
 	panelShadow.ZIndex = panel.ZIndex - 1
 	panelShadow.Parent = panel
@@ -155,46 +141,43 @@ function TutorialUI:createUI()
 	-- Header
 	local header = Instance.new("TextLabel")
 	header.Name = "Header"
-	header.Size = UDim2.new(1, -60, 0, 44)
-	header.Position = UDim2.new(0, 20, 0, 10)
+	header.Size = UDim2.new(0, 300, 0, 40)
+	header.Position = UDim2.new(0, 22, 0, 10)
 	header.BackgroundTransparency = 1
-	header.Text = "Game Guide"
+	header.RichText = true
+	header.Text = '<font size="20">\u{2753}</font>  <font face="GothamBold" size="24"><b>GAME GUIDE</b></font>'
 	header.TextColor3 = Theme.TEXT_PRIMARY
-	header.TextSize = 26
+	header.TextSize = 24
 	header.Font = Enum.Font.GothamBold
 	header.TextXAlignment = Enum.TextXAlignment.Left
-	header.ZIndex = 12
 	header.Parent = panel
-
-	local headerStroke = Instance.new("UIStroke")
-	headerStroke.Color = Theme.HUD_SCORE_END
-	headerStroke.Thickness = 1.5
-	headerStroke.Transparency = 0.4
-	headerStroke.Parent = header
 
 	-- Close button
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
 	closeButton.Size = UDim2.new(0, 36, 0, 36)
-	closeButton.Position = UDim2.new(1, -48, 0, 14)
-	closeButton.BackgroundColor3 = Theme.BG_SURFACE
-	closeButton.Text = "X"
-	closeButton.TextColor3 = Theme.DANGER
-	closeButton.TextSize = 18
-	closeButton.Font = Enum.Font.GothamBold
-	closeButton.AutoButtonColor = false
-	closeButton.ZIndex = 12
+	closeButton.Position = UDim2.new(1, -50, 0, 12)
+	closeButton.BackgroundColor3 = Theme.DANGER
+	closeButton.BorderSizePixel = 0
+	closeButton.Text = ""
 	closeButton.Parent = panel
-
-	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = Theme.CORNER_SM
-	closeCorner.Parent = closeButton
+	Theme.applyCorner(closeButton, "sm")
 
 	local closeStroke = Instance.new("UIStroke")
 	closeStroke.Color = Theme.DANGER
-	closeStroke.Thickness = Theme.STROKE_THIN
+	closeStroke.Thickness = 1
 	closeStroke.Transparency = 0.3
 	closeStroke.Parent = closeButton
+
+	local closeBtnLabel = Instance.new("TextLabel")
+	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
+	closeBtnLabel.BackgroundTransparency = 1
+	closeBtnLabel.Text = "X"
+	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
+	closeBtnLabel.TextSize = 18
+	closeBtnLabel.Font = Enum.Font.GothamBold
+	closeBtnLabel.ZIndex = closeButton.ZIndex + 1
+	closeBtnLabel.Parent = closeButton
 
 	closeButton.MouseButton1Click:Connect(function()
 		self:hide()
@@ -206,7 +189,6 @@ function TutorialUI:createUI()
 	tabBar.Size = UDim2.new(1, -30, 0, 42)
 	tabBar.Position = UDim2.new(0, 15, 0, 58)
 	tabBar.BackgroundTransparency = 1
-	tabBar.ZIndex = 12
 	tabBar.Parent = panel
 
 	local tabLayout = Instance.new("UIListLayout")
@@ -216,6 +198,7 @@ function TutorialUI:createUI()
 	tabLayout.Parent = tabBar
 
 	-- Tab กว้างขึ้นเพื่อไม่ตัดข้อความ
+	local panelWidth = 680
 	local tabWidth = math.floor((panelWidth - 30 - 5 * (#sections - 1)) / #sections)
 
 	for i, section in ipairs(sections) do
@@ -249,8 +232,8 @@ function TutorialUI:createUI()
 	contentFrame.Name = "ContentFrame"
 	contentFrame.Size = UDim2.new(1, -30, 1, -120)
 	contentFrame.Position = UDim2.new(0, 15, 0, 108)
-	contentFrame.BackgroundColor3 = Theme.BG_OVERLAY
-	contentFrame.BackgroundTransparency = 0.05
+	contentFrame.BackgroundColor3 = Theme.BG_SURFACE
+	contentFrame.BackgroundTransparency = 0.1
 	contentFrame.BorderSizePixel = 0
 	contentFrame.ZIndex = 12
 	contentFrame.Parent = panel
@@ -258,6 +241,12 @@ function TutorialUI:createUI()
 	local contentCorner = Instance.new("UICorner")
 	contentCorner.CornerRadius = Theme.CORNER_SM
 	contentCorner.Parent = contentFrame
+
+	local contentStroke = Instance.new("UIStroke")
+	contentStroke.Color = Theme.BG_ELEVATED
+	contentStroke.Thickness = Theme.STROKE_THIN
+	contentStroke.Transparency = 0.3
+	contentStroke.Parent = contentFrame
 
 	-- Content text (font ใหญ่ขึ้น + line height ดีขึ้น)
 	local contentLabel = Instance.new("TextLabel")
@@ -310,23 +299,18 @@ end
 
 function TutorialUI:show()
 	self.isVisible = true
-	self.overlay.Visible = true
+	self.panel.Visible = true
 
 	-- Close other panels
 	if self.callbacks.onShow then
 		self.callbacks.onShow()
 	end
 
-	-- Animate in
-	local panelWidth = 680
-	local panelHeight = 500
-	self.panel.Position = UDim2.new(0.5, -panelWidth / 2, 0.5, -panelHeight / 2 + 20)
-	self.panel.BackgroundTransparency = 0.5
-	self.helpButton.Visible = false
+	-- Animate in (fade only, like ShopUI)
+	self.panel.BackgroundTransparency = 1
 
-	TweenService:Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-		Position = UDim2.new(0.5, -panelWidth / 2, 0.5, -panelHeight / 2),
-		BackgroundTransparency = 0,
+	TweenService:Create(self.panel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0.02,
 	}):Play()
 
 	-- Mark tutorial as seen
@@ -344,17 +328,17 @@ end
 function TutorialUI:hide()
 	self.isVisible = false
 
-	local panelWidth = 680
-	local panelHeight = 500
-	TweenService:Create(self.panel, TweenInfo.new(0.15), {
-		Position = UDim2.new(0.5, -panelWidth / 2, 0.5, -panelHeight / 2 + 20),
-		BackgroundTransparency = 0.5,
-	}):Play()
+	if self.callbacks.onHide then
+		self.callbacks.onHide()
+	end
 
-	task.delay(0.15, function()
+	local fadeOut = TweenService:Create(self.panel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		BackgroundTransparency = 1,
+	})
+	fadeOut:Play()
+	fadeOut.Completed:Connect(function()
 		if not self.isVisible then
-			self.overlay.Visible = false
-			self.helpButton.Visible = true
+			self.panel.Visible = false
 		end
 	end)
 end

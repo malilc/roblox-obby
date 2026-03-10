@@ -931,7 +931,7 @@ function GameManager:setupFinishLine()
 
 			-- เปลี่ยนสี EndPart ให้เด่นชัด (เส้นชัย)
 			endPart.Color = Color3.fromRGB(0, 255, 100)
-			endPart.Material = Enum.Material.Neon
+			endPart.Material = Enum.Material.SmoothPlastic
 
 			Logger.info("GameManager", "Finish line setup at:", endPart.Position)
 		end
@@ -1012,7 +1012,7 @@ function GameManager:setupFinishLineForMatch(matchId: string)
 
 			-- เปลี่ยนสี EndPart ให้เด่นชัด (เส้นชัย)
 			endPart.Color = Color3.fromRGB(0, 255, 100)
-			endPart.Material = Enum.Material.Neon
+			endPart.Material = Enum.Material.SmoothPlastic
 
 			Logger.info("GameManager", "Finish line setup for match:", matchId, "at:", endPart.Position)
 		end

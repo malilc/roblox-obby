@@ -49,7 +49,7 @@ function FlyController:createUI()
 	local flyButton = Instance.new("TextButton")
 	flyButton.Name = "FlyButton"
 	flyButton.Size = UDim2.new(0, 50, 0, 25)
-	flyButton.Position = UDim2.new(0, 10, 1, -35)
+	flyButton.Position = UDim2.new(0, 160, 1, -30)
 	flyButton.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
 	flyButton.BackgroundTransparency = 0.4
 	flyButton.Text = "FLY"
@@ -67,7 +67,7 @@ function FlyController:createUI()
 	local speedLabel = Instance.new("TextLabel")
 	speedLabel.Name = "SpeedLabel"
 	speedLabel.Size = UDim2.new(0, 40, 0, 25)
-	speedLabel.Position = UDim2.new(0, 65, 1, -35)
+	speedLabel.Position = UDim2.new(0, 215, 1, -30)
 	speedLabel.BackgroundTransparency = 1
 	speedLabel.Text = "50"
 	speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -80,7 +80,7 @@ function FlyController:createUI()
 	local speedUpBtn = Instance.new("TextButton")
 	speedUpBtn.Name = "SpeedUp"
 	speedUpBtn.Size = UDim2.new(0, 20, 0, 25)
-	speedUpBtn.Position = UDim2.new(0, 105, 1, -35)
+	speedUpBtn.Position = UDim2.new(0, 255, 1, -30)
 	speedUpBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
 	speedUpBtn.BackgroundTransparency = 0.4
 	speedUpBtn.Text = "+"
@@ -97,7 +97,7 @@ function FlyController:createUI()
 	local speedDownBtn = Instance.new("TextButton")
 	speedDownBtn.Name = "SpeedDown"
 	speedDownBtn.Size = UDim2.new(0, 20, 0, 25)
-	speedDownBtn.Position = UDim2.new(0, 128, 1, -35)
+	speedDownBtn.Position = UDim2.new(0, 278, 1, -30)
 	speedDownBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
 	speedDownBtn.BackgroundTransparency = 0.4
 	speedDownBtn.Text = "-"
