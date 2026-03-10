@@ -24,6 +24,7 @@ export type MatchMapData = {
 	disappearingParts: {{part: Part, touched: boolean, lastTouchTime: number}},
 	autoCyclingParts: {{part: Part, thread: thread?}},
 	pendulumParts: {{ball: Part, rope: Part?, pivotCFrame: CFrame, ropeLength: number, maxAngle: number, speed: number, phaseOffset: number}},
+	punchingParts: {{part: Part, originalCFrame: CFrame, direction: Vector3, distance: number, speed: number, phase: number}},
 	animationConnection: RBXScriptConnection?,
 	folder: Folder,
 }
@@ -42,6 +43,7 @@ function MapManager.new()
 		disappearingParts = {},
 		autoCyclingParts = {},
 		pendulumParts = {},
+		punchingParts = {},
 		animationConnection = nil,
 		folder = self.stagesFolder,
 	} :: MatchMapData
@@ -201,6 +203,17 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 				})
 				-- Setup touch detection
 				self:_setupDisappearingPlatform(descendant, mapData)
+			end
+
+			if descendant:GetAttribute("IsPunching") then
+				table.insert(mapData.punchingParts, {
+					part = descendant,
+					originalCFrame = descendant.CFrame,
+					direction = descendant:GetAttribute("PunchDirection") or Vector3.new(0, 0, -1),
+					distance = descendant:GetAttribute("PunchDistance") or 8,
+					speed = descendant:GetAttribute("PunchSpeed") or 0.8,
+					phase = descendant:GetAttribute("PunchPhase") or 0,
+				})
 			end
 
 			if descendant:GetAttribute("IsAutoCycling") then
@@ -566,6 +579,31 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 			end
 		end
 
+		-- Punching parts (CFrame-based, anchored — for boxing gloves)
+		for _, data in ipairs(mapData.punchingParts) do
+			if data.part.Parent then
+				-- Punch cycle: 8% punch → 17% hold → 10% retract → 65% safe
+				local cycleTime = (time * data.speed + data.phase) % 1
+				local progress -- 0 = retracted, 1 = fully extended
+				if cycleTime < 0.08 then
+					-- Fast punch out (ease out)
+					local t = cycleTime / 0.08
+					progress = 1 - (1 - t) * (1 - t)
+				elseif cycleTime < 0.25 then
+					-- Hold extended (blocking)
+					progress = 1
+				elseif cycleTime < 0.35 then
+					-- Retract (ease in)
+					local t = (cycleTime - 0.25) / 0.10
+					progress = 1 - t * t
+				else
+					-- Safe window (65% of cycle)
+					progress = 0
+				end
+				data.part.CFrame = data.originalCFrame + data.direction * (progress * data.distance)
+			end
+		end
+
 		-- Item Boxes: Spin + Bob (Neon Cube style)
 		for _, box in ipairs(itemBoxes) do
 			if box.Parent then
@@ -600,6 +638,7 @@ function MapManager:_clearMapInternal(mapData: MatchMapData, destroyFolder: bool
 	mapData.spinningParts = {}
 	mapData.disappearingParts = {}
 	mapData.pendulumParts = {}
+	mapData.punchingParts = {}
 
 	-- Cancel auto-cycling threads
 	for _, data in ipairs(mapData.autoCyclingParts) do
@@ -781,6 +820,7 @@ function MapManager:generateMapForMatch(matchId: string, stageOrder: {number}): 
 		disappearingParts = {},
 		autoCyclingParts = {},
 		pendulumParts = {},
+		punchingParts = {},
 		animationConnection = nil,
 		folder = matchFolder,
 	}

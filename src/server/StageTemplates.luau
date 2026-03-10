@@ -1716,7 +1716,9 @@ function StageTemplates.createStage13(startPosition: Vector3): Model
 end
 
 -- ==================== STAGE 14: Boxing Glove Run (Easy) ====================
--- ทางเดินเปิดโล่ง สไตล์สดใส มีนวมชกมวยแดงบนแขนไม้ยื่นออกมาชกผู้เล่นกระเด็น
+-- ทางเดินกว้าง มีนวมชกมวยแดงยื่นออกมาจากผนังชกผู้เล่นกระเด็น
+-- ผู้เล่นต้องจับจังหวะ: หยุดรอเมื่อหมัดยื่นออกมา → วิ่งเมื่อหมัดหดกลับ
+-- ใช้ระบบ IsPunching (CFrame-based, anchored) แทน IsMoving (physics-based)
 function StageTemplates.createStage14(startPosition: Vector3): Model
 	local stage = Instance.new("Model")
 	stage.Name = "Stage_BoxingGloveRun"
@@ -1730,16 +1732,13 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 	itemPickups.Parent = stage
 
 	local stageLength = STAGE_LENGTH
-	local pathWidth = 10
+	local pathWidth = 12
 
-	-- สีสดใส (Boxing theme)
-	local floorColor = Color3.fromRGB(220, 215, 200)        -- พื้นสีเบจอ่อน
-	local sideWallColor = Color3.fromRGB(180, 175, 165)     -- กำแพงเตี้ยสีเทาอ่อน
-	local gloveRed = Color3.fromRGB(200, 35, 30)            -- นวมแดง
-	local gloveDarkRed = Color3.fromRGB(160, 25, 20)        -- นวมแดงเข้ม
-	local wristWhite = Color3.fromRGB(240, 235, 225)        -- ข้อมือขาว (ผ้าพัน)
-	local armWoodColor = Color3.fromRGB(190, 150, 90)       -- แขนไม้
-	local armWoodDark = Color3.fromRGB(140, 105, 55)        -- แขนไม้เข้ม (แถบ)
+	-- สี (Boxing theme)
+	local floorColor = Color3.fromRGB(220, 215, 200)
+	local sideWallColor = Color3.fromRGB(180, 175, 165)
+	local gloveRed = Color3.fromRGB(200, 35, 30)
+	local armWoodColor = Color3.fromRGB(190, 150, 90)
 
 	-- Start Part
 	local startPart = createPart({
@@ -1768,7 +1767,7 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 	})
 	floor.Parent = obstacles
 
-	-- === ขอบพื้นสีเข้ม (edge trim) ===
+	-- === ขอบพื้นสีเข้ม ===
 	for _, sideZ in ipairs({-1, 1}) do
 		local edgeTrim = createPart({
 			Name = "EdgeTrim_" .. (sideZ == 1 and "R" or "L"),
@@ -1780,174 +1779,113 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 		edgeTrim.Parent = obstacles
 	end
 
-	-- === กำแพงเตี้ย 2 ฝั่ง (กันตก) ===
-	local lowWallHeight = 2
+	-- === กำแพงสูง 2 ฝั่ง (ซ่อนนวม+แขนเมื่อหดกลับ) ===
+	local wallHeight = 8
+	local wallThickness = 4
 	for _, sideZ in ipairs({-1, 1}) do
-		local lowWall = createPart({
-			Name = "LowWall_" .. (sideZ == 1 and "R" or "L"),
-			Size = Vector3.new(pathLength, lowWallHeight, 1.5),
-			Position = startPosition + Vector3.new(pathStart + pathLength / 2, lowWallHeight / 2, (pathWidth / 2 + 1.25) * sideZ),
+		local wall = createPart({
+			Name = "Wall_" .. (sideZ == 1 and "R" or "L"),
+			Size = Vector3.new(pathLength, wallHeight, wallThickness),
+			Position = startPosition + Vector3.new(pathStart + pathLength / 2, wallHeight / 2, (pathWidth / 2 + wallThickness / 2) * sideZ),
 			Color = sideWallColor,
 			Material = Enum.Material.SmoothPlastic,
 		})
-		lowWall.Parent = obstacles
+		wall.Parent = obstacles
 	end
 
 	-- === Config นวมชกมวย ===
-	-- ทุกตัวเรียงตรงแกน Z (ตั้งฉากกับผู้เล่นที่เดินแกน X)
-	-- โครงสร้าง: [นวม] → [ข้อมือขาว] → [แขนไม้] ทั้งหมดเรียงตรง Z
+	-- นวมซ่อนหลังกำแพง (retracted) แล้วยื่นข้ามทางเต็มความกว้าง (punch)
+	-- ผู้เล่นเดินแกน X, นวมขยับแกน Z (ตั้งฉากกับทางเดิน)
+	-- นวม(4)+แขน(10) = 14 studs รวมกันปิดทางกว้าง 12 studs ได้หมด
+	-- ทุกตัว speed เดียวกัน + phase สลับกัน 1/8 → ทีละตัวชก ไม่ชนกัน
 	local gloveConfigs = {
-		{ xOffset = 15, side = 1,  speed = 2.5 },
-		{ xOffset = 25, side = -1, speed = 3.0 },
-		{ xOffset = 35, side = 1,  speed = 2.5 },
-		{ xOffset = 45, side = -1, speed = 3.5 },
-		{ xOffset = 55, side = 1,  speed = 3.0 },
-		{ xOffset = 63, side = -1, speed = 3.5 },
-		{ xOffset = 71, side = 1,  speed = 3.5 },
-		{ xOffset = 80, side = -1, speed = 4.0 },
+		{ xOffset = 15, side = 1,  phase = 0.000 },
+		{ xOffset = 25, side = -1, phase = 0.125 },
+		{ xOffset = 35, side = 1,  phase = 0.250 },
+		{ xOffset = 45, side = -1, phase = 0.375 },
+		{ xOffset = 55, side = 1,  phase = 0.500 },
+		{ xOffset = 65, side = -1, phase = 0.625 },
+		{ xOffset = 75, side = 1,  phase = 0.750 },
+		{ xOffset = 85, side = -1, phase = 0.875 },
 	}
 
-	-- ขนาดชิ้นส่วน (ทั้งหมดเป็น Box Part เรียงตรง Z)
-	local gloveSize = Vector3.new(4, 4.5, 4)       -- นวม (กว้างX, สูงY, ลึกZ)
-	local wristSize = Vector3.new(3, 3.5, 2)        -- ข้อมือผ้าพันขาว
-	local strapSize = Vector3.new(3.3, 3.8, 0.5)    -- แถบแดงรัดข้อมือ
-	local armSize = Vector3.new(2, 2, 12)            -- แขนไม้ยาว
-	local armBandSize = Vector3.new(2.3, 2.3, 0.5)  -- แถบไม้เข้มบนแขน
-	local fistMoveDistance = 5
-	local fistY = 4
+	local gloveSize = Vector3.new(4, 4, 4)
+	local armSize = Vector3.new(2, 2, 10)
+	local punchDistance = 14   -- นวม+แขนรวม 14 studs ปิดทาง 12 studs
+	local punchSpeed = 0.5     -- 2 วินาทีต่อรอบ จังหวะชัดเจน
+	local fistY = 3.5
 
 	for i, cfg in ipairs(gloveConfigs) do
-		-- นวมเริ่มอยู่ใกล้กลางทาง ชกข้ามไปอีกฝั่ง
-		local gloveZ = (pathWidth / 2 - 2) * cfg.side
-		local pos = startPosition + Vector3.new(cfg.xOffset, fistY, gloveZ)
+		-- ตำแหน่ง retracted: นวมซ่อนหลังกำแพง
+		local retractedZ = (pathWidth / 2 + gloveSize.Z / 2 + 1) * cfg.side
+		local punchDir = Vector3.new(0, 0, -cfg.side)
+		local glovePos = startPosition + Vector3.new(cfg.xOffset, fistY, retractedZ)
 
-		local speedRatio = math.clamp((cfg.speed - 2.5) / 1.5, 0, 1)
-
-		-- === นวมชกมวย (Glove) — part หลักที่ขยับ ===
+		-- === นวมแดง (Glove) — IsPunching (CFrame-based, anchored) ===
 		local glove = createPart({
 			Name = "Glove_" .. i,
 			Size = gloveSize,
-			Position = pos,
+			Position = glovePos,
 			Color = gloveRed,
 			Material = Enum.Material.SmoothPlastic,
 		})
-		glove:SetAttribute("IsMoving", true)
-		glove:SetAttribute("MoveAxis", "Z")
-		glove:SetAttribute("MoveDistance", fistMoveDistance)
-		glove:SetAttribute("MoveSpeed", cfg.speed)
-		glove:SetAttribute("PushForce", 2500 + 800 * speedRatio)
+		glove:SetAttribute("IsPunching", true)
+		glove:SetAttribute("PunchDirection", punchDir)
+		glove:SetAttribute("PunchDistance", punchDistance)
+		glove:SetAttribute("PunchSpeed", punchSpeed)
+		glove:SetAttribute("PunchPhase", cfg.phase)
+		glove:SetAttribute("PushForce", 2500)
 		glove:SetAttribute("PushUpForce", 1200)
 		glove.Parent = obstacles
 
-		-- PointLight
 		local light = Instance.new("PointLight")
 		light.Color = Color3.fromRGB(255, 80, 60)
-		light.Brightness = 0.6 + 0.4 * speedRatio
+		light.Brightness = 0.8
 		light.Range = 10
 		light.Parent = glove
 
-		-- === ข้อมือ (ผ้าพันสีขาว) — ต่อจากนวมตรง Z ===
-		local wristZ = cfg.side * (gloveSize.Z / 2 + wristSize.Z / 2)
-		local wrist = createPart({
-			Name = "Wrist_" .. i,
-			Size = wristSize,
-			Position = pos + Vector3.new(0, 0, wristZ),
-			Color = wristWhite,
-			Material = Enum.Material.SmoothPlastic,
-		})
-		wrist:SetAttribute("PushForce", 2000 + 600 * speedRatio)
-		wrist:SetAttribute("PushUpForce", 1000)
-		wrist.Parent = obstacles
-		local wristWeld = Instance.new("WeldConstraint")
-		wristWeld.Part0 = glove
-		wristWeld.Part1 = wrist
-		wristWeld.Parent = glove
-
-		-- แถบแดงรัดข้อมือ (strap)
-		local strapZ = cfg.side * (gloveSize.Z / 2 + wristSize.Z - strapSize.Z / 2)
-		local strap = createPart({
-			Name = "Strap_" .. i,
-			Size = strapSize,
-			Position = pos + Vector3.new(0, 0, strapZ),
-			Color = gloveRed,
-			Material = Enum.Material.SmoothPlastic,
-		})
-		strap.CanCollide = false
-		strap.Parent = obstacles
-		local strapWeld = Instance.new("WeldConstraint")
-		strapWeld.Part0 = glove
-		strapWeld.Part1 = strap
-		strapWeld.Parent = glove
-
-		-- === แขนไม้ (Arm) — ต่อจากข้อมือตรง Z ===
-		local armZ = cfg.side * (gloveSize.Z / 2 + wristSize.Z + armSize.Z / 2)
+		-- === แขนไม้ (Arm) — IsPunching ด้วย (เคลื่อนที่เหมือนนวม) ===
+		local armZ = retractedZ + cfg.side * (gloveSize.Z / 2 + armSize.Z / 2)
 		local arm = createPart({
 			Name = "Arm_" .. i,
 			Size = armSize,
-			Position = pos + Vector3.new(0, 0, armZ),
+			Position = startPosition + Vector3.new(cfg.xOffset, fistY, armZ),
 			Color = armWoodColor,
 			Material = Enum.Material.Wood,
 		})
-		arm.CanCollide = false
+		arm:SetAttribute("IsPunching", true)
+		arm:SetAttribute("PunchDirection", punchDir)
+		arm:SetAttribute("PunchDistance", punchDistance)
+		arm:SetAttribute("PunchSpeed", punchSpeed)
+		arm:SetAttribute("PunchPhase", cfg.phase)
 		arm.Parent = obstacles
-		local armWeld = Instance.new("WeldConstraint")
-		armWeld.Part0 = glove
-		armWeld.Part1 = arm
-		armWeld.Parent = glove
 
-		-- แถบไม้เข้มบนแขน (wood bands) x2
-		for bandIdx = 1, 2 do
-			local bandZ = cfg.side * (gloveSize.Z / 2 + wristSize.Z + armSize.Z * bandIdx / 3)
-			local band = createPart({
-				Name = "ArmBand_" .. i .. "_" .. bandIdx,
-				Size = armBandSize,
-				Position = pos + Vector3.new(0, 0, bandZ),
-				Color = armWoodDark,
-				Material = Enum.Material.Wood,
-			})
-			band.CanCollide = false
-			band.Parent = obstacles
-			local bandWeld = Instance.new("WeldConstraint")
-			bandWeld.Part0 = glove
-			bandWeld.Part1 = band
-			bandWeld.Parent = glove
-		end
-
-		-- === เสาฐาน (anchored, ไม่ weld ไม่ขยับ) ===
-		local postZ = (pathWidth / 2 + 1.5) * cfg.side
+		-- === เสาฐาน (static, ไม่ขยับ) ===
+		local postZ = (pathWidth / 2 + wallThickness + 0.5) * cfg.side
 		local post = createPart({
 			Name = "Post_" .. i,
-			Size = Vector3.new(2.5, 8, 2.5),
-			Position = startPosition + Vector3.new(cfg.xOffset, 4, postZ),
+			Size = Vector3.new(3, wallHeight, 3),
+			Position = startPosition + Vector3.new(cfg.xOffset, wallHeight / 2, postZ),
 			Color = Color3.fromRGB(160, 155, 145),
 			Material = Enum.Material.SmoothPlastic,
 		})
 		post.Parent = obstacles
 
-		local postBase = createPart({
-			Name = "PostBase_" .. i,
-			Size = Vector3.new(3.5, 1, 3.5),
-			Position = startPosition + Vector3.new(cfg.xOffset, 0.5, postZ),
-			Color = Color3.fromRGB(140, 135, 125),
-			Material = Enum.Material.SmoothPlastic,
-		})
-		postBase.Parent = obstacles
-
-		-- === Danger zone marker บนพื้น ===
-		local dangerZone = createPart({
-			Name = "DangerZone_" .. i,
-			Size = Vector3.new(gloveSize.X + 2, 0.1, pathWidth - 2),
+		-- === Warning zone บนพื้น (สีแดงโปร่ง บอกตำแหน่งอันตราย) ===
+		local warningZone = createPart({
+			Name = "WarningZone_" .. i,
+			Size = Vector3.new(gloveSize.X + 1, 0.15, pathWidth - 1),
 			Position = startPosition + Vector3.new(cfg.xOffset, 0.6, 0),
 			Color = Color3.fromRGB(255, 60, 40),
 			Material = Enum.Material.Neon,
 		})
-		dangerZone.Transparency = 0.75
-		dangerZone.CanCollide = false
-		dangerZone.Parent = obstacles
+		warningZone.Transparency = 0.7
+		warningZone.CanCollide = false
+		warningZone.Parent = obstacles
 	end
 
 	-- Item pickups ระหว่างกลุ่มนวม
-	local itemPositions = { 20, 40, 58, 76 }
+	local itemPositions = { 20, 40, 60, 80 }
 	for _, itemX in ipairs(itemPositions) do
 		local item = createItemPickup(startPosition + Vector3.new(itemX, 3, 0))
 		item.Parent = itemPickups
