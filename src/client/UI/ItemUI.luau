@@ -449,14 +449,10 @@ function ItemUI:updateSlotDisplay(slotIndex: number, itemInfo: {id: string, name
 			slotText.Position = UDim2.new(0.5, 0, 0.55, 0)
 		end
 
-		-- Set rarity color
+		-- Set rarity color (light tint for Light Bright theme)
 		local rarityColor = ItemTypes.getRarityColor(itemInfo.rarity)
 		slotStroke.Color = rarityColor
-		slotFrame.BackgroundColor3 = Color3.new(
-			rarityColor.R * 0.3,
-			rarityColor.G * 0.3,
-			rarityColor.B * 0.3
-		)
+		slotFrame.BackgroundColor3 = Theme.BG_ELEVATED:Lerp(rarityColor, 0.18)
 	else
 		-- No item in this slot
 		slotEmptyText.Visible = true

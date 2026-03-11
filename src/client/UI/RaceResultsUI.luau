@@ -24,6 +24,18 @@ function RaceResultsUI.new(parent: ScreenGui)
 end
 
 function RaceResultsUI:createUI()
+	-- Background overlay (dims screen behind popup)
+	local overlay = Instance.new("Frame")
+	overlay.Name = "RaceResultsOverlay"
+	overlay.Size = UDim2.new(1, 0, 1, 0)
+	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	overlay.BackgroundTransparency = 1
+	overlay.BorderSizePixel = 0
+	overlay.ZIndex = 55
+	overlay.Visible = false
+	overlay.Parent = self.parent
+	self.overlay = overlay
+
 	-- Main container (initially hidden)
 	local container = Instance.new("Frame")
 	container.Name = "RaceResultsContainer"
@@ -33,6 +45,7 @@ function RaceResultsUI:createUI()
 	container.BackgroundColor3 = Theme.BG_BASE
 	container.BackgroundTransparency = 0.05
 	container.BorderSizePixel = 0
+	container.ZIndex = 56
 	container.Visible = false
 	container.Parent = self.parent
 	self.container = container
@@ -65,7 +78,7 @@ function RaceResultsUI:createUI()
 	shadow.BackgroundColor3 = Theme.CARD_SHADOW
 	shadow.BackgroundTransparency = 0.7
 	shadow.BorderSizePixel = 0
-	shadow.ZIndex = container.ZIndex - 1
+	shadow.ZIndex = 0
 	shadow.Parent = container
 	Theme.applyCorner(shadow, "lg")
 
@@ -211,6 +224,9 @@ function RaceResultsUI:showResults(data: {
 	}},
 	winner: string?,
 })
+	-- Skip for solo play (SummaryUI handles it)
+	if not data.results or #data.results <= 1 then return end
+
 	-- Set title based on reason
 	if data.reason == "timeout" then
 		self.titleLabel.Text = "TIME'S UP!"
@@ -218,6 +234,9 @@ function RaceResultsUI:showResults(data: {
 	elseif data.reason == "allFinished" then
 		self.titleLabel.Text = "RACE FINISHED!"
 		self.subtitleLabel.Text = "All players completed the race"
+	elseif data.reason == "finishCountdown" then
+		self.titleLabel.Text = "RACE FINISHED!"
+		self.subtitleLabel.Text = "Time ran out for remaining players"
 	else
 		self.titleLabel.Text = "RACE OVER"
 		self.subtitleLabel.Text = ""
@@ -387,6 +406,14 @@ end
 
 function RaceResultsUI:show()
 	self.isVisible = true
+
+	-- Show and animate overlay
+	self.overlay.BackgroundTransparency = 1
+	self.overlay.Visible = true
+	TweenService:Create(self.overlay, TweenInfo.new(0.25), {
+		BackgroundTransparency = 0.55
+	}):Play()
+
 	self.container.Visible = true
 
 	-- Animate in
@@ -402,14 +429,20 @@ end
 function RaceResultsUI:hide()
 	self.isVisible = false
 
+	-- Fade overlay
+	TweenService:Create(self.overlay, TweenInfo.new(0.25), {
+		BackgroundTransparency = 1
+	}):Play()
+
 	-- Animate out
 	TweenService:Create(self.container, TweenInfo.new(0.2), {
 		Position = UDim2.new(0.5, 0, 0.5, 50),
 		BackgroundTransparency = 1
 	}):Play()
 
-	task.delay(0.2, function()
+	task.delay(0.25, function()
 		self.container.Visible = false
+		self.overlay.Visible = false
 	end)
 end
 

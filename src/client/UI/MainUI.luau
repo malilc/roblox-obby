@@ -272,12 +272,7 @@ function MainUI:setupRemotes()
 		self:onCurrencyUpdate(data)
 	end)
 
-	-- Match timer (RaceUpdate fires every second during a race)
-	RemoteRegistry.get("RaceUpdate").OnClientEvent:Connect(function(data)
-		if data.timeRemaining then
-			self.scoreUI:updateTimer(data.timeRemaining)
-		end
-	end)
+	-- Match timer is handled by MatchLobbyUI (RaceUpdate listener)
 
 	-- Time warning notification
 	RemoteRegistry.get("TimeWarning").OnClientEvent:Connect(function(data)

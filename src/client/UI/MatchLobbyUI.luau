@@ -16,6 +16,8 @@ function MatchLobbyUI.new(parent: ScreenGui)
 	self.parent = parent
 	self.isVisible = false
 	self.currentRoom = nil
+	self.isHost = false
+	self.localPlayerName = game:GetService("Players").LocalPlayer.Name
 
 	self:createUI()
 	self:setupRemotes()
@@ -101,7 +103,7 @@ function MatchLobbyUI:createUI()
 	title.Size = UDim2.new(1, -80, 1, 0)
 	title.Position = UDim2.new(0, 20, 0, 0)
 	title.BackgroundTransparency = 1
-	title.Text = "MATCH LOBBY"
+	title.Text = "WAITING ROOM"
 	title.TextColor3 = Theme.TEXT_PRIMARY
 	title.TextSize = 24
 	title.Font = Enum.Font.GothamBlack
@@ -139,7 +141,7 @@ function MatchLobbyUI:createUI()
 	local playerCount = Instance.new("TextLabel")
 	playerCount.Name = "PlayerCount"
 	playerCount.Size = UDim2.new(1, -40, 0, 30)
-	playerCount.Position = UDim2.new(0, 20, 0, 70)
+	playerCount.Position = UDim2.new(0, 150, 0, 65)
 	playerCount.BackgroundTransparency = 1
 	playerCount.Text = "Players: 0/16"
 	playerCount.TextColor3 = Theme.TEXT_MUTED
@@ -153,7 +155,7 @@ function MatchLobbyUI:createUI()
 	local listContainer = Instance.new("ScrollingFrame")
 	listContainer.Name = "PlayerList"
 	listContainer.Size = UDim2.new(1, -40, 0, 250)
-	listContainer.Position = UDim2.new(0, 20, 0, 110)
+	listContainer.Position = UDim2.new(0, 20, 0, 95)
 	listContainer.BackgroundColor3 = Theme.BG_OVERLAY
 	listContainer.BackgroundTransparency = 0.5
 	listContainer.BorderSizePixel = 0
@@ -181,21 +183,41 @@ function MatchLobbyUI:createUI()
 	-- Countdown/Status label
 	local countdown = Instance.new("TextLabel")
 	countdown.Name = "Countdown"
-	countdown.Size = UDim2.new(1, -40, 0, 50)
-	countdown.Position = UDim2.new(0, 20, 0, 370)
+	countdown.Size = UDim2.new(1, -40, 0, 40)
+	countdown.Position = UDim2.new(0, 20, 0, 375)
 	countdown.BackgroundColor3 = Theme.SUCCESS
 	countdown.BackgroundTransparency = 0.5
 	countdown.BorderSizePixel = 0
 	countdown.Text = "Waiting for players..."
 	countdown.TextColor3 = Theme.TEXT_ON_ACCENT
-	countdown.TextSize = 22
+	countdown.TextSize = 16
 	countdown.Font = Enum.Font.GothamBold
+	countdown.TextScaled = false
 	countdown.Parent = container
 	self.countdownLabel = countdown
 
 	local countdownCorner = Instance.new("UICorner")
 	countdownCorner.CornerRadius = Theme.CORNER_SM
 	countdownCorner.Parent = countdown
+
+	-- Room ID label (below header, left-aligned)
+	local roomIdLabel = Instance.new("TextLabel")
+	roomIdLabel.Name = "RoomId"
+	roomIdLabel.Size = UDim2.new(0, 120, 0, 22)
+	roomIdLabel.Position = UDim2.new(0, 20, 0, 65)
+	roomIdLabel.BackgroundColor3 = Theme.BG_ELEVATED
+	roomIdLabel.BackgroundTransparency = 0.2
+	roomIdLabel.BorderSizePixel = 0
+	roomIdLabel.Text = "#1"
+	roomIdLabel.TextColor3 = Theme.TEXT_MUTED
+	roomIdLabel.TextSize = 11
+	roomIdLabel.Font = Enum.Font.GothamMedium
+	roomIdLabel.Parent = container
+	self.roomIdLabel = roomIdLabel
+
+	local roomIdCorner = Instance.new("UICorner")
+	roomIdCorner.CornerRadius = UDim.new(0, 4)
+	roomIdCorner.Parent = roomIdLabel
 
 	-- Buttons container
 	local buttonsFrame = Instance.new("Frame")
@@ -205,41 +227,42 @@ function MatchLobbyUI:createUI()
 	buttonsFrame.BackgroundTransparency = 1
 	buttonsFrame.Parent = container
 
-	-- Create Match button
-	local createBtn = Instance.new("TextButton")
-	createBtn.Name = "CreateMatch"
-	createBtn.Size = UDim2.new(0.48, 0, 1, 0)
-	createBtn.Position = UDim2.new(0, 0, 0, 0)
-	createBtn.BackgroundColor3 = Theme.SUCCESS
-	createBtn.BorderSizePixel = 0
-	createBtn.Text = "CREATE MATCH"
-	createBtn.TextColor3 = Theme.TEXT_ON_ACCENT
-	createBtn.TextSize = 16
-	createBtn.Font = Enum.Font.GothamBold
-	createBtn.Parent = buttonsFrame
-	self.createButton = createBtn
+	-- START MATCH button (host only)
+	local startMatchBtn = Instance.new("TextButton")
+	startMatchBtn.Name = "StartMatch"
+	startMatchBtn.Size = UDim2.new(0.48, 0, 1, 0)
+	startMatchBtn.Position = UDim2.new(0, 0, 0, 0)
+	startMatchBtn.BackgroundColor3 = Theme.SUCCESS
+	startMatchBtn.BorderSizePixel = 0
+	startMatchBtn.Text = "START MATCH"
+	startMatchBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+	startMatchBtn.TextSize = 16
+	startMatchBtn.Font = Enum.Font.GothamBold
+	startMatchBtn.Visible = false
+	startMatchBtn.Parent = buttonsFrame
+	self.startMatchButton = startMatchBtn
 
-	local createBtnCorner = Instance.new("UICorner")
-	createBtnCorner.CornerRadius = Theme.CORNER_SM
-	createBtnCorner.Parent = createBtn
+	local startBtnCorner = Instance.new("UICorner")
+	startBtnCorner.CornerRadius = Theme.CORNER_SM
+	startBtnCorner.Parent = startMatchBtn
 
-	-- Create button gradient
-	local createGrad = Instance.new("UIGradient")
-	createGrad.Color = ColorSequence.new({
+	-- Start button gradient
+	local startGrad = Instance.new("UIGradient")
+	startGrad.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Theme.SUCCESS),
 		ColorSequenceKeypoint.new(1, Theme.BG_ELEVATED),
 	})
-	createGrad.Rotation = 90
-	createGrad.Parent = createBtn
+	startGrad.Rotation = 90
+	startGrad.Parent = startMatchBtn
 
-	-- Create button glow stroke
-	local createStroke = Instance.new("UIStroke")
-	createStroke.Color = Theme.SUCCESS
-	createStroke.Thickness = Theme.STROKE_THIN
-	createStroke.Transparency = 0.3
-	createStroke.Parent = createBtn
+	-- Start button glow stroke
+	local startStroke = Instance.new("UIStroke")
+	startStroke.Color = Theme.SUCCESS
+	startStroke.Thickness = Theme.STROKE_THIN
+	startStroke.Transparency = 0.3
+	startStroke.Parent = startMatchBtn
 
-	-- Leave/Ready button
+	-- Leave button
 	local leaveBtn = Instance.new("TextButton")
 	leaveBtn.Name = "LeaveMatch"
 	leaveBtn.Size = UDim2.new(0.48, 0, 1, 0)
@@ -404,7 +427,7 @@ function MatchLobbyUI:createRaceRankingUI()
 	-- Ranking display during race
 	local rankFrame = Instance.new("Frame")
 	rankFrame.Name = "RaceRanking"
-	rankFrame.Size = UDim2.new(0, 180, 0, 200)
+	rankFrame.Size = UDim2.new(0, 190, 0, 320)
 	rankFrame.Position = UDim2.new(1, -10, 0, 70)
 	rankFrame.AnchorPoint = Vector2.new(1, 0)
 	rankFrame.BackgroundColor3 = Theme.BG_BASE
@@ -502,24 +525,26 @@ end
 function MatchLobbyUI:setupButtonEvents()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 
-	-- Close button
+	-- Close button (leave room + hide)
 	self.closeButton.MouseButton1Click:Connect(function()
+		remotes.LeaveMatch:FireServer()
 		self:hide()
 	end)
 
-	-- Create match button
-	self.createButton.MouseButton1Click:Connect(function()
-		remotes.CreateMatch:FireServer({})
+	-- Start match button (host only)
+	self.startMatchButton.MouseButton1Click:Connect(function()
+		remotes.HostStartMatch:FireServer()
 	end)
 
 	-- Leave button
 	self.leaveButton.MouseButton1Click:Connect(function()
 		remotes.LeaveMatch:FireServer()
+		self:hide()
 	end)
 
 	-- Button hover effects
 	self:addButtonHover(self.closeButton)
-	self:addButtonHover(self.createButton)
+	self:addButtonHover(self.startMatchButton)
 	self:addButtonHover(self.leaveButton)
 end
 
@@ -575,12 +600,27 @@ end
 function MatchLobbyUI:onMatchUpdate(data)
 	if data.type == "roomUpdate" then
 		self.currentRoom = data
+		self.isHost = (data.hostName == self.localPlayerName)
 		self:updatePlayerList(data.players)
 		self.playerCountLabel.Text = string.format("Players: %d/%d", data.playerCount, data.maxPlayers)
 
-		-- Update buttons
-		self.createButton.Visible = false
+		-- Show room ID
+		if self.roomIdLabel and data.roomId then
+			self.roomIdLabel.Text = data.roomId
+		end
+
+		-- Update buttons based on host status
+		self.startMatchButton.Visible = self.isHost
 		self.leaveButton.Visible = true
+
+		-- Update status label
+		if self.isHost then
+			self.countdownLabel.Text = "You are HOST - Press START!"
+			self.countdownLabel.BackgroundColor3 = Theme.SUCCESS
+		else
+			self.countdownLabel.Text = "Waiting for host..."
+			self.countdownLabel.BackgroundColor3 = Theme.ACCENT_CYAN
+		end
 
 		-- Show lobby if not visible
 		if not self.isVisible then
@@ -592,6 +632,10 @@ function MatchLobbyUI:onMatchUpdate(data)
 			self.countdownLabel.Text = string.format("Starting in %d...", data.countdown)
 			self.countdownLabel.BackgroundColor3 = Theme.ACCENT_CYAN
 		end
+
+	elseif data.type == "roomList" then
+		-- Room list for lobby players - handled by StageSelectionUI
+		-- (MatchLobbyUI doesn't need to do anything here)
 	end
 end
 
@@ -611,36 +655,47 @@ function MatchLobbyUI:onMatchEnd(data)
 	self.rankFrame.Visible = false
 	self.yourRankLabel.Visible = false
 
-	-- Reset buttons
-	self.createButton.Visible = true
+	-- Reset state
+	self.startMatchButton.Visible = false
 	self.leaveButton.Visible = false
 	self.countdownLabel.Text = "Waiting for players..."
 	self.countdownLabel.BackgroundColor3 = Theme.SUCCESS
 	self.currentRoom = nil
+	self.isHost = false
 
 	-- Clear player list
 	self:clearPlayerList()
 end
 
 function MatchLobbyUI:onRaceUpdate(data)
-	-- Update timer
-	local minutes = math.floor(data.timeRemaining / 60)
-	local seconds = math.floor(data.timeRemaining % 60)
-	self.timerLabel.Text = string.format("%02d:%02d", minutes, seconds)
+	-- Update timer (timeRemaining may not be sent by server)
+	if data.timeRemaining then
+		local minutes = math.floor(data.timeRemaining / 60)
+		local seconds = math.floor(data.timeRemaining % 60)
+		self.timerLabel.Text = string.format("%02d:%02d", minutes, seconds)
 
-	-- Change timer color based on time remaining
-	if data.timeRemaining <= 30 then
+		-- Change timer color based on time remaining
+		if data.timeRemaining <= 30 then
+			self.timerLabel.TextColor3 = Theme.darkenForText(Theme.DANGER, 0.65)
+			self.timerStroke.Color = Theme.DANGER
+		elseif data.timeRemaining <= 60 then
+			self.timerLabel.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
+			self.timerStroke.Color = Theme.WARNING
+		elseif data.timeRemaining <= 300 then
+			self.timerLabel.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
+			self.timerStroke.Color = Theme.SUCCESS
+		else
+			self.timerLabel.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
+			self.timerStroke.Color = Theme.SUCCESS
+		end
+	end
+
+	-- Show finish countdown (multiplayer: 30s after first finisher)
+	if data.finishCountdown then
+		self.timerFrame.Visible = true
+		self.timerLabel.Text = string.format("0:%02d", data.finishCountdown)
 		self.timerLabel.TextColor3 = Theme.darkenForText(Theme.DANGER, 0.65)
 		self.timerStroke.Color = Theme.DANGER
-	elseif data.timeRemaining <= 60 then
-		self.timerLabel.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
-		self.timerStroke.Color = Theme.WARNING
-	elseif data.timeRemaining <= 300 then
-		self.timerLabel.TextColor3 = Theme.darkenForText(Theme.WARNING, 0.55)
-		self.timerStroke.Color = Theme.SUCCESS
-	else
-		self.timerLabel.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
-		self.timerStroke.Color = Theme.SUCCESS
 	end
 
 	-- Update your rank
@@ -753,7 +808,7 @@ function MatchLobbyUI:updatePlayerList(playerNames: {string})
 	self.playerList.CanvasSize = UDim2.new(0, 0, 0, #playerNames * 40)
 end
 
-function MatchLobbyUI:updateRankingsList(rankings: {string}, yourRank: number)
+function MatchLobbyUI:updateRankingsList(rankings, yourRank: number)
 	-- Clear existing
 	for _, child in ipairs(self.rankList:GetChildren()) do
 		if child:IsA("Frame") then
@@ -761,15 +816,32 @@ function MatchLobbyUI:updateRankingsList(rankings: {string}, yourRank: number)
 		end
 	end
 
-	-- Show top 5 rankings
-	local showCount = math.min(#rankings, 5)
+	-- Show top 8 rankings
+	local showCount = math.min(#rankings, 8)
 
 	for i = 1, showCount do
+		local rankData = rankings[i]
+		local playerName = ""
+		local stage = 0
+		local isFinished = false
+		local finishTime = nil
+
+		if type(rankData) == "table" then
+			playerName = rankData.playerName or ""
+			stage = rankData.stage or 0
+			isFinished = rankData.finished or false
+			finishTime = rankData.finishTime
+		else
+			playerName = tostring(rankData or "")
+		end
+
+		local isYou = (i == yourRank)
+
 		local rankEntry = Instance.new("Frame")
 		rankEntry.Name = "Rank_" .. i
-		rankEntry.Size = UDim2.new(1, 0, 0, 28)
-		rankEntry.BackgroundColor3 = i == yourRank and Theme.PRIMARY or Theme.BG_ELEVATED
-		rankEntry.BackgroundTransparency = i == yourRank and 0.3 or 0.7
+		rankEntry.Size = UDim2.new(1, 0, 0, 32)
+		rankEntry.BackgroundColor3 = isYou and Theme.PRIMARY or Theme.BG_ELEVATED
+		rankEntry.BackgroundTransparency = isYou and 0.2 or 0.6
 		rankEntry.BorderSizePixel = 0
 		rankEntry.LayoutOrder = i
 		rankEntry.Parent = self.rankList
@@ -778,34 +850,60 @@ function MatchLobbyUI:updateRankingsList(rankings: {string}, yourRank: number)
 		entryCorner.CornerRadius = UDim.new(0, 4)
 		entryCorner.Parent = rankEntry
 
-		-- Position medal
+		-- Position medal / number
 		local medal = ""
 		if i == 1 then medal = "\u{1F947}"
 		elseif i == 2 then medal = "\u{1F948}"
 		elseif i == 3 then medal = "\u{1F949}"
-		else medal = i .. "."
+		else medal = "#" .. i
 		end
 
 		local posLabel = Instance.new("TextLabel")
-		posLabel.Size = UDim2.new(0, 30, 1, 0)
+		posLabel.Size = UDim2.new(0, 26, 1, 0)
+		posLabel.Position = UDim2.new(0, 2, 0, 0)
 		posLabel.BackgroundTransparency = 1
 		posLabel.Text = medal
-		posLabel.TextSize = i <= 3 and 16 or 12
-		posLabel.Font = Enum.Font.GothamMedium
+		posLabel.TextSize = i <= 3 and 14 or 11
+		posLabel.Font = Enum.Font.GothamBold
+		posLabel.TextColor3 = Theme.TEXT_PRIMARY
 		posLabel.Parent = rankEntry
 
-		-- Name
+		-- Player name
 		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Size = UDim2.new(1, -35, 1, 0)
-		nameLabel.Position = UDim2.new(0, 30, 0, 0)
+		nameLabel.Size = UDim2.new(1, -80, 0, 16)
+		nameLabel.Position = UDim2.new(0, 28, 0, 2)
 		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = rankings[i] or ""
-		nameLabel.TextColor3 = i == yourRank and Theme.TEXT_DARK or Theme.TEXT_PRIMARY
-		nameLabel.TextSize = 12
-		nameLabel.Font = Enum.Font.GothamMedium
+		nameLabel.Text = playerName
+		nameLabel.TextColor3 = isYou and Theme.TEXT_DARK or Theme.TEXT_PRIMARY
+		nameLabel.TextSize = 11
+		nameLabel.Font = Enum.Font.GothamBold
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 		nameLabel.Parent = rankEntry
+
+		-- Stage progress / finished status
+		local statusLabel = Instance.new("TextLabel")
+		statusLabel.Size = UDim2.new(1, -28, 0, 12)
+		statusLabel.Position = UDim2.new(0, 28, 0, 18)
+		statusLabel.BackgroundTransparency = 1
+		statusLabel.TextSize = 9
+		statusLabel.Font = Enum.Font.GothamMedium
+		statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+		statusLabel.Parent = rankEntry
+
+		if isFinished then
+			local timeStr = ""
+			if finishTime then
+				local mins = math.floor(finishTime / 60)
+				local secs = math.floor(finishTime % 60)
+				timeStr = string.format(" (%d:%02d)", mins, secs)
+			end
+			statusLabel.Text = "FINISHED" .. timeStr
+			statusLabel.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
+		else
+			statusLabel.Text = "Stage " .. stage
+			statusLabel.TextColor3 = Theme.TEXT_MUTED
+		end
 	end
 end
 
