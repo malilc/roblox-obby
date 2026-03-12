@@ -1,4 +1,4 @@
--- TitleCollectionUI: หน้าแสดงรายการ Title ทั้งหมด (ปลดล็อก/ยังล็อก) และเลือก Active Title
+-- TitleCollectionUI: Collection UI with 2 tabs — Titles + Trails (manual equip)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -11,6 +11,9 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local TitleCollectionUI = {}
 TitleCollectionUI.__index = TitleCollectionUI
+
+local TAB_TITLES = "Titles"
+local TAB_TRAILS = "Trails"
 
 local FILTER_ALL = "All"
 local FILTER_UNLOCKED = "Unlocked"
@@ -39,7 +42,7 @@ local RARITY_COLORS = {
 local COLORS = {
 	BG_PRIMARY = Theme.BG_BASE,
 	BG_CARD = Theme.BG_SURFACE,
-	BG_CARD_LOCKED = Theme.BG_OVERLAY,
+	BG_CARD_LOCKED = Theme.BG_ELEVATED,       -- light gray (NOT BG_OVERLAY which is black)
 	BG_LIST = Theme.BG_BASE,
 	BG_SEARCH = Theme.BG_SURFACE,
 	BG_FILTER = Theme.BG_ELEVATED,
@@ -50,18 +53,23 @@ local COLORS = {
 	BG_UNEQUIP = Theme.SECONDARY,
 	BG_EQUIP = Theme.SUCCESS,
 	BG_LOCKED_BTN = Theme.BG_ELEVATED,
+	BG_TAB = Theme.BG_ELEVATED,
+	BG_TAB_ACTIVE = Theme.BG_SURFACE,
 	TEXT_PRIMARY = Theme.TEXT_PRIMARY,
 	TEXT_SECONDARY = Theme.TEXT_MUTED,
 	TEXT_MUTED = Theme.TEXT_MUTED,
 	TEXT_WHITE = Theme.TEXT_PRIMARY,
-	TEXT_LOCKED = Theme.TEXT_MUTED,
+	TEXT_LOCKED = Theme.CARD_SHADOW,            -- muted gray for locked text
 	STROKE_DEFAULT = Theme.BG_ELEVATED,
 	STROKE_BANNER = Theme.BG_ELEVATED,
 	STROKE_CARD = Theme.BG_ELEVATED,
-	STROKE_CARD_LOCKED = Theme.BG_OVERLAY,
+	STROKE_CARD_LOCKED = Theme.CARD_SHADOW,    -- soft gray (NOT BG_OVERLAY which is black)
+	TAB_UNDERLINE = Theme.ACCENT_CYAN,
 }
 
-local function cloneTitleEntry(source: any): {id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}?
+local RARITY_EMOJI = {Common = "\u{26AA}", Uncommon = "\u{1F7E2}", Rare = "\u{1F535}", Epic = "\u{1F7E3}", Legendary = "\u{2B50}"}
+
+local function cloneEntry(source: any): {id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}?
 	if type(source) ~= "table" then
 		return nil
 	end
@@ -89,14 +97,14 @@ local function cloneTitleEntry(source: any): {id: string, name: string, classId:
 	}
 end
 
-local function cloneTitleList(source: any): {{id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}}
+local function cloneEntryList(source: any): {{id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}}
 	local list = {} :: {{id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}}
 	if type(source) ~= "table" then
 		return list
 	end
 
 	for _, entry in ipairs(source) do
-		local cloned = cloneTitleEntry(entry)
+		local cloned = cloneEntry(entry)
 		if cloned then
 			table.insert(list, cloned)
 		end
@@ -122,7 +130,7 @@ local function cloneTitleList(source: any): {{id: string, name: string, classId:
 	return list
 end
 
-local function getTitleTheme(rarity: string, classColor: Color3?): {textColor: Color3, frameColor: Color3}
+local function getEntryTheme(rarity: string, classColor: Color3?): {textColor: Color3, frameColor: Color3}
 	local configured = Config.Mastery and Config.Mastery.TitleThemes
 	local theme = type(configured) == "table" and configured[rarity] or nil
 
@@ -150,8 +158,19 @@ function TitleCollectionUI.new(parent: ScreenGui, callbacks: {onHide: (() -> ())
 	self.callbacks = callbacks
 	self.remotes = Remotes
 	self.isVisible = false
+
+	-- Tab state
+	self.activeTab = TAB_TITLES
+
+	-- Title data
 	self.titleCatalog = {}
 	self.activeTitle = nil
+
+	-- Trail data
+	self.trailCatalog = {}
+	self.activeTrail = nil
+
+	-- Shared UI state
 	self.activeFilter = FILTER_ALL
 	self.activeSort = SORT_CLASS
 	self.searchText = ""
@@ -162,10 +181,11 @@ function TitleCollectionUI.new(parent: ScreenGui, callbacks: {onHide: (() -> ())
 
 	self:createUI()
 	self:setupRemotes()
-	self:updateActiveTitleBanner()
+	self:updateActiveBanner()
 	self:updateFilterButtons()
 	self:updateSortButton()
 	self:updateSearchClearButtonState()
+	self:updateTabButtons()
 	self:rebuildEntries()
 
 	return self
@@ -175,7 +195,7 @@ function TitleCollectionUI:createUI()
 	-- Main container - light modal
 	local container = Instance.new("Frame")
 	container.Name = "TitleCollectionContainer"
-	container.Size = UDim2.new(0, 660, 0, 500)
+	container.Size = UDim2.new(0, 660, 0, 540)
 	container.Position = UDim2.new(0.5, 0, 0.5, 0)
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
 	container.BackgroundColor3 = COLORS.BG_PRIMARY
@@ -224,7 +244,7 @@ function TitleCollectionUI:createUI()
 	header.Position = UDim2.new(0, 22, 0, 10)
 	header.BackgroundTransparency = 1
 	header.RichText = true
-	header.Text = '<font size="20">\u{1F4CB}</font>  <font face="GothamBold" size="24"><b>TITLES</b></font>'
+	header.Text = '<font size="20">\u{2B50}</font>  <font face="GothamBold" size="24"><b>COLLECTION</b></font>'
 	header.TextColor3 = Theme.TEXT_PRIMARY
 	header.TextSize = 24
 	header.Font = Enum.Font.GothamBold
@@ -258,11 +278,74 @@ function TitleCollectionUI:createUI()
 	closeBtnLabel.ZIndex = closeButton.ZIndex + 1
 	closeBtnLabel.Parent = closeButton
 
-	-- ===== ACTIVE TITLE BANNER =====
+	-- ===== TAB BAR =====
+	local tabBar = Instance.new("Frame")
+	tabBar.Name = "TabBar"
+	tabBar.Size = UDim2.new(1, -32, 0, 30)
+	tabBar.Position = UDim2.new(0, 16, 0, 52)
+	tabBar.BackgroundTransparency = 1
+	tabBar.Parent = container
+
+	self.tabButtons = {}
+
+	local function createTabButton(label: string, icon: string, posX: number, width: number)
+		local tabFrame = Instance.new("Frame")
+		tabFrame.Name = "Tab_" .. label
+		tabFrame.Size = UDim2.new(0, width, 1, 0)
+		tabFrame.Position = UDim2.new(0, posX, 0, 0)
+		tabFrame.BackgroundColor3 = COLORS.BG_TAB
+		tabFrame.BorderSizePixel = 0
+		tabFrame.Parent = tabBar
+		Theme.applyCorner(tabFrame, "sm")
+
+		local tabLabel = Instance.new("TextLabel")
+		tabLabel.Name = "Label"
+		tabLabel.Size = UDim2.new(1, 0, 1, -3)
+		tabLabel.BackgroundTransparency = 1
+		tabLabel.Text = icon .. " " .. label
+		tabLabel.TextColor3 = COLORS.TEXT_SECONDARY
+		tabLabel.TextSize = 14
+		tabLabel.Font = Enum.Font.GothamBold
+		tabLabel.Parent = tabFrame
+
+		local underline = Instance.new("Frame")
+		underline.Name = "Underline"
+		underline.Size = UDim2.new(0.7, 0, 0, 3)
+		underline.Position = UDim2.new(0.15, 0, 1, -3)
+		underline.BackgroundColor3 = COLORS.TAB_UNDERLINE
+		underline.BorderSizePixel = 0
+		underline.Visible = false
+		underline.Parent = tabFrame
+		Theme.applyCorner(underline, "sm")
+
+		local tabButton = Instance.new("TextButton")
+		tabButton.Name = "TabButton"
+		tabButton.Size = UDim2.new(1, 0, 1, 0)
+		tabButton.BackgroundTransparency = 1
+		tabButton.Text = ""
+		tabButton.ZIndex = tabFrame.ZIndex + 1
+		tabButton.Parent = tabFrame
+
+		self.tabButtons[label] = {
+			frame = tabFrame,
+			label = tabLabel,
+			underline = underline,
+			button = tabButton,
+		}
+
+		tabButton.MouseButton1Click:Connect(function()
+			self:setActiveTab(label)
+		end)
+	end
+
+	createTabButton(TAB_TITLES, "\u{1F3F7}", 0, 140)
+	createTabButton(TAB_TRAILS, "\u{2728}", 148, 140)
+
+	-- ===== ACTIVE BANNER =====
 	local bannerFrame = Instance.new("Frame")
-	bannerFrame.Name = "ActiveTitleBanner"
+	bannerFrame.Name = "ActiveBanner"
 	bannerFrame.Size = UDim2.new(1, -32, 0, 40)
-	bannerFrame.Position = UDim2.new(0, 16, 0, 54)
+	bannerFrame.Position = UDim2.new(0, 16, 0, 86)
 	bannerFrame.BackgroundColor3 = COLORS.BG_BANNER
 	bannerFrame.BackgroundTransparency = 0
 	bannerFrame.BorderSizePixel = 0
@@ -281,7 +364,7 @@ function TitleCollectionUI:createUI()
 
 	local bannerPrefix = Instance.new("TextLabel")
 	bannerPrefix.Name = "BannerPrefix"
-	bannerPrefix.Size = UDim2.new(0, 100, 1, 0)
+	bannerPrefix.Size = UDim2.new(0, 110, 1, 0)
 	bannerPrefix.Position = UDim2.new(0, 12, 0, 0)
 	bannerPrefix.BackgroundTransparency = 1
 	bannerPrefix.Text = "ACTIVE TITLE"
@@ -290,20 +373,21 @@ function TitleCollectionUI:createUI()
 	bannerPrefix.Font = Enum.Font.GothamBold
 	bannerPrefix.TextXAlignment = Enum.TextXAlignment.Left
 	bannerPrefix.Parent = bannerFrame
+	self.bannerPrefix = bannerPrefix
 
-	local bannerTitleLabel = Instance.new("TextLabel")
-	bannerTitleLabel.Name = "BannerTitleLabel"
-	bannerTitleLabel.Size = UDim2.new(1, -250, 1, 0)
-	bannerTitleLabel.Position = UDim2.new(0, 118, 0, 0)
-	bannerTitleLabel.BackgroundTransparency = 1
-	bannerTitleLabel.Text = "No Title"
-	bannerTitleLabel.TextColor3 = COLORS.TEXT_MUTED
-	bannerTitleLabel.TextSize = 14
-	bannerTitleLabel.Font = Enum.Font.GothamBold
-	bannerTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	bannerTitleLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	bannerTitleLabel.Parent = bannerFrame
-	self.bannerTitleLabel = bannerTitleLabel
+	local bannerValueLabel = Instance.new("TextLabel")
+	bannerValueLabel.Name = "BannerValueLabel"
+	bannerValueLabel.Size = UDim2.new(1, -260, 1, 0)
+	bannerValueLabel.Position = UDim2.new(0, 128, 0, 0)
+	bannerValueLabel.BackgroundTransparency = 1
+	bannerValueLabel.Text = "None"
+	bannerValueLabel.TextColor3 = COLORS.TEXT_MUTED
+	bannerValueLabel.TextSize = 14
+	bannerValueLabel.Font = Enum.Font.GothamBold
+	bannerValueLabel.TextXAlignment = Enum.TextXAlignment.Left
+	bannerValueLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	bannerValueLabel.Parent = bannerFrame
+	self.bannerValueLabel = bannerValueLabel
 
 	local unequipButton = Instance.new("TextButton")
 	unequipButton.Name = "UnequipButton"
@@ -330,11 +414,11 @@ function TitleCollectionUI:createUI()
 	local searchBox = Instance.new("TextBox")
 	searchBox.Name = "SearchBox"
 	searchBox.Size = UDim2.new(1, -120, 0, 32)
-	searchBox.Position = UDim2.new(0, 16, 0, 102)
+	searchBox.Position = UDim2.new(0, 16, 0, 134)
 	searchBox.BackgroundColor3 = COLORS.BG_SEARCH
 	searchBox.BackgroundTransparency = 0
 	searchBox.BorderSizePixel = 0
-	searchBox.PlaceholderText = "Search title, class, rarity..."
+	searchBox.PlaceholderText = "Search name, class, rarity..."
 	searchBox.Text = ""
 	searchBox.TextColor3 = COLORS.TEXT_PRIMARY
 	searchBox.PlaceholderColor3 = COLORS.TEXT_MUTED
@@ -361,7 +445,7 @@ function TitleCollectionUI:createUI()
 	local clearSearchButton = Instance.new("TextButton")
 	clearSearchButton.Name = "ClearSearchButton"
 	clearSearchButton.Size = UDim2.new(0, 84, 0, 32)
-	clearSearchButton.Position = UDim2.new(1, -100, 0, 102)
+	clearSearchButton.Position = UDim2.new(1, -100, 0, 134)
 	clearSearchButton.BackgroundColor3 = COLORS.BG_FILTER
 	clearSearchButton.BorderSizePixel = 0
 	clearSearchButton.Text = "CLEAR"
@@ -379,7 +463,7 @@ function TitleCollectionUI:createUI()
 	local filterBar = Instance.new("Frame")
 	filterBar.Name = "FilterBar"
 	filterBar.Size = UDim2.new(1, -32, 0, 28)
-	filterBar.Position = UDim2.new(0, 16, 0, 142)
+	filterBar.Position = UDim2.new(0, 16, 0, 174)
 	filterBar.BackgroundTransparency = 1
 	filterBar.Parent = container
 
@@ -429,7 +513,7 @@ function TitleCollectionUI:createUI()
 	resultLabel.Size = UDim2.new(1, -400, 1, 0)
 	resultLabel.Position = UDim2.new(0, 400, 0, 0)
 	resultLabel.BackgroundTransparency = 1
-	resultLabel.Text = "0 / 0 titles"
+	resultLabel.Text = "0 / 0"
 	resultLabel.TextColor3 = COLORS.TEXT_SECONDARY
 	resultLabel.TextSize = 13
 	resultLabel.Font = Enum.Font.Gotham
@@ -437,11 +521,11 @@ function TitleCollectionUI:createUI()
 	resultLabel.Parent = filterBar
 	self.resultLabel = resultLabel
 
-	-- ===== TITLE LIST =====
+	-- ===== ITEM LIST =====
 	local listFrame = Instance.new("ScrollingFrame")
-	listFrame.Name = "TitleList"
-	listFrame.Size = UDim2.new(1, -32, 1, -182)
-	listFrame.Position = UDim2.new(0, 16, 0, 176)
+	listFrame.Name = "ItemList"
+	listFrame.Size = UDim2.new(1, -32, 1, -214)
+	listFrame.Position = UDim2.new(0, 16, 0, 208)
 	listFrame.BackgroundColor3 = COLORS.BG_LIST
 	listFrame.BackgroundTransparency = 0.3
 	listFrame.BorderSizePixel = 0
@@ -474,7 +558,7 @@ function TitleCollectionUI:createUI()
 	emptyLabel.Name = "EmptyLabel"
 	emptyLabel.Size = UDim2.new(1, -18, 0, 0)
 	emptyLabel.BackgroundTransparency = 1
-	emptyLabel.Text = "No titles found! Keep playing to earn more."
+	emptyLabel.Text = "No items found! Keep playing to earn more."
 	emptyLabel.TextColor3 = COLORS.TEXT_SECONDARY
 	emptyLabel.TextSize = 15
 	emptyLabel.Font = Enum.Font.Gotham
@@ -517,11 +601,111 @@ function TitleCollectionUI:createUI()
 	end)
 
 	unequipButton.MouseButton1Click:Connect(function()
-		if self.activeTitle then
-			self.remotes.SetActiveTitle:FireServer("")
+		if self.activeTab == TAB_TITLES then
+			if self.activeTitle then
+				self.remotes.SetActiveTitle:FireServer("")
+			end
+		else
+			if self.activeTrail then
+				self.remotes.SetActiveTrail:FireServer("")
+			end
 		end
 	end)
 end
+
+-- ===== TAB MANAGEMENT =====
+
+function TitleCollectionUI:setActiveTab(tabId: string)
+	if tabId ~= TAB_TITLES and tabId ~= TAB_TRAILS then
+		return
+	end
+	if self.activeTab == tabId then
+		return
+	end
+
+	self.activeTab = tabId
+	self.lastRenderedCount = nil
+	self.lastRenderedTotal = nil
+	self:updateTabButtons()
+	self:updateActiveBanner()
+	self:rebuildEntries()
+end
+
+function TitleCollectionUI:updateTabButtons()
+	for tabId, tabUI in pairs(self.tabButtons) do
+		local isActive = tabId == self.activeTab
+		tabUI.frame.BackgroundColor3 = if isActive then COLORS.BG_TAB_ACTIVE else COLORS.BG_TAB
+		tabUI.label.TextColor3 = if isActive then COLORS.TEXT_PRIMARY else COLORS.TEXT_SECONDARY
+		tabUI.label.Font = if isActive then Enum.Font.GothamBold else Enum.Font.GothamMedium
+		tabUI.underline.Visible = isActive
+	end
+end
+
+-- ===== BANNER =====
+
+function TitleCollectionUI:updateActiveBanner()
+	if not self.bannerValueLabel then
+		return
+	end
+
+	-- Stop existing pulse
+	if self._bannerPulseTween then
+		self._bannerPulseTween:Cancel()
+		self._bannerPulseTween = nil
+	end
+
+	local isTitle = self.activeTab == TAB_TITLES
+	local activeItem = if isTitle then self.activeTitle else self.activeTrail
+	local emptyText = if isTitle then "No Title" else "No Trail"
+
+	if self.bannerPrefix then
+		self.bannerPrefix.Text = if isTitle then "ACTIVE TITLE" else "ACTIVE TRAIL"
+	end
+
+	if not activeItem then
+		self.bannerValueLabel.Text = emptyText
+		self.bannerValueLabel.TextColor3 = COLORS.TEXT_MUTED
+		if self.unequipButton then
+			self.unequipButton.Active = false
+			self.unequipButton.AutoButtonColor = false
+			self.unequipButton.BackgroundColor3 = COLORS.BG_LOCKED_BTN
+			self.unequipButton.TextColor3 = COLORS.TEXT_MUTED
+			self.unequipButton.TextTransparency = 0.4
+		end
+		if self.bannerStroke then
+			self.bannerStroke.Color = COLORS.STROKE_BANNER
+			self.bannerStroke.Transparency = 0
+		end
+		return
+	end
+
+	local classDef = ClassTypes.getClass(activeItem.classId)
+	local theme = getEntryTheme(activeItem.rarity, classDef and classDef.color or nil)
+
+	self.bannerValueLabel.Text = string.format("[%s] %s", activeItem.rarity, activeItem.name)
+	self.bannerValueLabel.TextColor3 = theme.textColor
+
+	if self.unequipButton then
+		self.unequipButton.Active = true
+		self.unequipButton.AutoButtonColor = true
+		self.unequipButton.BackgroundColor3 = COLORS.BG_UNEQUIP
+		self.unequipButton.TextColor3 = Theme.TEXT_ON_ACCENT
+		self.unequipButton.TextTransparency = 0
+	end
+
+	-- Banner stroke glow pulse with rarity color
+	if self.bannerStroke then
+		self.bannerStroke.Color = theme.frameColor
+		self.bannerStroke.Transparency = 0.2
+		self._bannerPulseTween = TweenService:Create(self.bannerStroke,
+			TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Transparency = 0.6 }
+		)
+		self._bannerPulseTween:Play()
+	end
+end
+
+-- ===== FILTER / SORT / SEARCH =====
 
 function TitleCollectionUI:updateFilterButtons()
 	for filterId, button in pairs(self.filterButtons) do
@@ -599,11 +783,11 @@ function TitleCollectionUI:matchesFilter(entry: {id: string, name: string, class
 
 	local classDef = ClassTypes.getClass(entry.classId)
 	local className = string.lower(classDef and classDef.name or entry.classId)
-	local titleName = string.lower(entry.name)
+	local itemName = string.lower(entry.name)
 	local rarity = string.lower(entry.rarity)
 	local description = string.lower(entry.description or "")
 
-	return string.find(titleName, query, 1, true) ~= nil
+	return string.find(itemName, query, 1, true) ~= nil
 		or string.find(className, query, 1, true) ~= nil
 		or string.find(rarity, query, 1, true) ~= nil
 		or string.find(description, query, 1, true) ~= nil
@@ -654,6 +838,14 @@ function TitleCollectionUI:compareBySort(
 	return a.id < b.id
 end
 
+function TitleCollectionUI:getActiveCatalog(): {{id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}}
+	return if self.activeTab == TAB_TITLES then self.titleCatalog else self.trailCatalog
+end
+
+function TitleCollectionUI:getActiveEquipped(): {id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}?
+	return if self.activeTab == TAB_TITLES then self.activeTitle else self.activeTrail
+end
+
 function TitleCollectionUI:getFilteredCatalog(): {{id: string, name: string, classId: string, level: number, rarity: string, description: string?, unlocked: boolean}}
 	local filtered = {}
 	local classOrderIndex = {} :: {[string]: number}
@@ -661,7 +853,8 @@ function TitleCollectionUI:getFilteredCatalog(): {{id: string, name: string, cla
 		classOrderIndex[classId] = index
 	end
 
-	for _, entry in ipairs(self.titleCatalog) do
+	local catalog = self:getActiveCatalog()
+	for _, entry in ipairs(catalog) do
 		if self:matchesFilter(entry) then
 			table.insert(filtered, entry)
 		end
@@ -674,59 +867,11 @@ function TitleCollectionUI:getFilteredCatalog(): {{id: string, name: string, cla
 	return filtered
 end
 
-function TitleCollectionUI:updateActiveTitleBanner()
-	if not self.bannerTitleLabel then
-		return
-	end
-
-	-- Stop existing pulse
-	if self._bannerPulseTween then
-		self._bannerPulseTween:Cancel()
-		self._bannerPulseTween = nil
-	end
-
-	if not self.activeTitle then
-		self.bannerTitleLabel.Text = "No Title"
-		self.bannerTitleLabel.TextColor3 = COLORS.TEXT_MUTED
-		if self.unequipButton then
-			self.unequipButton.Active = false
-			self.unequipButton.AutoButtonColor = false
-			self.unequipButton.BackgroundColor3 = COLORS.BG_LOCKED_BTN
-		end
-		if self.bannerStroke then
-			self.bannerStroke.Color = COLORS.STROKE_BANNER
-			self.bannerStroke.Transparency = 0
-		end
-		return
-	end
-
-	local classDef = ClassTypes.getClass(self.activeTitle.classId)
-	local theme = getTitleTheme(self.activeTitle.rarity, classDef and classDef.color or nil)
-
-	self.bannerTitleLabel.Text = string.format("[%s] %s", self.activeTitle.rarity, self.activeTitle.name)
-	self.bannerTitleLabel.TextColor3 = theme.textColor
-
-	if self.unequipButton then
-		self.unequipButton.Active = true
-		self.unequipButton.AutoButtonColor = true
-		self.unequipButton.BackgroundColor3 = COLORS.BG_UNEQUIP
-	end
-
-	-- Banner stroke glow pulse with rarity color
-	if self.bannerStroke then
-		self.bannerStroke.Color = theme.frameColor
-		self.bannerStroke.Transparency = 0.2
-		self._bannerPulseTween = TweenService:Create(self.bannerStroke,
-			TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-			{ Transparency = 0.6 }
-		)
-		self._bannerPulseTween:Play()
-	end
-end
+-- ===== ENTRY RENDERING =====
 
 function TitleCollectionUI:clearEntryFrames()
 	for _, child in ipairs(self.listFrame:GetChildren()) do
-		if child:IsA("Frame") and child.Name == "TitleEntry" then
+		if child:IsA("Frame") and child.Name == "ItemEntry" then
 			child:Destroy()
 		end
 	end
@@ -744,7 +889,7 @@ function TitleCollectionUI:showToast(text: string, color: Color3?)
 	local toast = Instance.new("TextLabel")
 	toast.Name = "CollectionToast"
 	toast.Size = UDim2.new(0, 250, 0, 30)
-	toast.Position = UDim2.new(1, -266, 0, 178)
+	toast.Position = UDim2.new(1, -266, 0, 210)
 	toast.BackgroundColor3 = COLORS.BG_CARD
 	toast.BackgroundTransparency = 0
 	toast.BorderSizePixel = 0
@@ -792,13 +937,16 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 
 	self:clearEntryFrames()
 
+	local catalog = self:getActiveCatalog()
 	local filteredCatalog = self:getFilteredCatalog()
+	local itemLabel = if self.activeTab == TAB_TITLES then "titles" else "trails"
+
 	if self.resultLabel then
-		self.resultLabel.Text = string.format("%d / %d titles", #filteredCatalog, #self.titleCatalog)
+		self.resultLabel.Text = string.format("%d / %d %s", #filteredCatalog, #catalog, itemLabel)
 	end
 
 	local filteredCount = #filteredCatalog
-	local totalCount = #self.titleCatalog
+	local totalCount = #catalog
 	if showFeedback and self.isVisible then
 		local resultChanged = self.lastRenderedCount ~= filteredCount or self.lastRenderedTotal ~= totalCount
 		if resultChanged then
@@ -807,7 +955,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 					elseif feedbackSource == "filter" then "filter"
 					elseif feedbackSource == "sort" then "sort"
 					else "selection"
-				self:showToast("No titles found for current " .. sourceLabel, Theme.SECONDARY)
+				self:showToast("No " .. itemLabel .. " found for current " .. sourceLabel, Theme.SECONDARY)
 			end
 		end
 	end
@@ -815,11 +963,11 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 	self.lastRenderedCount = filteredCount
 	self.lastRenderedTotal = totalCount
 
-	if #self.titleCatalog == 0 then
+	if #catalog == 0 then
 		self.emptyLabel.Visible = true
 		self.emptyLabel.LayoutOrder = 1
 		self.emptyLabel.Size = UDim2.new(1, -18, 0, 30)
-		self.emptyLabel.Text = "No titles found! Keep playing to earn more."
+		self.emptyLabel.Text = "No " .. itemLabel .. " found! Keep playing to earn more."
 		return
 	end
 
@@ -827,25 +975,29 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		self.emptyLabel.Visible = true
 		self.emptyLabel.LayoutOrder = 1
 		self.emptyLabel.Size = UDim2.new(1, -18, 0, 30)
-		self.emptyLabel.Text = "No titles match your filter. Try 'All'"
+		self.emptyLabel.Text = "No " .. itemLabel .. " match your filter. Try 'All'"
 		return
 	end
 
 	self.emptyLabel.Visible = false
 	self.emptyLabel.Size = UDim2.new(1, -18, 0, 0)
 
-	local activeId = self.activeTitle and self.activeTitle.id or nil
+	local activeEquipped = self:getActiveEquipped()
+	local activeId = activeEquipped and activeEquipped.id or nil
+	local isTitle = self.activeTab == TAB_TITLES
+	local equipRemoteName = if isTitle then "SetActiveTitle" else "SetActiveTrail"
+
 	for index, entry in ipairs(filteredCatalog) do
 		local classDef = ClassTypes.getClass(entry.classId)
 		local className = classDef and classDef.name or entry.classId
 		local classIcon = classDef and classDef.icon or ""
-		local theme = getTitleTheme(entry.rarity, classDef and classDef.color or nil)
+		local theme = getEntryTheme(entry.rarity, classDef and classDef.color or nil)
 		local rarityColor = RARITY_COLORS[entry.rarity] or RARITY_COLORS.Common
 		local isActive = activeId == entry.id
 
 		-- Compact card (62px height)
 		local card = Instance.new("Frame")
-		card.Name = "TitleEntry"
+		card.Name = "ItemEntry"
 		card.Size = UDim2.new(1, -4, 0, 62)
 		card.BackgroundColor3 = if entry.unlocked then COLORS.BG_CARD else COLORS.BG_CARD_LOCKED
 		card.BackgroundTransparency = 0
@@ -870,8 +1022,8 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		rarityStrip.Name = "RarityStrip"
 		rarityStrip.Size = UDim2.new(0, 6, 1, 0)
 		rarityStrip.Position = UDim2.new(0, 0, 0, 0)
-		rarityStrip.BackgroundColor3 = if entry.unlocked then rarityColor else Theme.BG_ELEVATED
-		rarityStrip.BackgroundTransparency = if entry.unlocked then 0 else 0.4
+		rarityStrip.BackgroundColor3 = if entry.unlocked then rarityColor else Theme.CARD_SHADOW
+		rarityStrip.BackgroundTransparency = if entry.unlocked then 0 else 0.3
 		rarityStrip.BorderSizePixel = 0
 		rarityStrip.Parent = card
 
@@ -879,21 +1031,20 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		stripCorner.CornerRadius = UDim.new(0, 3)
 		stripCorner.Parent = rarityStrip
 
-		-- Title name (row 1) — with rarity emoji
-		local RARITY_EMOJI = {Common = "\u{26AA}", Uncommon = "\u{1F7E2}", Rare = "\u{1F535}", Epic = "\u{1F7E3}", Legendary = "\u{2B50}"}
+		-- Name (row 1) — with rarity emoji
 		local rarityEmoji = RARITY_EMOJI[entry.rarity] or ""
 
-		local titleLabel = Instance.new("TextLabel")
-		titleLabel.Size = UDim2.new(1, -160, 0, 24)
-		titleLabel.Position = UDim2.new(0, 16, 0, 8)
-		titleLabel.BackgroundTransparency = 1
-		titleLabel.Text = string.format("%s [%s] %s", rarityEmoji, entry.rarity, entry.name)
-		titleLabel.TextColor3 = if entry.unlocked then theme.textColor else COLORS.TEXT_LOCKED
-		titleLabel.TextSize = 15
-		titleLabel.Font = Enum.Font.GothamBold
-		titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-		titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		titleLabel.Parent = card
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(1, -160, 0, 24)
+		nameLabel.Position = UDim2.new(0, 16, 0, 8)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = string.format("%s [%s] %s", rarityEmoji, entry.rarity, entry.name)
+		nameLabel.TextColor3 = if entry.unlocked then theme.textColor else COLORS.TEXT_LOCKED
+		nameLabel.TextSize = 15
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		nameLabel.Parent = card
 
 		-- Detail line (row 2): "Runner • Lv.10"
 		local detailText = if entry.unlocked
@@ -931,9 +1082,9 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 			actionButton.Text = "LOCKED"
 			actionButton.Active = false
 			actionButton.AutoButtonColor = false
-			actionButton.BackgroundColor3 = COLORS.BG_LOCKED_BTN
-			actionButton.TextColor3 = COLORS.TEXT_MUTED
-			actionButton.TextTransparency = 0.3
+			actionButton.BackgroundColor3 = Theme.BG_SURFACE
+			actionButton.TextColor3 = COLORS.TEXT_LOCKED
+			actionButton.TextTransparency = 0.2
 			actionStroke.Color = Theme.BG_ELEVATED
 			actionStroke.Transparency = 0.5
 		else
@@ -953,21 +1104,24 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 				actionStroke.Transparency = 0.3
 			end
 
+			local capturedEntryId = entry.id
 			actionButton.MouseButton1Click:Connect(function()
-				if self.activeTitle and self.activeTitle.id == entry.id then
-					self.remotes.SetActiveTitle:FireServer("")
+				local currentEquipped = self:getActiveEquipped()
+				if currentEquipped and currentEquipped.id == capturedEntryId then
+					self.remotes[equipRemoteName]:FireServer("")
 				else
-					self.remotes.SetActiveTitle:FireServer(entry.id)
+					self.remotes[equipRemoteName]:FireServer(capturedEntryId)
 				end
 			end)
 		end
 
 		-- Row hover effect
 		local baseBg = card.BackgroundColor3
+		local hoverBg = if entry.unlocked then Theme.BG_ELEVATED else Theme.BG_SURFACE
 		card.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseMovement then
 				TweenService:Create(card, TweenInfo.new(0.12), {
-					BackgroundColor3 = Theme.BG_ELEVATED,
+					BackgroundColor3 = hoverBg,
 				}):Play()
 			end
 		end)
@@ -981,11 +1135,13 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 	end
 end
 
+-- ===== DATA UPDATES =====
+
 function TitleCollectionUI:applyTitleUpdatePayload(data: {[string]: any})
 	if type(data.titleCatalog) == "table" then
-		self.titleCatalog = cloneTitleList(data.titleCatalog)
+		self.titleCatalog = cloneEntryList(data.titleCatalog)
 	elseif type(data.unlockedTitles) == "table" then
-		local fallbackCatalog = cloneTitleList(data.unlockedTitles)
+		local fallbackCatalog = cloneEntryList(data.unlockedTitles)
 		for _, entry in ipairs(fallbackCatalog) do
 			entry.unlocked = true
 		end
@@ -995,11 +1151,36 @@ function TitleCollectionUI:applyTitleUpdatePayload(data: {[string]: any})
 	if data.activeTitle == nil then
 		self.activeTitle = nil
 	else
-		self.activeTitle = cloneTitleEntry(data.activeTitle)
+		self.activeTitle = cloneEntry(data.activeTitle)
 	end
 
-	self:updateActiveTitleBanner()
-	self:rebuildEntries()
+	if self.activeTab == TAB_TITLES then
+		self:updateActiveBanner()
+		self:rebuildEntries()
+	end
+end
+
+function TitleCollectionUI:applyTrailUpdatePayload(data: {[string]: any})
+	if type(data.trailCatalog) == "table" then
+		self.trailCatalog = cloneEntryList(data.trailCatalog)
+	elseif type(data.unlockedTrails) == "table" then
+		local fallbackCatalog = cloneEntryList(data.unlockedTrails)
+		for _, entry in ipairs(fallbackCatalog) do
+			entry.unlocked = true
+		end
+		self.trailCatalog = fallbackCatalog
+	end
+
+	if data.activeTrail == nil then
+		self.activeTrail = nil
+	else
+		self.activeTrail = cloneEntry(data.activeTrail)
+	end
+
+	if self.activeTab == TAB_TRAILS then
+		self:updateActiveBanner()
+		self:rebuildEntries()
+	end
 end
 
 function TitleCollectionUI:setupRemotes()
@@ -1010,7 +1191,17 @@ function TitleCollectionUI:setupRemotes()
 
 		self:applyTitleUpdatePayload(data)
 	end)
+
+	self.remotes.TrailUpdate.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then
+			return
+		end
+
+		self:applyTrailUpdatePayload(data)
+	end)
 end
+
+-- ===== SHOW / HIDE =====
 
 function TitleCollectionUI:show()
 	if self.isVisible then

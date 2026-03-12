@@ -69,6 +69,7 @@ export type PlayerCurrencyData = {
 	classMastery: {[string]: ClassMasteryData},
 	masteryRewards: {[string]: {[string]: boolean}},
 	activeTitle: string?,
+	activeTrail: string?,
 	hasSeenTutorial: boolean,
 	dismissedPromoVersion: string?,
 	lastLoginTime: number?,
@@ -358,6 +359,37 @@ local function sanitizeActiveTitle(
 	return nil
 end
 
+local function isTrailUnlocked(
+	masteryRewards: {[string]: {[string]: boolean}},
+	trailId: string
+): boolean
+	local rewardDef, classId = getMasteryRewardById(trailId)
+	if not rewardDef or not classId or rewardDef.rewardType ~= "Trail" then
+		return false
+	end
+
+	return isRewardUnlocked(masteryRewards, classId, trailId)
+end
+
+local function sanitizeActiveTrail(
+	savedTrailId: any,
+	masteryRewards: {[string]: {[string]: boolean}}
+): string?
+	if type(savedTrailId) ~= "string" then
+		return nil
+	end
+
+	if savedTrailId == "" then
+		return nil
+	end
+
+	if isTrailUnlocked(masteryRewards, savedTrailId) then
+		return savedTrailId
+	end
+
+	return nil
+end
+
 local function buildMasteryRewardUnlocks(
 	source: any?,
 	masteryData: {[string]: ClassMasteryData}
@@ -402,6 +434,8 @@ function CurrencyManager.new()
 	self.setActiveTitleRemote = ReplicatedStorage.Remotes:WaitForChild("SetActiveTitle")
 	self.dailyBonusRemote = ReplicatedStorage.Remotes:WaitForChild("DailyBonusClaimed")
 	self.updateGemRemote = ReplicatedStorage.Remotes:WaitForChild("UpdateGems")
+	self.trailUpdateRemote = ReplicatedStorage.Remotes:WaitForChild("TrailUpdate")
+	self.setActiveTrailRemote = ReplicatedStorage.Remotes:WaitForChild("SetActiveTrail")
 
 	self:setupRemotes()
 
@@ -414,6 +448,10 @@ end
 function CurrencyManager:setupRemotes()
 	self.setActiveTitleRemote.OnServerEvent:Connect(function(player, titleId)
 		self:handleSetActiveTitleRequest(player, titleId)
+	end)
+
+	self.setActiveTrailRemote.OnServerEvent:Connect(function(player, trailId)
+		self:handleSetActiveTrailRequest(player, trailId)
 	end)
 
 	-- Tutorial seen remote
@@ -521,6 +559,7 @@ function CurrencyManager:initPlayer(player: Player)
 		classMastery = defaultMasteryData,
 		masteryRewards = buildMasteryRewardUnlocks(nil, defaultMasteryData),
 		activeTitle = nil,
+		activeTrail = nil,
 		hasSeenTutorial = false,
 		dismissedPromoVersion = nil,
 		lastLoginTime = nil,
@@ -540,6 +579,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 		self:sendGemUpdate(player)
 		self:sendMasteryUpdate(player)
 		self:sendTitleUpdate(player)
+		self:sendTrailUpdate(player)
 		self:applyActiveTitleToCharacter(player)
 		return
 	end
@@ -557,6 +597,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 		playerData.classMastery = buildMasteryData(data.classMastery)
 		playerData.masteryRewards = buildMasteryRewardUnlocks(data.masteryRewards, playerData.classMastery)
 		playerData.activeTitle = sanitizeActiveTitle(data.activeTitle, playerData.masteryRewards)
+		playerData.activeTrail = sanitizeActiveTrail(data.activeTrail, playerData.masteryRewards)
 		playerData.gems = math.max(0, tonumber(data.gems) or 0)
 		playerData.wins = math.max(0, tonumber(data.wins) or 0)
 		playerData.hasSeenTutorial = data.hasSeenTutorial == true
@@ -577,6 +618,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 	self:sendGemUpdate(player)
 	self:sendMasteryUpdate(player)
 	self:sendTitleUpdate(player)
+	self:sendTrailUpdate(player)
 	self:applyActiveTitleToCharacter(player)
 end
 
@@ -687,6 +729,7 @@ function CurrencyManager:savePlayerData(player: Player)
 			existingData.classMastery = self:getClassMasteryData(player)
 			existingData.masteryRewards = self:getUnlockedMasteryRewards(player)
 			existingData.activeTitle = playerData.activeTitle
+			existingData.activeTrail = playerData.activeTrail
 			existingData.hasSeenTutorial = playerData.hasSeenTutorial
 			existingData.dismissedPromoVersion = playerData.dismissedPromoVersion
 			existingData.lastLoginTime  = playerData.lastLoginTime
@@ -826,14 +869,6 @@ function CurrencyManager:setEquippedClass(player: Player, classId: string): bool
 
 	playerData.equippedClass = classId
 	self.pendingSaves[player] = true
-
-	-- Re-apply trail for new class
-	task.delay(0.15, function()
-		local character = player.Character
-		if character then
-			self:applyActiveTrailToCharacter(player, character)
-		end
-	end)
 	return true
 end
 
@@ -1115,23 +1150,13 @@ function CurrencyManager:applyActiveTrailToCharacter(player: Player, character: 
 	local playerData = self.playerData[player]
 	if not playerData then return end
 
-	local equippedClass = self:getEquippedClass(player)
-	local rewards = Config.Mastery.Rewards[equippedClass]
-	if not rewards then return end
+	-- Use player's explicitly selected activeTrail (not auto-detect from class)
+	if not playerData.activeTrail then return end
 
-	-- Find trail reward for this class
-	local trailReward = nil
-	for _, reward in ipairs(rewards) do
-		if reward.rewardType == "Trail" then
-			trailReward = reward
-			break
-		end
-	end
-	if not trailReward then return end
-
-	-- Check if trail is unlocked
-	local unlockedByClass = playerData.masteryRewards[equippedClass]
-	if not unlockedByClass or not unlockedByClass[trailReward.id] then return end
+	local rewardDef, trailClassId = getMasteryRewardById(playerData.activeTrail)
+	if not rewardDef or not trailClassId then return end
+	if rewardDef.rewardType ~= "Trail" then return end
+	if not isRewardUnlocked(playerData.masteryRewards, trailClassId, rewardDef.id) then return end
 
 	-- Create attachments on HumanoidRootPart
 	local topAttach = Instance.new("Attachment")
@@ -1144,8 +1169,8 @@ function CurrencyManager:applyActiveTrailToCharacter(player: Player, character: 
 	bottomAttach.Position = Vector3.new(0, -0.5, 0)
 	bottomAttach.Parent = humanoidRootPart
 
-	-- Create trail on HRP
-	local trailColor = TRAIL_COLORS[equippedClass] or Color3.fromRGB(220, 220, 220)
+	-- Use trail color based on the trail's class (not equipped class)
+	local trailColor = TRAIL_COLORS[trailClassId] or Color3.fromRGB(220, 220, 220)
 	local trail = Instance.new("Trail")
 	trail.Name = "MasteryTrailEffect"
 	trail.Attachment0 = topAttach
@@ -1220,6 +1245,165 @@ function CurrencyManager:handleSetActiveTitleRequest(player: Player, titleId: an
 		type = if normalizedTitleId then "equip" else "clear",
 		titleId = normalizedTitleId,
 	})
+end
+
+-- ============================================
+-- TRAIL EQUIP SYSTEM
+-- ============================================
+
+function CurrencyManager:getTrailCatalogSnapshot(player: Player): {TitleCatalogEntry}
+	local playerData = self.playerData[player]
+	local catalog = {} :: {TitleCatalogEntry}
+	local unlockedRewards = if playerData then playerData.masteryRewards else buildMasteryRewardUnlocks(nil, buildMasteryData(nil))
+
+	for _, classId in ipairs(ClassTypes.getAllClassIds()) do
+		local rewardList = MASTERY_REWARD_CATALOG[classId] or {}
+		for _, reward in ipairs(rewardList) do
+			if reward.rewardType == "Trail" then
+				table.insert(catalog, {
+					id = reward.id,
+					name = reward.name,
+					classId = classId,
+					level = reward.level,
+					rarity = reward.rarity,
+					description = reward.description,
+					unlocked = isRewardUnlocked(unlockedRewards, classId, reward.id),
+				})
+			end
+		end
+	end
+
+	return catalog
+end
+
+function CurrencyManager:getUnlockedTrails(player: Player): {TitleSnapshot}
+	local trails = {} :: {TitleSnapshot}
+	for _, entry in ipairs(self:getTrailCatalogSnapshot(player)) do
+		if entry.unlocked then
+			table.insert(trails, {
+				id = entry.id,
+				name = entry.name,
+				classId = entry.classId,
+				level = entry.level,
+				rarity = entry.rarity,
+				description = entry.description,
+			})
+		end
+	end
+
+	return trails
+end
+
+function CurrencyManager:getActiveTrail(player: Player): TitleSnapshot?
+	local playerData = self.playerData[player]
+	if not playerData or not playerData.activeTrail then
+		return nil
+	end
+
+	local rewardDef, classId = getMasteryRewardById(playerData.activeTrail)
+	if not rewardDef or not classId then
+		return nil
+	end
+	if rewardDef.rewardType ~= "Trail" then
+		return nil
+	end
+	if not isRewardUnlocked(playerData.masteryRewards, classId, rewardDef.id) then
+		return nil
+	end
+
+	return {
+		id = rewardDef.id,
+		name = rewardDef.name,
+		classId = classId,
+		level = rewardDef.level,
+		rarity = rewardDef.rarity,
+		description = rewardDef.description,
+	}
+end
+
+function CurrencyManager:setActiveTrail(player: Player, trailId: string?): (boolean, string?)
+	local playerData = self.playerData[player]
+	if not playerData then
+		return false, "PROFILE_NOT_READY"
+	end
+
+	if trailId == nil or trailId == "" then
+		playerData.activeTrail = nil
+		self.pendingSaves[player] = true
+		self:applyActiveTrailToCharacter(player)
+		return true, nil
+	end
+
+	local rewardDef, classId = getMasteryRewardById(trailId)
+	if not rewardDef or not classId then
+		return false, "INVALID_TRAIL"
+	end
+	if rewardDef.rewardType ~= "Trail" then
+		return false, "INVALID_TRAIL"
+	end
+	if not isRewardUnlocked(playerData.masteryRewards, classId, rewardDef.id) then
+		return false, "TRAIL_LOCKED"
+	end
+
+	playerData.activeTrail = rewardDef.id
+	self.pendingSaves[player] = true
+	self:applyActiveTrailToCharacter(player)
+
+	return true, nil
+end
+
+function CurrencyManager:handleSetActiveTrailRequest(player: Player, trailId: any)
+	local normalizedTrailId = nil :: string?
+	if type(trailId) == "string" then
+		normalizedTrailId = trailId
+	elseif trailId == nil then
+		normalizedTrailId = nil
+	else
+		self:sendTrailUpdate(player, {
+			type = "error",
+			trailId = trailId,
+			reason = "INVALID_TRAIL",
+		})
+		return
+	end
+
+	if normalizedTrailId == "NONE" then
+		normalizedTrailId = nil
+	end
+
+	local success, reason = self:setActiveTrail(player, normalizedTrailId)
+	if not success then
+		self:sendTrailUpdate(player, {
+			type = "error",
+			trailId = normalizedTrailId,
+			reason = reason or "FAILED",
+		})
+		return
+	end
+
+	self:sendTrailUpdate(player, {
+		type = if normalizedTrailId then "equip" else "clear",
+		trailId = normalizedTrailId,
+	})
+end
+
+function CurrencyManager:sendTrailUpdate(player: Player, action: {[string]: any}?)
+	local playerData = self.playerData[player]
+	if not playerData then
+		return
+	end
+
+	local payload = {
+		trailCatalog = self:getTrailCatalogSnapshot(player),
+		unlockedTrails = self:getUnlockedTrails(player),
+		activeTrail = self:getActiveTrail(player),
+	}
+
+	if action then
+		payload.action = action
+	end
+
+	self.trailUpdateRemote:FireClient(player, payload)
 end
 
 function CurrencyManager:unlockMasteryRewardsForLevelRange(
@@ -1359,6 +1543,20 @@ function CurrencyManager:addMasteryXP(player: Player, classId: string, amount: n
 		self:sendTitleUpdate(player, {
 			type = "unlock",
 			unlockedTitles = unlockedTitles,
+		})
+	end
+
+	local unlockedTrails = {} :: {MasteryRewardSnapshot}
+	for _, reward in ipairs(unlockedRewards) do
+		if reward.rewardType == "Trail" then
+			table.insert(unlockedTrails, reward)
+		end
+	end
+
+	if #unlockedTrails > 0 then
+		self:sendTrailUpdate(player, {
+			type = "unlock",
+			unlockedTrails = unlockedTrails,
 		})
 	end
 end
@@ -1537,7 +1735,9 @@ function CurrencyManager:setMasteryLevel(player: Player, classId: string, level:
 		classId = classId,
 		newLevel = level,
 	})
-	
+	self:sendTitleUpdate(player)
+	self:sendTrailUpdate(player)
+
 	Logger.debug("CurrencyManager", "TEST: Set", player.Name, classId, "mastery to level", level)
 	return true
 end

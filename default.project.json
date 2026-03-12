@@ -163,6 +163,12 @@
         },
         "DismissPromo": {
           "$className": "RemoteEvent"
+        },
+        "SetActiveTrail": {
+          "$className": "RemoteEvent"
+        },
+        "TrailUpdate": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {
