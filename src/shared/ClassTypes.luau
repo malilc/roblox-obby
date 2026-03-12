@@ -59,9 +59,9 @@ ClassTypes.Classes = {
 		knockbackResistance = 0,
 		-- Passive
 		passiveAbility = {
-			name = "Sprint Burst",
-			description = "กด W สองครั้งติดกันเพื่อ mini boost (cooldown 15 วิ)",
-			cooldown = 15,
+			name = "Speed Boost",
+			description = "+15% walk speed เสมอ (เร็วกว่า class อื่น)",
+			cooldown = nil,
 		},
 	},
 	
@@ -77,9 +77,9 @@ ClassTypes.Classes = {
 		knockbackResistance = 0,
 		-- Passive
 		passiveAbility = {
-			name = "Charged Jump",
-			description = "กด Space ค้างเพื่อ charged jump (กระโดดสูงขึ้นอีก)",
-			cooldown = nil, -- no cooldown
+			name = "High Jump",
+			description = "+20% jump power เสมอ (กระโดดสูงกว่า class อื่น)",
+			cooldown = nil,
 		},
 	},
 	
