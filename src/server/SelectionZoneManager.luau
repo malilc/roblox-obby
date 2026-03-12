@@ -15,6 +15,10 @@ export type SelectionZoneDeps = {
 	showStageSelectionRemote: RemoteEvent,
 	hideStageSelectionRemote: RemoteEvent,
 	startGameWithOrder: (player: Player, stageOrder: {number}) -> (),
+	createMatchRoom: ((player: Player, stageOrder: {number}) -> ())?,
+	getAnyActiveRoom: (() -> any)?,
+	joinMatchRoom: ((player: Player, roomId: string) -> ())?,
+	spectateMatchRoom: ((player: Player) -> ())?,
 }
 
 function SelectionZoneManager.new(deps: SelectionZoneDeps)
@@ -98,6 +102,29 @@ end
 
 -- Player entered selection zone
 function SelectionZoneManager:onPlayerEnter(player: Player)
+	-- Check if there's already an active room
+	if self.deps.getAnyActiveRoom then
+		local room = self.deps.getAnyActiveRoom()
+		if room then
+			if room.state == "Waiting" then
+				-- Auto-join the existing waiting room
+				Logger.debug("SelectionZoneManager", player.Name, "auto-joining room", room.id)
+				if self.deps.joinMatchRoom then
+					self.deps.joinMatchRoom(player, room.id)
+				end
+				return
+			elseif room.state == "Starting" or room.state == "Racing" then
+				-- Match in progress, enter spectator mode
+				Logger.debug("SelectionZoneManager", player.Name, "spectating room", room.id)
+				if self.deps.spectateMatchRoom then
+					self.deps.spectateMatchRoom(player)
+				end
+				return
+			end
+		end
+	end
+
+	-- No room exists, show stage selection (player will create a room)
 	self.deps.showStageSelectionRemote:FireClient(player)
 	Logger.debug("SelectionZoneManager", player.Name, "entered selection zone")
 end
@@ -151,7 +178,13 @@ function SelectionZoneManager:onStageSelectionConfirmed(player: Player, data: an
 	end
 
 	self.deps.hideStageSelectionRemote:FireClient(player)
-	self.deps.startGameWithOrder(player, stageOrder)
+
+	-- Create a waiting room instead of starting game directly
+	if self.deps.createMatchRoom then
+		self.deps.createMatchRoom(player, stageOrder)
+	else
+		self.deps.startGameWithOrder(player, stageOrder)
+	end
 end
 
 -- Cleanup when player leaves

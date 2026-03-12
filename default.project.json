@@ -157,6 +157,9 @@
         },
         "CheckGamePass": {
           "$className": "RemoteEvent"
+        },
+        "HostStartMatch": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

@@ -9,7 +9,7 @@ local Config = {
 	-- Match Settings (Multiplayer Race)
 	Match = {
 		MinPlayers = 1,        -- Solo testing enabled
-		MaxPlayers = 16,       -- Maximum players per match
+		MaxPlayers = 24,       -- Maximum players per match
 		WaitTime = 3,          -- Testing: 3 วิ, Production: 30-60 วิ
 		IsTestingMode = true,  -- Toggle สำหรับ testing
 		TimeLimit = 900,       -- 15 นาที (900 วินาที) per match
