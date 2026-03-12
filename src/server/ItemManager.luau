@@ -1,6 +1,7 @@
 -- ItemManager: จัดการระบบ Items (แบบ Mario Kart)
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -801,20 +802,39 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	local behindDir = -rootPart.CFrame.LookVector
 	local dropPos = rootPart.Position + behindDir * 3 + Vector3.new(0, 0, 0)
 	
+	-- Raycast ลงจากจุดวางเพื่อหาพื้น (ตรวจจับ moving platform ทันที)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { rootPart.Parent } -- exclude character
+	local groundRay = workspace:Raycast(dropPos, Vector3.new(0, -50, 0), rayParams)
+
+	local landingOnMovingPlatform = groundRay and groundRay.Instance:GetAttribute("IsMoving")
+	local landingPos = groundRay and (groundRay.Position + Vector3.new(0, 1, 0)) or dropPos
+
 	-- Create banana with mesh
 	local banana = Instance.new("Part")
 	banana.Name = "Banana"
 	banana.Size = Vector3.new(3, 2, 3) -- Larger hitbox for better detection (including jumping)
-	banana.Position = dropPos
-	banana.Anchored = false -- Let it fall with gravity
-	banana.CanCollide = true -- Collide with ground
 	banana.Material = Enum.Material.SmoothPlastic
 	banana.Color = Color3.fromRGB(255, 230, 50) -- Bright yellow
 	banana.Transparency = 0 -- Visible so mesh renders
 	banana:SetAttribute("Owner", player.UserId)
 	banana:SetAttribute("ExpireTime", os.clock() + (itemDef.duration or 30))
+
+	if landingOnMovingPlatform then
+		-- วางบน moving platform ทันที (anchored, ไม่ต้องรอ gravity)
+		banana.Position = landingPos
+		banana.Anchored = true
+		banana.CanCollide = false
+	else
+		-- พื้นปกติ → ตกด้วย gravity แล้ว anchor ทีหลัง
+		banana.Position = dropPos
+		banana.Anchored = false
+		banana.CanCollide = true
+	end
+
 	banana.Parent = workspace
-	
+
 	-- Use actual banana mesh
 	local mesh = Instance.new("SpecialMesh")
 	mesh.MeshType = Enum.MeshType.FileMesh
@@ -822,14 +842,41 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	mesh.Scale = Vector3.new(0.05, 0.05, 0.05)
 	mesh.Offset = Vector3.new(0, 0.5, 0) -- Raise mesh up to align with ground
 	mesh.Parent = banana
-	
-	-- Anchor after landing (wait for it to settle)
-	task.delay(1.5, function()
-		if banana and banana.Parent then
-			banana.Anchored = true
-			banana.CanCollide = false -- No collision with players after anchored
-		end
-	end)
+
+	if landingOnMovingPlatform then
+		-- ติดตาม moving platform ทุกเฟรม
+		local platform = groundRay.Instance
+		local offset = landingPos - platform.Position
+
+		-- ตั้ง attributes เพื่อให้ client คำนวณตำแหน่งเองได้ (smooth)
+		banana:SetAttribute("_PlatformOrigPos", platform:GetAttribute("OriginalPosition"))
+		banana:SetAttribute("_PlatformAxis", platform:GetAttribute("MoveAxis") or "X")
+		banana:SetAttribute("_PlatformMoveDistance", platform:GetAttribute("MoveDistance") or 10)
+		banana:SetAttribute("_PlatformMoveSpeed", platform:GetAttribute("MoveSpeed") or 3)
+		banana:SetAttribute("_PlatformOffset", offset)
+
+		-- Server ยังต้อง move กล้วยด้วย (สำหรับ Touched detection)
+		local connection
+		connection = RunService.Heartbeat:Connect(function()
+			if not banana or not banana.Parent then
+				connection:Disconnect()
+				return
+			end
+			if not platform or not platform.Parent then
+				connection:Disconnect()
+				return
+			end
+			banana.Position = platform.Position + offset
+		end)
+	else
+		-- Anchor after landing (wait for it to settle on normal ground)
+		task.delay(1.5, function()
+			if banana and banana.Parent then
+				banana.Anchored = true
+				banana.CanCollide = false
+			end
+		end)
+	end
 	
 	-- Sparkle effect to make it visible
 	local sparkle = Instance.new("ParticleEmitter")

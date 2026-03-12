@@ -276,13 +276,13 @@ function StageTemplates.createStage2(startPosition: Vector3): Model
 	-- Stage 2: 4 coins - บน moving platforms
 	local coin1 = createItemPickup(startPosition + Vector3.new(spacing * 1, 5, 0))
 	coin1.Parent = itemPickups
-	
+
 	local coin2 = createItemPickup(startPosition + Vector3.new(spacing * 3, 6, 2))
 	coin2.Parent = itemPickups
-	
+
 	local coin3 = createItemPickup(startPosition + Vector3.new(spacing * 4, 7, -2))
 	coin3.Parent = itemPickups
-	
+
 	local coin4 = createItemPickup(startPosition + Vector3.new(spacing * 6, 5, 0))
 	coin4.Parent = itemPickups
 	

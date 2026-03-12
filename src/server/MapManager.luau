@@ -469,6 +469,7 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 	-- Animation loop
 	mapData.animationConnection = RunService.Heartbeat:Connect(function(dt)
 		local time = os.clock()
+		local syncTime = workspace:GetServerTimeNow() -- เวลา sync สำหรับ moving platforms
 
 		-- Moving platforms (CFrame-based, anchored — ไม่เอียง)
 		for _, data in ipairs(mapData.movingParts) do
@@ -478,8 +479,8 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 				local distance = part:GetAttribute("MoveDistance") or 10
 				local speed = part:GetAttribute("MoveSpeed") or 3
 
-				-- คำนวณ offset ตามแกน
-				local offset = math.sin(time * speed) * distance
+				-- คำนวณ offset ตามแกน (ใช้ syncTime เพื่อให้ตรงกับ client)
+				local offset = math.sin(syncTime * speed) * distance
 				local moveVector
 				if axis == "X" then
 					moveVector = Vector3.new(offset, 0, 0)
