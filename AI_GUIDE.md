@@ -1037,10 +1037,11 @@ Match = {
 > **Timer เปิดแล้ว** — มี countdown, timeout, time warnings, และ finish countdown
 
 ### Race Timer:
-- `MatchManager.luau` → `startRaceTimer()` นับถอยหลัง `timeRemaining` ทุกวินาที + broadcast ผ่าน `RaceUpdate`
+- `MatchManager.luau` → `startRaceTimer()` broadcast ค่าเริ่มต้น (900s) ทันที แล้ว wait 1s → decrement → broadcast ทุกวินาที
 - เมื่อหมดเวลา → `endMatch(roomId, "timeout")`
 - Time warnings ส่งไปที่ client เมื่อเหลือเวลาตาม `Config.Match.TimeWarnings`
 - `MatchLobbyUI` แสดง timer จาก `RaceUpdate.timeRemaining`
+- `MatchLobbyUI:onMatchStart()` reset timer text เป็น "15:00" ทุกรอบ (ป้องกันค่าเก่าค้าง)
 
 ### Finish Countdown (30 วินาที):
 - เมื่อผู้เล่นคนแรกจบ (multiplayer 2+ คน) → `startFinishCountdown(roomId)` นับถอยหลัง 30 วิ
@@ -1048,9 +1049,15 @@ Match = {
 - เมื่อหมด 30 วิ → `endMatch(roomId, "finishCountdown")`
 - Solo (1 คน): แสดง SummaryUI เลยไม่ต้องรอ
 
+### Room Cleanup (สำคัญ — ลำดับการ clear state):
+- `endMatch()` → set state="Finished" แต่ **ไม่ clear playerRooms** (เพราะ `onPlayerFinished` ยังต้องใช้ `getPlayerRoom()`)
+- `teleportToLobby()` → clear ทั้ง `playerMatchIds` และ `playerRooms` ทันที (player สามารถ join room ใหม่ได้เลย)
+- `closeRoom()` (delay 10s) → clear playerRooms เฉพาะถ้ายังชี้ไปที่ room เดิม (ป้องกันลบ mapping ของ room ใหม่)
+
 ### ไฟล์ที่เกี่ยวข้อง:
-- `src/server/MatchManager.luau` - race timer + finish countdown + broadcast
-- `src/client/UI/MatchLobbyUI.luau` - แสดง timer + finish countdown (สีแดง)
+- `src/server/MatchManager.luau` - race timer + finish countdown + broadcast + room cleanup
+- `src/server/GameManager.luau` - `teleportToLobby()` clears playerRooms
+- `src/client/UI/MatchLobbyUI.luau` - แสดง timer + finish countdown (สีแดง) + reset on match start
 - `src/client/UI/ScoreUI.luau` - timer frame (top-center)
 - `src/client/UI/MainUI.luau` - timer handled by MatchLobbyUI (ไม่มี duplicate listener)
 

@@ -223,9 +223,11 @@ function MatchManager:closeRoom(roomId: string)
 	local room = self.rooms[roomId]
 	if not room then return end
 	
-	-- Clear all player mappings
+	-- Clear player mappings (only if still pointing to this room)
 	for _, player in ipairs(room.players) do
-		self.playerRooms[player] = nil
+		if self.playerRooms[player] == roomId then
+			self.playerRooms[player] = nil
+		end
 	end
 	
 	self.rooms[roomId] = nil
@@ -341,10 +343,15 @@ function MatchManager:startRaceTimer(roomId: string)
 	if not room then return end
 
 	task.spawn(function()
+		-- Broadcast initial state (full time) immediately
+		self:broadcastRaceUpdate(room)
+
 		while room and room.state == "Racing" do
 			if not self.rooms[roomId] then break end
 
-			-- Decrement time
+			task.wait(1)
+
+			-- Decrement time after waiting
 			room.timeRemaining = (room.timeRemaining or Config.Match.TimeLimit) - 1
 
 			-- Check time warnings
@@ -362,8 +369,6 @@ function MatchManager:startRaceTimer(roomId: string)
 
 			-- Broadcast race update every second
 			self:broadcastRaceUpdate(room)
-
-			task.wait(1)
 		end
 	end)
 end

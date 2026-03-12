@@ -846,9 +846,10 @@ function GameManager:teleportToLobby(player: Player)
 	-- Clear checkpoint
 	self.playerCheckpoints[player] = nil
 	
-	-- Clear match ID (player leaves match when returning to lobby)
+	-- Clear match ID and room mapping (player leaves match when returning to lobby)
 	local matchId = self.playerMatchIds[player]
 	self.playerMatchIds[player] = nil
+	self.matchManager.playerRooms[player] = nil
 
 	-- Use Config position directly for more reliable teleport
 	local targetPosition = Config.Lobby.SpawnPosition

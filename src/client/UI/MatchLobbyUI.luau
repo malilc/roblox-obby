@@ -643,6 +643,11 @@ function MatchLobbyUI:onMatchStart(data)
 	-- Hide lobby UI
 	self:hide()
 
+	-- Reset timer for new match
+	self.timerLabel.Text = "15:00"
+	self.timerLabel.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
+	self.timerStroke.Color = Theme.SUCCESS
+
 	-- Show race timer
 	self.timerFrame.Visible = true
 	self.rankFrame.Visible = true
