@@ -6,6 +6,9 @@
 
 ```
 src/
+├── loading/                     # ReplicatedFirst (loads before everything)
+│   └── init.client.luau         # 🎬 Loading screen — preload assets + progress bar + tips
+│
 ├── server/                      # Server-side code
 │   ├── init.server.luau         # Entry point - สร้าง GameManager
 │   ├── GameManager.luau         # ควบคุมเกมทั้งหมด (orchestrator)
@@ -1820,6 +1823,8 @@ self.newUI = NewUI.new(screenGui)
 ```
 Player Joins
     ↓
+Loading Screen (ReplicatedFirst) — preload assets + progress bar + tips
+    ↓ fade out when done + character ready
 Spawn at Lobby (Config.Lobby.SpawnPosition = 0, 103, 0)
     ↓
 GameManager:onPlayerAdded()

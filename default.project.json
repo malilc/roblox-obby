@@ -505,6 +505,11 @@
         "RespectFilteringEnabled": true
       }
     },
+    "ReplicatedFirst": {
+      "Loading": {
+        "$path": "src/loading"
+      }
+    },
     "StarterGui": {
     }
   }
