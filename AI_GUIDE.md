@@ -1892,6 +1892,7 @@ Back to Lobby (State = "Lobby")
 - **Solo Start (Random)**: เริ่มเกมทันทีด้วย stages สุ่ม
 - **Gems**: แสดง gems ปัจจุบัน + ปุ่ม +10/+100/+1000 + Reset (0) — ใช้ `SetTestGems` remote, sync ผ่าน `UpdateGems`
 - **Mastery**: ตั้ง level per-class (+/-/MAX), Set All Lv 20, Reset All Lv 1
+- **Item buttons**: Light pastel tint ตาม rarity color (`0.9 + color * 0.1`) พร้อม rarity stroke — hover เข้มขึ้นเล็กน้อย
 
 ### Item Controls:
 - กด **1** = ใช้ item ช่องซ้าย

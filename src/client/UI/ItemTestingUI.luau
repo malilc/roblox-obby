@@ -709,7 +709,12 @@ function ItemTestingUI:createItemButton(itemDef, layoutOrder: number): TextButto
 	local button = Instance.new("TextButton")
 	button.Name = itemDef.id .. "Button"
 	button.Size = UDim2.new(1, 0, 0, 50)
-	button.BackgroundColor3 = Color3.new(rarityColor.R * 0.3, rarityColor.G * 0.3, rarityColor.B * 0.3)
+	-- Light tint: mix rarity color with white for light theme
+	button.BackgroundColor3 = Color3.new(
+		0.9 + rarityColor.R * 0.1,
+		0.9 + rarityColor.G * 0.1,
+		0.9 + rarityColor.B * 0.1
+	)
 	button.Text = ""
 	button.LayoutOrder = layoutOrder
 	button.Parent = self.scrollFrame
@@ -768,15 +773,21 @@ function ItemTestingUI:createItemButton(itemDef, layoutOrder: number): TextButto
 	end)
 
 	-- Hover effect
+	local normalColor = button.BackgroundColor3
+	local hoverColor = Color3.new(
+		0.82 + rarityColor.R * 0.15,
+		0.82 + rarityColor.G * 0.15,
+		0.82 + rarityColor.B * 0.15
+	)
 	button.MouseEnter:Connect(function()
 		TweenService:Create(button, TweenInfo.new(0.1), {
-			BackgroundColor3 = Color3.new(rarityColor.R * 0.5, rarityColor.G * 0.5, rarityColor.B * 0.5)
+			BackgroundColor3 = hoverColor
 		}):Play()
 	end)
 
 	button.MouseLeave:Connect(function()
 		TweenService:Create(button, TweenInfo.new(0.1), {
-			BackgroundColor3 = Color3.new(rarityColor.R * 0.3, rarityColor.G * 0.3, rarityColor.B * 0.3)
+			BackgroundColor3 = normalColor
 		}):Play()
 	end)
 
