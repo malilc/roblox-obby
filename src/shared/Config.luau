@@ -1,5 +1,41 @@
 -- Game Configuration
 local Config = {
+	-- Update log version (bump this to re-show update log to all players)
+	PromoVersion = "1.0",
+
+	-- Update log entries (newest first — shown in scrollable panel)
+	UpdateLog = {
+		{
+			version = "1.0",
+			title = "Launch Update",
+			notes = {
+				{heading = "Match System", items = {
+					"Create & join match rooms with other players",
+					"Auto-join waiting rooms from the selection zone",
+					"Host can start the match when ready",
+					"Stage voting system for multiplayer",
+				}},
+				{heading = "Race Features", items = {
+					"15-minute race timer with time warnings",
+					"30-second finish countdown after 1st place",
+					"Live rankings display during races",
+					"Spectator mode for finished players",
+				}},
+				{heading = "Classes & Items", items = {
+					"8 unique character classes with special powers",
+					"Ultimate skills: Sprint, Double Jump, Iron Will",
+					"Mario Kart-style items to boost or sabotage",
+					"Class mastery system with unlockable titles",
+				}},
+				{heading = "Progression", items = {
+					"Gems & Wins tracking with leaderboards",
+					"Daily login rewards (7-day streak)",
+					"Shop with item purchases & class gacha",
+				}},
+			},
+		},
+	},
+
 	-- Lobby Settings
 	Lobby = {
 		SpawnPosition = Vector3.new(0, 102, -8),

@@ -70,6 +70,7 @@ export type PlayerCurrencyData = {
 	masteryRewards: {[string]: {[string]: boolean}},
 	activeTitle: string?,
 	hasSeenTutorial: boolean,
+	dismissedPromoVersion: string?,
 	lastLoginTime: number?,
 	loginStreak: number,
 }
@@ -427,6 +428,24 @@ function CurrencyManager:setupRemotes()
 		end)
 	end
 
+	-- Dismiss promo remote
+	-- showEverySession=true → save "" (will auto-show next session)
+	-- showEverySession=false → save PromoVersion (skip until new version)
+	local dismissPromoRemote = ReplicatedStorage.Remotes:FindFirstChild("DismissPromo")
+	if dismissPromoRemote then
+		dismissPromoRemote.OnServerEvent:Connect(function(player, showEverySession)
+			local playerData = self.playerData[player]
+			if playerData then
+				if showEverySession then
+					playerData.dismissedPromoVersion = ""
+				else
+					playerData.dismissedPromoVersion = Config.PromoVersion
+				end
+				self.pendingSaves[player] = true
+			end
+		end)
+	end
+
 	-- Setup testing remotes if in debug mode
 	if Config.Debug and Config.Debug.ItemTesting then
 		self.setupMasteryLevelRemote = ReplicatedStorage.Remotes:FindFirstChild("SetMasteryLevel")
@@ -503,6 +522,7 @@ function CurrencyManager:initPlayer(player: Player)
 		masteryRewards = buildMasteryRewardUnlocks(nil, defaultMasteryData),
 		activeTitle = nil,
 		hasSeenTutorial = false,
+		dismissedPromoVersion = nil,
 		lastLoginTime = nil,
 		loginStreak = 0,
 	}
@@ -540,6 +560,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 		playerData.gems = math.max(0, tonumber(data.gems) or 0)
 		playerData.wins = math.max(0, tonumber(data.wins) or 0)
 		playerData.hasSeenTutorial = data.hasSeenTutorial == true
+		playerData.dismissedPromoVersion = if type(data.dismissedPromoVersion) == "string" then data.dismissedPromoVersion else nil
 		playerData.lastLoginTime = tonumber(data.lastLoginTime) or nil
 		playerData.loginStreak = tonumber(data.loginStreak) or 0
 
@@ -667,6 +688,7 @@ function CurrencyManager:savePlayerData(player: Player)
 			existingData.masteryRewards = self:getUnlockedMasteryRewards(player)
 			existingData.activeTitle = playerData.activeTitle
 			existingData.hasSeenTutorial = playerData.hasSeenTutorial
+			existingData.dismissedPromoVersion = playerData.dismissedPromoVersion
 			existingData.lastLoginTime  = playerData.lastLoginTime
 			existingData.loginStreak    = playerData.loginStreak
 			return existingData
@@ -1454,6 +1476,7 @@ function CurrencyManager:sendCurrencyUpdate(player: Player)
 	self.updateCurrencyRemote:FireClient(player, {
 		currency = playerData.currency,
 		hasSeenTutorial = playerData.hasSeenTutorial,
+		dismissedPromoVersion = playerData.dismissedPromoVersion,
 	})
 
 	-- Keep leaderstats in sync

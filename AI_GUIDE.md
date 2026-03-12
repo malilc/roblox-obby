@@ -1083,7 +1083,7 @@ checkDailyLogin(player):
       - ส่ง { claimed=true, day=streak, amount, rewards }
     ↓
 Client รับ DailyBonusClaimed:
-  - claimed=true  → เปิด calendar popup (claim mode)
+  - claimed=true  → รอ UpdateLogGui ปิดก่อน → เปิด calendar popup (claim mode)
   - claimed=false → อัพเดท HUD button badge เท่านั้น
 ```
 
@@ -1111,22 +1111,41 @@ Client รับ DailyBonusClaimed:
 ### Testing:
 - เปิด Testing Menu (toggle button มุมบนขวา) → "🎁 Reset Daily Login" → รีเซ็ต streak ทันที (debug only)
 
-### OBBY CHALLENGE Welcome Popup (`init.client.luau`):
-- **ตำแหน่ง**: `showWelcomeMessage()` ใน `src/client/init.client.luau` — แสดงครั้งแรกเมื่อ character spawn
-- **Panel size**: 480×240px, `AnchorPoint=(0.5,0.5)`, Position `(0.5,0,0.4,0)` (centered ด้านบน)
-- **Background**: UIGradient `PANEL_GRAD_TOP→PANEL_GRAD_BTM` (180°), `BackgroundTransparency=0`
-- **Stroke**: `Theme.ACCENT_CYAN`, `STROKE_MED`, transparency=0.2
-- **Corner**: `Theme.CORNER_LG`
-- **Title**: "🏃 OBBY CHALLENGE 🏃", GothamBlack 36px, `Theme.TEXT_PRIMARY`; UIStroke `ACCENT_CYAN` 2px (0.15 transparency)
-- **Info text** (RichText=true): dark colored keywords for light bg
-  - `BLUE ZONE` → `<font color="#1177AA"><b>...</b></font>` (dark teal)
-  - `[1]` `[2]` → `<font color="#806000"><b>...</b></font>` (dark gold)
-  - `win!` → `<font color="#1A7A3A"><b>...</b></font>` (forest green)
-  - Body color: `Theme.TEXT_PRIMARY`
-- **GOT IT! button**: 300×45, 3-layer gradient pattern
-  - TextButton (transparent, Text="") + Frame (green gradient `RGB(60,200,100)→RGB(40,170,70)`) + TextLabel (`TEXT_ON_ACCENT` white, ZIndex+1)
-  - UIStroke `Theme.SUCCESS`, `STROKE_THIN`, transparency=0.3; Corner `Theme.CORNER_MD`
-- **Auto close**: `task.delay(10)` ถ้าไม่กดปุ่ม
+### Update Log System (`init.client.luau`):
+- **ตำแหน่ง**: `showUpdateLog()` ใน `src/client/init.client.luau`
+- **Config**: `Config.PromoVersion` (bump เพื่อ re-show) + `Config.UpdateLog` (array ของ version entries)
+- **Panel size**: 460×480px, AnchorPoint=(0.5,0.5), Position=(0.5,0,0.45,0)
+- **Background**: UIGradient `PANEL_GRAD_TOP→PANEL_GRAD_BTM` (180°)
+- **Stroke**: `Theme.PRIMARY`, bold, transparency=0.1; Corner LG
+- **Header**: "UPDATE LOG" + version badge (ACCENT_CYAN) + circular red X close button
+- **Version tabs**: ScrollingFrame (horizontal scroll, no scrollbar) — แต่ละ tab = 1 entry ใน Config.UpdateLog, กดสลับ content
+- **Scrollable content**: ScrollingFrame (AutomaticCanvasSize=Y) — headings (green RichText) + bullet items
+- **Footer**: "Show every session" toggle (iOS-style)
+  - Toggle ON → save `""` to DataStore → auto-show ทุกรอบ
+  - Toggle OFF → save `Config.PromoVersion` → ไม่ show จนกว่า version ใหม่
+  - Version ใหม่: toggle รีเซ็ตเป็น ON อัตโนมัติ
+- **Animate**: TweenService fade in/out with Back easing
+- **Persistent button**: 📋 button มุมขวาบน `Position(1,-180,0,10)` — กดเปิด Update Log ได้ตลอด
+- **Auto-show logic** (race-condition safe):
+  1. Connect `UpdateCurrency` handler EARLY (ก่อน CharacterAdded wait)
+  2. Check `if not LocalPlayer.Character then CharacterAdded:Wait() end` (ป้องกัน hang ถ้า character โหลดแล้ว)
+  3. Check `receivedDismissVersion ~= Config.PromoVersion` → show
+  4. Fallback: 5s timeout → force show
+- **DismissPromo remote**: Client → Server, server saves `""` (toggle ON) or `Config.PromoVersion` (toggle OFF) ใน DataStore
+- **Popup queue**: DailyBonusUI รอ UpdateLogGui ปิดก่อนค่อยแสดง (ป้องกัน overlap)
+
+### เพิ่ม Version ใหม่:
+1. เพิ่ม entry ใน `Config.UpdateLog` (ข้างบนสุด = ใหม่สุด):
+```lua
+UpdateLog = {
+    { version = "1.1", title = "Title", notes = {
+        {heading = "Section", items = { "note1", "note2" }},
+    }},
+    { version = "1.0", title = "Launch Update", notes = {...} },
+}
+```
+2. Bump `Config.PromoVersion = "1.1"` ให้ตรงกับ version ล่าสุด
+3. ผู้เล่นเก่าที่ dismiss v1.0 → `"1.0" ≠ "1.1"` → auto-show
 
 ---
 
@@ -1379,6 +1398,8 @@ local SOUNDS = {
 | `ShopUpdate` | Server → Client | 🛒 Shop state sync / purchase result / gacha result / error |
 | `GamePassUpdate` | Server → Client | 🛒 Game pass ownership sync `{ ownedPasses = {...} }` |
 | `CheckGamePass` | Client → Server | 🛒 Re-check game pass ownership (after native purchase) |
+| `HostStartMatch` | Client → Server | 🏁 Host กดเริ่ม match |
+| `DismissPromo` | Client → Server | 📋 ปิด Update Log → save `""` (toggle ON) หรือ PromoVersion (toggle OFF) |
 
 **ClassUpdate Payload (สำคัญ):**
 ```lua

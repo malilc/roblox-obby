@@ -160,6 +160,9 @@
         },
         "HostStartMatch": {
           "$className": "RemoteEvent"
+        },
+        "DismissPromo": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {

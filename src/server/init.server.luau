@@ -25,6 +25,14 @@ end
 -- Initialize game
 local game_manager = GameManager.new()
 
+-- Save all pending DataStore data before server shuts down
+game:BindToClose(function()
+	Logger.info("Server", "Server shutting down — saving all player data...")
+	if game_manager.currencyManager then
+		game_manager.currencyManager:saveAllPending()
+	end
+end)
+
 Logger.info("Server", "Obby Game initialized!")
 Logger.info("Server", "Map generated with randomized stages")
 Logger.info("Server", "Waiting for players...")
