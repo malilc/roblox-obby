@@ -16,10 +16,16 @@ MapManager.__index = MapManager
 -- Seed random เพื่อให้สุ่มได้จริง
 math.randomseed(os.time() + os.clock() * 1000)
 
+export type MovingPartData = {
+	part: Part,
+	originalPosition: Vector3,
+	originalCFrame: CFrame,
+}
+
 export type MatchMapData = {
 	stages: {Model},
 	stageOrder: {number},
-	movingParts: {Part},
+	movingParts: {MovingPartData},
 	spinningParts: {Part},
 	disappearingParts: {{part: Part, touched: boolean, lastTouchTime: number}},
 	autoCyclingParts: {{part: Part, thread: thread?}},
@@ -184,11 +190,15 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 	for _, descendant in ipairs(stage:GetDescendants()) do
 		if descendant:IsA("BasePart") then
 			if descendant:GetAttribute("IsMoving") then
-				table.insert(mapData.movingParts, descendant)
-				-- เก็บตำแหน่งเริ่มต้น
+				-- Store original position as attribute for client-side prediction
 				descendant:SetAttribute("OriginalPosition", descendant.Position)
-				-- Setup moving platform ให้ unanchored + constraint
-				self:_setupMovingPlatformConstraint(descendant)
+				table.insert(mapData.movingParts, {
+					part = descendant,
+					originalPosition = descendant.Position,
+					originalCFrame = descendant.CFrame,
+				})
+				-- Keep platform anchored for stable CFrame-based movement
+				descendant.Anchored = true
 			end
 
 			if descendant:GetAttribute("IsSpinning") then
@@ -333,85 +343,8 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 	end
 end
 
--- Internal: Setup moving platform ด้วย constraint (physics-based เพื่อไม่ลื่น)
-function MapManager:_setupMovingPlatformConstraint(part: Part)
-	local originalPos = part.Position
-	local axis = part:GetAttribute("MoveAxis") or "X"
-	local distance = part:GetAttribute("MoveDistance") or 10
-
-	-- Unanchor เพื่อให้ physics ทำงาน
-	part.Anchored = false
-
-	-- สร้าง Attachment บน Part
-	local attachment0 = Instance.new("Attachment")
-	attachment0.Name = "PlatformAttachment"
-	attachment0.Parent = part
-
-	-- สร้าง Attachment บน Workspace (จุดยึด)
-	local anchorPart = Instance.new("Part")
-	anchorPart.Name = "PlatformAnchor_" .. part.Name
-	anchorPart.Anchored = true
-	anchorPart.CanCollide = false
-	anchorPart.Transparency = 1
-	anchorPart.Size = Vector3.new(1, 1, 1)
-	anchorPart.Position = originalPos
-	anchorPart.Parent = part.Parent
-
-	local attachment1 = Instance.new("Attachment")
-	attachment1.Name = "AnchorAttachment"
-	attachment1.Parent = anchorPart
-
-	-- สร้าง PrismaticConstraint สำหรับเคลื่อนที่ตามแกน
-	local prismatic = Instance.new("PrismaticConstraint")
-	prismatic.Name = "MovementConstraint"
-	prismatic.Attachment0 = attachment0
-	prismatic.Attachment1 = attachment1
-	prismatic.ActuatorType = Enum.ActuatorType.Servo
-	prismatic.ServoMaxForce = Config.Map.PlatformServoForce
-	prismatic.Speed = Config.Map.PlatformServoSpeed
-	prismatic.LimitsEnabled = true
-	prismatic.LowerLimit = -distance
-	prismatic.UpperLimit = distance
-
-	-- ตั้งแกนการเคลื่อนที่
-	if axis == "X" then
-		attachment1.Axis = Vector3.new(1, 0, 0)
-	elseif axis == "Y" then
-		attachment1.Axis = Vector3.new(0, 1, 0)
-	else
-		attachment1.Axis = Vector3.new(0, 0, 1)
-	end
-
-	prismatic.Parent = part
-
-	-- เก็บ reference
-	part:SetAttribute("_HasConstraint", true)
-
-	-- Prevent rotation: keep the part's original orientation
-	local alignAttachment = Instance.new("Attachment")
-	alignAttachment.Name = "AlignAttachment"
-	alignAttachment.Parent = part
-
-	local alignOrientation = Instance.new("AlignOrientation")
-	alignOrientation.Name = "KeepOrientation"
-	alignOrientation.Attachment0 = alignAttachment
-	alignOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
-	alignOrientation.CFrame = part.CFrame - part.CFrame.Position
-	alignOrientation.MaxTorque = math.huge
-	alignOrientation.Responsiveness = 200
-	alignOrientation.Parent = part
-
-	-- Unanchor welded parts (Massless so they don't drag the assembly down)
-	for _, child in ipairs(part:GetChildren()) do
-		if child:IsA("WeldConstraint") then
-			local other = child.Part1
-			if other and other ~= part and other.Anchored then
-				other.Anchored = false
-				other.Massless = true
-			end
-		end
-	end
-end
+-- Moving platform ใช้ CFrame-based movement (anchored) เพื่อป้องกันการเอียง
+-- Player carrying logic อยู่ใน _startAnimationsInternal
 
 -- Internal: Setup disappearing platform
 function MapManager:_setupDisappearingPlatform(part: Part, mapData: MatchMapData)
@@ -537,18 +470,29 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 	mapData.animationConnection = RunService.Heartbeat:Connect(function(dt)
 		local time = os.clock()
 
-		-- Moving platforms (ใช้ PrismaticConstraint)
-		for _, part in ipairs(mapData.movingParts) do
+		-- Moving platforms (CFrame-based, anchored — ไม่เอียง)
+		for _, data in ipairs(mapData.movingParts) do
+			local part = data.part
 			if part.Parent then
-				local prismatic = part:FindFirstChild("MovementConstraint")
-				if prismatic and prismatic:IsA("PrismaticConstraint") then
-					local distance = part:GetAttribute("MoveDistance") or 10
-					local speed = part:GetAttribute("MoveSpeed") or 3
+				local axis = part:GetAttribute("MoveAxis") or "X"
+				local distance = part:GetAttribute("MoveDistance") or 10
+				local speed = part:GetAttribute("MoveSpeed") or 3
 
-					-- คำนวณตำแหน่งเป้าหมาย (oscillate)
-					local targetPosition = math.sin(time * speed) * distance
-					prismatic.TargetPosition = targetPosition
+				-- คำนวณ offset ตามแกน
+				local offset = math.sin(time * speed) * distance
+				local moveVector
+				if axis == "X" then
+					moveVector = Vector3.new(offset, 0, 0)
+				elseif axis == "Y" then
+					moveVector = Vector3.new(0, offset, 0)
+				else
+					moveVector = Vector3.new(0, 0, offset)
 				end
+
+				local newPos = data.originalPosition + moveVector
+
+				-- Move platform via CFrame (preserves orientation)
+				part.CFrame = data.originalCFrame - data.originalPosition + newPos
 			end
 		end
 

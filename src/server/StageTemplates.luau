@@ -266,9 +266,9 @@ function StageTemplates.createStage2(startPosition: Vector3): Model
 		
 		-- เพิ่ม attribute สำหรับ movement
 		platform:SetAttribute("IsMoving", true)
-		platform:SetAttribute("MoveAxis", if i % 2 == 0 then "X" else "Y")
-		platform:SetAttribute("MoveDistance", 10)
-		platform:SetAttribute("MoveSpeed", 3)
+		platform:SetAttribute("MoveAxis", if i % 2 == 0 then "X" else "Z")
+		platform:SetAttribute("MoveDistance", 6)
+		platform:SetAttribute("MoveSpeed", 2)
 		
 		platform.Parent = obstacles
 	end

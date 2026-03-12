@@ -263,12 +263,10 @@ local Config = {
 		LeaderstatsLoadDelay = 1,       -- วินาทีรอ leaderstats โหลด
 	},
 
-	-- Map Physics Settings
+	-- Map Settings
 	Map = {
 		StageGapStuds = 10,             -- ระยะห่างระหว่าง stage (studs)
 		FinishLineRadius = 8,           -- ระยะตรวจจับ finish line (studs)
-		PlatformServoForce = 1000000,   -- แรง servo ของ moving platform
-		PlatformServoSpeed = 50,        -- ความเร็ว servo ของ moving platform
 	},
 
 	-- Debug / Development Settings
