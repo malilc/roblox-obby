@@ -177,7 +177,7 @@ function ItemTestingUI:createItemButtons()
 	spawnDummyButton.Size = UDim2.new(1, 0, 0, 45)
 	spawnDummyButton.BackgroundColor3 = Theme.BG_ELEVATED
 	spawnDummyButton.Text = "🤖 Spawn Test Dummy"
-	spawnDummyButton.TextColor3 = Theme.TEXT_ON_ACCENT
+	spawnDummyButton.TextColor3 = Theme.TEXT_PRIMARY
 	spawnDummyButton.TextSize = 15
 	spawnDummyButton.Font = Enum.Font.GothamBold
 	spawnDummyButton.LayoutOrder = layoutOrder + 51
@@ -198,7 +198,7 @@ function ItemTestingUI:createItemButtons()
 	removeDummyButton.Size = UDim2.new(1, 0, 0, 45)
 	removeDummyButton.BackgroundColor3 = Theme.BG_ELEVATED
 	removeDummyButton.Text = "❌ Remove All Dummies"
-	removeDummyButton.TextColor3 = Theme.TEXT_ON_ACCENT
+	removeDummyButton.TextColor3 = Theme.TEXT_PRIMARY
 	removeDummyButton.TextSize = 15
 	removeDummyButton.Font = Enum.Font.GothamBold
 	removeDummyButton.LayoutOrder = layoutOrder + 52
@@ -250,7 +250,7 @@ function ItemTestingUI:createItemButtons()
 	dailyLoginBtn.Size = UDim2.new(1, 0, 0, 45)
 	dailyLoginBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	dailyLoginBtn.Text = "\u{1F381} Reset Daily Login"
-	dailyLoginBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+	dailyLoginBtn.TextColor3 = Theme.TEXT_PRIMARY
 	dailyLoginBtn.TextSize = 15
 	dailyLoginBtn.Font = Enum.Font.GothamBold
 	dailyLoginBtn.LayoutOrder = layoutOrder + 102
@@ -293,7 +293,7 @@ function ItemTestingUI:createItemButtons()
 	soloWinsBtn.Size = UDim2.new(1, 0, 0, 45)
 	soloWinsBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	soloWinsBtn.Text = "🏆 Solo Wins: OFF"
-	soloWinsBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+	soloWinsBtn.TextColor3 = Theme.TEXT_PRIMARY
 	soloWinsBtn.TextSize = 15
 	soloWinsBtn.Font = Enum.Font.GothamBold
 	soloWinsBtn.LayoutOrder = layoutOrder + 201
@@ -310,7 +310,7 @@ function ItemTestingUI:createItemButtons()
 			soloWinsBtn.TextColor3 = Theme.MEDAL_GOLD
 		else
 			soloWinsBtn.Text = "🏆 Solo Wins: OFF"
-			soloWinsBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+			soloWinsBtn.TextColor3 = Theme.TEXT_PRIMARY
 		end
 		local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 		if remotes then
@@ -328,7 +328,7 @@ function ItemTestingUI:createItemButtons()
 	soloStartBtn.Size = UDim2.new(1, 0, 0, 45)
 	soloStartBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	soloStartBtn.Text = "🚀 Solo Start (Random)"
-	soloStartBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+	soloStartBtn.TextColor3 = Theme.TEXT_PRIMARY
 	soloStartBtn.TextSize = 15
 	soloStartBtn.Font = Enum.Font.GothamBold
 	soloStartBtn.LayoutOrder = layoutOrder + 202
@@ -386,7 +386,7 @@ function ItemTestingUI:createItemButtons()
 		addGemBtn.Size = UDim2.new(1, 0, 0, 38)
 		addGemBtn.BackgroundColor3 = Theme.BG_ELEVATED
 		addGemBtn.Text = "💎 +" .. amount .. " Gems"
-		addGemBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+		addGemBtn.TextColor3 = Theme.TEXT_PRIMARY
 		addGemBtn.TextSize = 15
 		addGemBtn.Font = Enum.Font.GothamBold
 		addGemBtn.LayoutOrder = layoutOrder + 252 + idx
@@ -448,7 +448,7 @@ function ItemTestingUI:createItemButtons()
 	setAllBtn.Size = UDim2.new(1, 0, 0, 45)
 	setAllBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	setAllBtn.Text = "⬆️ Set All Lv 20"
-	setAllBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+	setAllBtn.TextColor3 = Theme.TEXT_PRIMARY
 	setAllBtn.TextSize = 15
 	setAllBtn.Font = Enum.Font.GothamBold
 	setAllBtn.LayoutOrder = layoutOrder + 400
@@ -469,7 +469,7 @@ function ItemTestingUI:createItemButtons()
 	resetAllBtn.Size = UDim2.new(1, 0, 0, 45)
 	resetAllBtn.BackgroundColor3 = Theme.BG_ELEVATED
 	resetAllBtn.Text = "🔄 Reset All Lv 1"
-	resetAllBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+	resetAllBtn.TextColor3 = Theme.TEXT_PRIMARY
 	resetAllBtn.TextSize = 15
 	resetAllBtn.Font = Enum.Font.GothamBold
 	resetAllBtn.LayoutOrder = layoutOrder + 401
@@ -709,7 +709,12 @@ function ItemTestingUI:createItemButton(itemDef, layoutOrder: number): TextButto
 	local button = Instance.new("TextButton")
 	button.Name = itemDef.id .. "Button"
 	button.Size = UDim2.new(1, 0, 0, 50)
-	button.BackgroundColor3 = Color3.new(rarityColor.R * 0.3, rarityColor.G * 0.3, rarityColor.B * 0.3)
+	-- Light tint: mix rarity color with white for light theme
+	button.BackgroundColor3 = Color3.new(
+		0.9 + rarityColor.R * 0.1,
+		0.9 + rarityColor.G * 0.1,
+		0.9 + rarityColor.B * 0.1
+	)
 	button.Text = ""
 	button.LayoutOrder = layoutOrder
 	button.Parent = self.scrollFrame
@@ -768,15 +773,21 @@ function ItemTestingUI:createItemButton(itemDef, layoutOrder: number): TextButto
 	end)
 
 	-- Hover effect
+	local normalColor = button.BackgroundColor3
+	local hoverColor = Color3.new(
+		0.82 + rarityColor.R * 0.15,
+		0.82 + rarityColor.G * 0.15,
+		0.82 + rarityColor.B * 0.15
+	)
 	button.MouseEnter:Connect(function()
 		TweenService:Create(button, TweenInfo.new(0.1), {
-			BackgroundColor3 = Color3.new(rarityColor.R * 0.5, rarityColor.G * 0.5, rarityColor.B * 0.5)
+			BackgroundColor3 = hoverColor
 		}):Play()
 	end)
 
 	button.MouseLeave:Connect(function()
 		TweenService:Create(button, TweenInfo.new(0.1), {
-			BackgroundColor3 = Color3.new(rarityColor.R * 0.3, rarityColor.G * 0.3, rarityColor.B * 0.3)
+			BackgroundColor3 = normalColor
 		}):Play()
 	end)
 

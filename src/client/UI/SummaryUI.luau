@@ -173,7 +173,7 @@ function SummaryUI:createUI()
 	stagesContainer.Size = UDim2.new(1, -40, 0, 60)
 	stagesContainer.Position = UDim2.new(0, 20, 0, 108)
 	stagesContainer.BackgroundColor3 = Theme.BG_SURFACE
-	stagesContainer.BackgroundTransparency = 0.5
+	stagesContainer.BackgroundTransparency = 0.15
 	stagesContainer.BorderSizePixel = 0
 	stagesContainer.ZIndex = 51
 	stagesContainer.Parent = mainFrame
@@ -226,7 +226,7 @@ function SummaryUI:createUI()
 	statsContainer.Size = UDim2.new(1, -40, 0, 110)
 	statsContainer.Position = UDim2.new(0, 20, 0, 178)
 	statsContainer.BackgroundColor3 = Theme.BG_SURFACE
-	statsContainer.BackgroundTransparency = 0.5
+	statsContainer.BackgroundTransparency = 0.15
 	statsContainer.BorderSizePixel = 0
 	statsContainer.ZIndex = 51
 	statsContainer.Parent = mainFrame
@@ -268,23 +268,23 @@ function SummaryUI:createUI()
 		self.statsRows[config.key] = row
 	end
 
-	-- "1ST PLACE!" indicator (hidden by default, shown when isWin)
-	local winLabel = Instance.new("TextLabel")
-	winLabel.Name = "WinLabel"
-	winLabel.Size = UDim2.new(1, -20, 0, 26)
-	winLabel.Position = UDim2.new(0, 10, 0, 70)
-	winLabel.BackgroundTransparency = 1
-	winLabel.Text = "\u{1F451} 1ST PLACE!"
-	winLabel.TextColor3 = Theme.MEDAL_GOLD
-	winLabel.TextSize = 18
-	winLabel.Font = Enum.Font.GothamBlack
-	winLabel.TextStrokeColor3 = Color3.fromRGB(100, 70, 0)
-	winLabel.TextStrokeTransparency = 0.4
-	winLabel.TextXAlignment = Enum.TextXAlignment.Center
-	winLabel.ZIndex = 52
-	winLabel.Visible = false
-	winLabel.Parent = statsContainer
-	self.winLabel = winLabel
+	-- Rank indicator (shows finish position)
+	local rankLabel = Instance.new("TextLabel")
+	rankLabel.Name = "RankLabel"
+	rankLabel.Size = UDim2.new(1, -20, 0, 26)
+	rankLabel.Position = UDim2.new(0, 10, 0, 70)
+	rankLabel.BackgroundTransparency = 1
+	rankLabel.Text = ""
+	rankLabel.TextColor3 = Theme.MEDAL_GOLD
+	rankLabel.TextSize = 18
+	rankLabel.Font = Enum.Font.GothamBlack
+	rankLabel.TextStrokeColor3 = Color3.fromRGB(100, 70, 0)
+	rankLabel.TextStrokeTransparency = 0.4
+	rankLabel.TextXAlignment = Enum.TextXAlignment.Center
+	rankLabel.ZIndex = 52
+	rankLabel.Visible = false
+	rankLabel.Parent = statsContainer
+	self.rankLabel = rankLabel
 
 	-- "TOP 30%" indicator (hidden by default, shown when isTop30)
 	local top30Label = Instance.new("TextLabel")
@@ -308,7 +308,7 @@ function SummaryUI:createUI()
 	currencyContainer.Size = UDim2.new(1, -40, 0, 215)
 	currencyContainer.Position = UDim2.new(0, 20, 0, 298)
 	currencyContainer.BackgroundColor3 = Theme.BG_SURFACE
-	currencyContainer.BackgroundTransparency = 0.5
+	currencyContainer.BackgroundTransparency = 0.15
 	currencyContainer.BorderSizePixel = 0
 	currencyContainer.ZIndex = 51
 	currencyContainer.Parent = mainFrame
@@ -332,7 +332,7 @@ function SummaryUI:createUI()
 	currencyHeader.Position = UDim2.new(0, 0, 0, 4)
 	currencyHeader.BackgroundTransparency = 1
 	currencyHeader.Text = "\u{1F4B0} CURRENCY EARNED"
-	currencyHeader.TextColor3 = Theme.MEDAL_GOLD
+	currencyHeader.TextColor3 = Theme.darkenForText(Theme.MEDAL_GOLD, 0.45)
 	currencyHeader.TextSize = 13
 	currencyHeader.Font = Enum.Font.GothamBold
 	currencyHeader.ZIndex = 52
@@ -386,7 +386,7 @@ function SummaryUI:createUI()
 	totalLabel.Position = UDim2.new(0, 10, 0, 0)
 	totalLabel.BackgroundTransparency = 1
 	totalLabel.Text = "\u{2728} TOTAL EARNED"
-	totalLabel.TextColor3 = Theme.MEDAL_GOLD
+	totalLabel.TextColor3 = Theme.darkenForText(Theme.MEDAL_GOLD, 0.40)
 	totalLabel.TextSize = 15
 	totalLabel.Font = Enum.Font.GothamBlack
 	totalLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -399,7 +399,7 @@ function SummaryUI:createUI()
 	totalValue.Position = UDim2.new(0.55, 0, 0, 0)
 	totalValue.BackgroundTransparency = 1
 	totalValue.Text = "+0"
-	totalValue.TextColor3 = Theme.MEDAL_GOLD
+	totalValue.TextColor3 = Theme.darkenForText(Theme.MEDAL_GOLD, 0.40)
 	totalValue.TextSize = 20
 	totalValue.Font = Enum.Font.GothamBlack
 	totalValue.TextXAlignment = Enum.TextXAlignment.Right
@@ -564,7 +564,7 @@ function SummaryUI:createCurrencyRow(key: string, labelText: string, index: numb
 	value.Position = UDim2.new(0.7, 0, 0, 0)
 	value.BackgroundTransparency = 1
 	value.Text = "+0"
-	value.TextColor3 = Theme.MEDAL_GOLD
+	value.TextColor3 = Theme.darkenForText(Theme.MEDAL_GOLD, 0.40)
 	value.TextSize = 15
 	value.Font = Enum.Font.GothamBold
 	value.TextXAlignment = Enum.TextXAlignment.Right
@@ -656,16 +656,49 @@ function SummaryUI:show(data: {gemsEarned: number, timeSpent: number, coinsColle
 		tag.Parent = self.stagesList
 	end
 
-	-- Show/hide win and top30 indicators
-	self.winLabel.Visible = data.isWin == true
-	self.top30Label.Visible = data.isTop30 == true
+	-- Show rank indicator
+	local pos = data.finishPosition or 0
+	local total = data.totalRacers or 1
+	if pos > 0 then
+		local suffix = "TH"
+		if pos == 1 then suffix = "ST"
+		elseif pos == 2 then suffix = "ND"
+		elseif pos == 3 then suffix = "RD"
+		end
 
-	-- Show and animate overlay
-	self.overlay.BackgroundTransparency = 1
-	self.overlay.Visible = true
-	TweenService:Create(self.overlay, TweenInfo.new(0.25), {
-		BackgroundTransparency = 0.55
-	}):Play()
+		local medal = ""
+		local rankColor = Theme.TEXT_PRIMARY
+		if pos == 1 then
+			medal = "\u{1F947} "
+			rankColor = Theme.MEDAL_GOLD
+			self.rankLabel.TextStrokeColor3 = Color3.fromRGB(100, 70, 0)
+		elseif pos == 2 then
+			medal = "\u{1F948} "
+			rankColor = Theme.MEDAL_SILVER
+			self.rankLabel.TextStrokeColor3 = Color3.fromRGB(60, 60, 70)
+		elseif pos == 3 then
+			medal = "\u{1F949} "
+			rankColor = Theme.MEDAL_BRONZE
+			self.rankLabel.TextStrokeColor3 = Color3.fromRGB(80, 50, 20)
+		else
+			medal = "#"
+			rankColor = Theme.TEXT_PRIMARY
+			self.rankLabel.TextStrokeColor3 = Color3.fromRGB(30, 30, 40)
+		end
+
+		if pos <= 3 then
+			self.rankLabel.Text = medal .. pos .. suffix .. " PLACE!"
+		else
+			self.rankLabel.Text = medal .. pos .. suffix .. " / " .. total .. " players"
+		end
+		self.rankLabel.TextColor3 = rankColor
+		self.rankLabel.Visible = true
+	else
+		self.rankLabel.Visible = false
+	end
+
+	-- Show top30 indicator
+	self.top30Label.Visible = data.isTop30 == true
 
 	-- Reset and show frame
 	self.mainFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -773,23 +806,23 @@ function SummaryUI:animateStats(data: {gemsEarned: number, timeSpent: number, is
 		end
 	end)
 
-	-- Animate "1ST PLACE!" label with gold glow pulse
-	if data.isWin then
+	-- Animate rank label with glow pulse
+	if (data.finishPosition or 0) > 0 then
 		task.delay(0.2, function()
-			if self.winLabel.Visible then
-				self.winLabel.TextSize = 12
-				TweenService:Create(self.winLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+			if self.rankLabel.Visible then
+				self.rankLabel.TextSize = 12
+				TweenService:Create(self.rankLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
 					TextSize = 18
 				}):Play()
 
 				-- Glow pulse loop
 				task.spawn(function()
-					while self.isVisible and self.winLabel.Visible do
-						TweenService:Create(self.winLabel, TweenInfo.new(0.6), {
+					while self.isVisible and self.rankLabel.Visible do
+						TweenService:Create(self.rankLabel, TweenInfo.new(0.6), {
 							TextStrokeTransparency = 0.2
 						}):Play()
 						task.wait(0.6)
-						TweenService:Create(self.winLabel, TweenInfo.new(0.6), {
+						TweenService:Create(self.rankLabel, TweenInfo.new(0.6), {
 							TextStrokeTransparency = 0.6
 						}):Play()
 						task.wait(0.6)
@@ -904,7 +937,7 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 
 		TweenService:Create(self.totalValueLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
 			TextSize = 20,
-			TextColor3 = Theme.MEDAL_GOLD
+			TextColor3 = Theme.darkenForText(Theme.MEDAL_GOLD, 0.40)
 		}):Play()
 	end)
 end
@@ -912,11 +945,6 @@ end
 function SummaryUI:hide()
 	if not self.isVisible then return end
 	self.isVisible = false
-
-	-- Fade overlay
-	TweenService:Create(self.overlay, TweenInfo.new(0.25), {
-		BackgroundTransparency = 1
-	}):Play()
 
 	-- Scale out animation
 	local scaleOut = TweenService:Create(self.mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
@@ -926,7 +954,6 @@ function SummaryUI:hide()
 
 	scaleOut.Completed:Connect(function()
 		self.mainFrame.Visible = false
-		self.overlay.Visible = false
 	end)
 end
 

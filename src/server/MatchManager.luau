@@ -52,9 +52,12 @@ function MatchManager.new(gameManager: any?)
 	-- Stage voting remotes
 	self.voteStagesRemote = ReplicatedStorage.Remotes.VoteStages
 	self.stageVoteUpdateRemote = ReplicatedStorage.Remotes.StageVoteUpdate
-	
+
+	-- Host start remote
+	self.hostStartMatchRemote = ReplicatedStorage.Remotes.HostStartMatch
+
 	self:setupRemotes()
-	
+
 	return self
 end
 
@@ -75,6 +78,11 @@ function MatchManager:setupRemotes()
 	-- Stage voting
 	self.voteStagesRemote.OnServerEvent:Connect(function(player, stageOrder)
 		self:handleStageVote(player, stageOrder)
+	end)
+
+	-- Host starts the match
+	self.hostStartMatchRemote.OnServerEvent:Connect(function(player)
+		self:hostStartMatch(player)
 	end)
 end
 
@@ -123,12 +131,10 @@ function MatchManager:createRoom(host: Player, settings: {stageOrder: {number}?}
 	
 	-- Notify host
 	self:broadcastRoomUpdate(room)
-	
-	-- Auto-start timer for testing mode
-	if Config.Match.IsTestingMode then
-		self:startWaitTimer(roomId)
-	end
-	
+
+	-- Broadcast updated room list to lobby players
+	self:broadcastRoomListToLobby()
+
 	return roomId
 end
 
@@ -167,10 +173,13 @@ function MatchManager:joinRoom(player: Player, roomId: string): boolean
 	}
 	
 	Logger.debug("MatchManager", player.Name, "joined room", roomId)
-	
+
 	-- Notify all players in room
 	self:broadcastRoomUpdate(room)
-	
+
+	-- Broadcast updated room list to lobby players
+	self:broadcastRoomListToLobby()
+
 	return true
 end
 
@@ -204,6 +213,8 @@ function MatchManager:leaveRoom(player: Player)
 	else
 		-- Notify remaining players
 		self:broadcastRoomUpdate(room)
+		-- Broadcast updated room list to lobby players
+		self:broadcastRoomListToLobby()
 	end
 end
 
@@ -212,9 +223,11 @@ function MatchManager:closeRoom(roomId: string)
 	local room = self.rooms[roomId]
 	if not room then return end
 	
-	-- Clear all player mappings
+	-- Clear player mappings (only if still pointing to this room)
 	for _, player in ipairs(room.players) do
-		self.playerRooms[player] = nil
+		if self.playerRooms[player] == roomId then
+			self.playerRooms[player] = nil
+		end
 	end
 	
 	self.rooms[roomId] = nil
@@ -225,6 +238,9 @@ function MatchManager:closeRoom(roomId: string)
 	end
 
 	Logger.info("MatchManager", "Room closed:", roomId)
+
+	-- Broadcast updated room list to lobby players
+	self:broadcastRoomListToLobby()
 end
 
 -- Start wait timer
@@ -259,16 +275,17 @@ function MatchManager:startWaitTimer(roomId: string)
 	end)
 end
 
--- Start the match
+-- Start the match (fire MatchStart to clients, set state to Starting)
+-- NOTE: Does NOT auto-transition to Racing. Call beginRacing() after countdown.
 function MatchManager:startMatch(roomId: string)
 	local room = self.rooms[roomId]
 	if not room then return end
 	if room.state ~= "Waiting" then return end
-	
+
 	room.state = "Starting"
 	Logger.info("MatchManager", "Starting match in room", roomId, "with", #room.players, "players")
-	
-	-- Notify all players
+
+	-- Notify all players (hides lobby UI on client)
 	for _, player in ipairs(room.players) do
 		self.matchStartRemote:FireClient(player, {
 			roomId = roomId,
@@ -276,17 +293,47 @@ function MatchManager:startMatch(roomId: string)
 			stageOrder = room.stageOrder,
 		})
 	end
-	
-	-- Let GameManager handle the actual game start
-	if self.gameManager then
-		task.delay(0.5, function()
-			room.state = "Racing"
-			room.startTime = os.clock()
-			room.timeRemaining = Config.Match.TimeLimit
-			
-			-- Start race timer
-			self:startRaceTimer(roomId)
-		end)
+
+	-- Broadcast updated room list (room no longer Waiting)
+	self:broadcastRoomListToLobby()
+end
+
+-- Transition to Racing state (called by GameManager after countdown)
+function MatchManager:beginRacing(roomId: string)
+	local room = self.rooms[roomId]
+	if not room or room.state ~= "Starting" then return end
+
+	room.state = "Racing"
+	room.startTime = os.clock()
+	room.timeRemaining = Config.Match.TimeLimit
+
+	-- Start race timer
+	self:startRaceTimer(roomId)
+end
+
+-- Host starts the match
+function MatchManager:hostStartMatch(player: Player)
+	local roomId = self.playerRooms[player]
+	if not roomId then return end
+
+	local room = self.rooms[roomId]
+	if not room then return end
+
+	if room.host ~= player then
+		Logger.warn("MatchManager", player.Name, "tried to start match but is not host")
+		return
+	end
+
+	if room.state ~= "Waiting" then return end
+
+	-- Calculate final stage order
+	local stageOrder = self:getStageOrderForMatch(roomId)
+
+	Logger.info("MatchManager", "Host", player.Name, "starting match in room", roomId)
+
+	-- Tell GameManager to start the match for all players
+	if self.gameManager and self.gameManager.startMatchGame then
+		self.gameManager:startMatchGame(roomId, stageOrder)
 	end
 end
 
@@ -294,15 +341,34 @@ end
 function MatchManager:startRaceTimer(roomId: string)
 	local room = self.rooms[roomId]
 	if not room then return end
-	
+
 	task.spawn(function()
+		-- Broadcast initial state (full time) immediately
+		self:broadcastRaceUpdate(room)
+
 		while room and room.state == "Racing" do
 			if not self.rooms[roomId] then break end
 
-			-- Broadcast race update every second (rankings only, no timer)
-			self:broadcastRaceUpdate(room)
-
 			task.wait(1)
+
+			-- Decrement time after waiting
+			room.timeRemaining = (room.timeRemaining or Config.Match.TimeLimit) - 1
+
+			-- Check time warnings
+			for _, warningTime in ipairs(Config.Match.TimeWarnings) do
+				if room.timeRemaining == warningTime then
+					self:sendTimeWarning(room, warningTime)
+				end
+			end
+
+			-- Check timeout
+			if room.timeRemaining <= 0 then
+				self:endMatch(roomId, "timeout")
+				return
+			end
+
+			-- Broadcast race update every second
+			self:broadcastRaceUpdate(room)
 		end
 	end)
 end
@@ -375,6 +441,8 @@ function MatchManager:broadcastRaceUpdate(room: MatchRoom)
 			yourRank = playerRank,
 			totalPlayers = #room.players,
 			finishedCount = #room.finishOrder,
+			finishCountdown = room.finishCountdown,
+			timeRemaining = room.timeRemaining,
 		})
 	end
 end
@@ -451,8 +519,37 @@ function MatchManager:playerFinished(player: Player)
 		-- Check if all players finished
 		if #room.finishOrder >= #room.players then
 			self:endMatch(roomId, "allFinished")
+		elseif #room.finishOrder == 1 and #room.players > 1 then
+			-- First finisher in multiplayer: start 30-second countdown
+			self:startFinishCountdown(roomId)
 		end
 	end
+end
+
+-- Start 30-second countdown after first player finishes (multiplayer)
+function MatchManager:startFinishCountdown(roomId: string)
+	local room = self.rooms[roomId]
+	if not room or room.state ~= "Racing" then return end
+
+	room.finishCountdown = 30
+
+	task.spawn(function()
+		while room.finishCountdown > 0 and room.state == "Racing" do
+			task.wait(1)
+			if not self.rooms[roomId] then return end
+			room.finishCountdown = room.finishCountdown - 1
+
+			-- Check if all finished during countdown
+			if #room.finishOrder >= #room.players then
+				return -- endMatch already called by playerFinished
+			end
+		end
+
+		-- Countdown finished - end match for remaining players
+		if room.state == "Racing" then
+			self:endMatch(roomId, "finishCountdown")
+		end
+	end)
 end
 
 -- End the match
@@ -463,7 +560,16 @@ function MatchManager:endMatch(roomId: string, reason: string)
 	
 	room.state = "Finished"
 	Logger.info("MatchManager", "Match ended:", roomId, "- Reason:", reason)
-	
+
+	-- Mark all still-Playing players as Finished to prevent further processing
+	if self.gameManager then
+		for _, player in ipairs(room.players) do
+			if self.gameManager.playerStates[player] == "Playing" then
+				self.gameManager.playerStates[player] = "Finished"
+			end
+		end
+	end
+
 	-- Calculate final rankings
 	local rankings = self:calculateRankings(room)
 	local results = {}
@@ -488,13 +594,15 @@ function MatchManager:endMatch(roomId: string, reason: string)
 		})
 	end
 	
-	-- Teleport spectating/finished players back to lobby, then clean up
+	-- Teleport all players back to lobby after delay
 	task.delay(8, function()
 		if self.gameManager then
 			for _, player in ipairs(room.players) do
-				local state = self.gameManager.playerStates[player]
-				if state == "Spectating" or state == "Finished" then
-					self.gameManager:onSpectatorLeave(player)
+				if player.Parent and self.gameManager.playerStates[player] ~= "Lobby" then
+					self.gameManager:teleportToLobby(player)
+					task.delay(Config.Timing.TeleportFlagClearDelay, function()
+						self.gameManager.teleportingToLobby[player] = nil
+					end)
 				end
 			end
 		end
@@ -524,7 +632,7 @@ function MatchManager:getPlayerRoom(player: Player): MatchRoom?
 	return nil
 end
 
--- Get all active rooms
+-- Get all active rooms (Waiting state)
 function MatchManager:getActiveRooms(): {MatchRoom}
 	local activeRooms = {}
 	for _, room in pairs(self.rooms) do
@@ -533,6 +641,16 @@ function MatchManager:getActiveRooms(): {MatchRoom}
 		end
 	end
 	return activeRooms
+end
+
+-- Get any non-finished room (Waiting, Starting, or Racing)
+function MatchManager:getAnyActiveRoom(): MatchRoom?
+	for _, room in pairs(self.rooms) do
+		if room.state ~= "Finished" then
+			return room
+		end
+	end
+	return nil
 end
 
 -- Check if player is in a match
@@ -615,7 +733,18 @@ function MatchManager:calculateFinalStageOrder(room: MatchRoom): {number}
 	if next(room.stageVotes) == nil then
 		return self:shuffleAllStages()
 	end
-	
+
+	-- If only 1 voter, use their exact order
+	local voterCount = 0
+	local singleVote = nil
+	for _, vote in pairs(room.stageVotes) do
+		voterCount = voterCount + 1
+		singleVote = vote
+	end
+	if voterCount == 1 and singleVote then
+		return singleVote
+	end
+
 	-- Count votes for each stage
 	local stageCounts = {}
 	for i = 1, Config.Stages.TotalCount do
@@ -704,6 +833,40 @@ function MatchManager:setStageOrderForMatch(roomId: string, stageOrder: {number}
 	if room then
 		room.selectedStageOrder = stageOrder
 		room.stageOrder = stageOrder
+	end
+end
+
+-- ============================================
+-- ROOM LIST BROADCAST
+-- ============================================
+
+-- Get list of active rooms for lobby display (Waiting + Racing)
+function MatchManager:getWaitingRoomsList(): {{id: string, hostName: string, playerCount: number, maxPlayers: number, state: string}}
+	local list = {}
+	for _, room in pairs(self.rooms) do
+		if room.state ~= "Finished" then
+			table.insert(list, {
+				id = room.id,
+				hostName = room.host.Name,
+				playerCount = #room.players,
+				maxPlayers = Config.Match.MaxPlayers,
+				state = room.state,
+			})
+		end
+	end
+	return list
+end
+
+-- Broadcast available rooms to all lobby players (not in a room)
+function MatchManager:broadcastRoomListToLobby()
+	local rooms = self:getWaitingRoomsList()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if not self.playerRooms[player] then
+			self.matchUpdateRemote:FireClient(player, {
+				type = "roomList",
+				rooms = rooms,
+			})
+		end
 	end
 end
 

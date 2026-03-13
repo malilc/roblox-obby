@@ -72,27 +72,6 @@ function TutorialUI:createUI()
 		helpButton.Visible = false
 	end
 
-	-- === Hint label (ผู้เล่นใหม่) ===
-	local hintLabel = Instance.new("TextLabel")
-	hintLabel.Name = "TutorialHint"
-	hintLabel.Size = UDim2.new(0, 130, 0, 28)
-	hintLabel.Position = UDim2.new(0, 58, 0, 246)
-	hintLabel.BackgroundColor3 = Theme.BG_BASE
-	hintLabel.BackgroundTransparency = 0.2
-	hintLabel.Text = "  Tap ? for help!"
-	hintLabel.TextColor3 = Theme.darkenForText(Theme.ACCENT_CYAN, 0.45)
-	hintLabel.TextSize = 13
-	hintLabel.Font = Enum.Font.GothamBold
-	hintLabel.TextXAlignment = Enum.TextXAlignment.Left
-	hintLabel.Visible = false
-	hintLabel.ZIndex = 5
-	hintLabel.Parent = self.parent
-	self.hintLabel = hintLabel
-
-	local hintCorner = Instance.new("UICorner")
-	hintCorner.CornerRadius = Theme.CORNER_SM
-	hintCorner.Parent = hintLabel
-
 	-- === Main Panel (directly on ScreenGui, no overlay) ===
 	local panel = Instance.new("Frame")
 	panel.Name = "TutorialPanel"
@@ -316,7 +295,6 @@ function TutorialUI:show()
 	-- Mark tutorial as seen
 	if not self.hasSeenTutorial then
 		self.hasSeenTutorial = true
-		self.hintLabel.Visible = false
 		local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 		local tutorialSeen = remotes and remotes:FindFirstChild("TutorialSeen")
 		if tutorialSeen then
@@ -343,25 +321,6 @@ function TutorialUI:hide()
 	end)
 end
 
-function TutorialUI:showHint()
-	self.hintLabel.Visible = true
-	self.hintLabel.TextTransparency = 0
-
-	local duration = Config.Tutorial and Config.Tutorial.HintDuration or 8
-	task.delay(duration, function()
-		if self.hintLabel.Visible then
-			TweenService:Create(self.hintLabel, TweenInfo.new(0.5), {
-				TextTransparency = 1,
-				BackgroundTransparency = 1,
-			}):Play()
-
-			task.delay(0.5, function()
-				self.hintLabel.Visible = false
-			end)
-		end
-	end)
-end
-
 function TutorialUI:setupRemotes()
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
 	local updateCurrency = remotes:WaitForChild("UpdateCurrency")
@@ -369,9 +328,6 @@ function TutorialUI:setupRemotes()
 	updateCurrency.OnClientEvent:Connect(function(data)
 		if data.hasSeenTutorial ~= nil then
 			self.hasSeenTutorial = data.hasSeenTutorial
-			if not self.hasSeenTutorial then
-				self:showHint()
-			end
 		end
 	end)
 end

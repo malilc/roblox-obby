@@ -82,6 +82,10 @@ function GameManager.new()
 		showStageSelectionRemote = self.showStageSelectionRemote,
 		hideStageSelectionRemote = self.hideStageSelectionRemote,
 		startGameWithOrder = function(player, stageOrder) self:startGameWithOrder(player, stageOrder) end,
+		createMatchRoom = function(player, stageOrder) self:createMatchRoom(player, stageOrder) end,
+		getAnyActiveRoom = function() return self.matchManager:getAnyActiveRoom() end,
+		joinMatchRoom = function(player, roomId) self:joinMatchRoom(player, roomId) end,
+		spectateMatchRoom = function(player) self:spectateMatchRoom(player) end,
 	})
 
 	-- Shop Zone Manager
@@ -529,17 +533,22 @@ function GameManager:onPlayerFinished(player: Player)
 			isWin = true
 			self.currencyManager:addWin(player)
 		end
-	elseif self.soloWinsEnabled[player] then
-		-- Debug: solo wins mode — treat finish as a win
+	else
+		-- Solo play: always 1st of 1
 		finishPosition = 1
-		isWin = true
-		self.currencyManager:addWin(player)
+		totalPlayers = 1
 
-		-- Top 30% bonus (denominator = all players in match)
-		local cutoff = math.max(1, math.ceil(totalPlayers * 0.30))
-		isTop30 = finishPosition <= cutoff
-		if isTop30 then
-			self.currencyManager:addGems(player, gemsConfig.Top30Bonus or 5, "Top30Bonus")
+		if self.soloWinsEnabled[player] then
+			-- Debug: solo wins mode — treat finish as a win
+			isWin = true
+			self.currencyManager:addWin(player)
+
+			-- Top 30% bonus (denominator = all players in match)
+			local cutoff = math.max(1, math.ceil(totalPlayers * 0.30))
+			isTop30 = finishPosition <= cutoff
+			if isTop30 then
+				self.currencyManager:addGems(player, gemsConfig.Top30Bonus or 5, "Top30Bonus")
+			end
 		end
 	end
 
@@ -837,9 +846,10 @@ function GameManager:teleportToLobby(player: Player)
 	-- Clear checkpoint
 	self.playerCheckpoints[player] = nil
 	
-	-- Clear match ID (player leaves match when returning to lobby)
+	-- Clear match ID and room mapping (player leaves match when returning to lobby)
 	local matchId = self.playerMatchIds[player]
 	self.playerMatchIds[player] = nil
+	self.matchManager.playerRooms[player] = nil
 
 	-- Use Config position directly for more reliable teleport
 	local targetPosition = Config.Lobby.SpawnPosition
@@ -1044,6 +1054,123 @@ end
 -- Get match ID for player (public accessor)
 function GameManager:getPlayerMatchId(player: Player): string?
 	return self.playerMatchIds[player]
+end
+
+-- ============================================
+-- WAITING ROOM / MATCH GAME START
+-- ============================================
+
+-- Join an existing waiting room (auto-join when room exists)
+function GameManager:joinMatchRoom(player: Player, roomId: string)
+	if self.matchManager:isPlayerInMatch(player) then
+		Logger.warn("GameManager", player.Name, "already in a room")
+		return
+	end
+
+	local joined = self.matchManager:joinRoom(player, roomId)
+	if joined then
+		Logger.info("GameManager", player.Name, "auto-joined room", roomId)
+	end
+end
+
+-- Enter spectator mode for a match in progress
+function GameManager:spectateMatchRoom(player: Player)
+	if self.playerStates[player] ~= "Lobby" then return end
+
+	self.spectatorManager:onPlayerSpectate(player)
+	Logger.info("GameManager", player.Name, "entered spectator mode from lobby")
+end
+
+-- Create a match room (waiting room) after stage selection
+-- If a waiting room already exists, auto-join instead of creating
+function GameManager:createMatchRoom(player: Player, stageOrder: {number})
+	-- Check if player is already in a room
+	if self.matchManager:isPlayerInMatch(player) then
+		Logger.warn("GameManager", player.Name, "already in a room")
+		return
+	end
+
+	-- Check if there's already a waiting room → join it instead
+	local existingRoom = self.matchManager:getAnyActiveRoom()
+	if existingRoom and existingRoom.state == "Waiting" then
+		local joined = self.matchManager:joinRoom(player, existingRoom.id)
+		if joined then
+			-- Submit stage vote for the existing room
+			self.matchManager:handleStageVote(player, stageOrder)
+			Logger.info("GameManager", player.Name, "joined existing room", existingRoom.id)
+		end
+		return
+	elseif existingRoom and (existingRoom.state == "Starting" or existingRoom.state == "Racing") then
+		-- Match in progress, enter spectator mode
+		self:spectateMatchRoom(player)
+		return
+	end
+
+	-- No room exists, create a new one
+	local roomId = self.matchManager:createRoom(player, {stageOrder = stageOrder})
+	if roomId then
+		-- Store the stage vote
+		self.matchManager:handleStageVote(player, stageOrder)
+		Logger.info("GameManager", player.Name, "created waiting room", roomId)
+	end
+end
+
+-- Start the match for ALL players in a room (called by MatchManager when host starts)
+function GameManager:startMatchGame(roomId: string, stageOrder: {number})
+	local room = self.matchManager:getRoom(roomId)
+	if not room or room.state ~= "Waiting" then return end
+
+	local players = {}
+	for _, p in ipairs(room.players) do
+		table.insert(players, p)
+	end
+
+	-- Set match IDs for all players
+	for _, player in ipairs(players) do
+		self.playerMatchIds[player] = roomId
+	end
+
+	-- Set stage order and generate instanced map
+	self.matchManager:setStageOrderForMatch(roomId, stageOrder)
+	self.mapManager:generateMapForMatch(roomId, stageOrder)
+	self:setupKillPartsForMatch(roomId)
+	self:setupFinishLineForMatch(roomId)
+
+	local pickups = self.mapManager:getAllItemPickupsForMatch(roomId)
+	self.itemManager:setupItemPickups(pickups)
+
+	-- Transition to Starting (fires MatchStart to clients = hides lobby UI)
+	self.matchManager:startMatch(roomId)
+
+	-- Countdown + start game for all players
+	task.spawn(function()
+		local totalStages = #stageOrder
+		if totalStages == 0 then totalStages = Config.Stages.SelectionCount end
+
+		-- 3-2-1 countdown
+		for i = 3, 1, -1 do
+			for _, player in ipairs(players) do
+				if player.Parent then
+					self.countdownUpdateRemote:FireClient(player, {
+						number = i,
+						message = if i > 1 then "Starting..." else "GO!",
+						totalStages = totalStages,
+					})
+				end
+			end
+			task.wait(1)
+		end
+
+		-- Transition to Racing
+		self.matchManager:beginRacing(roomId)
+
+		-- Start game for all players
+		for _, player in ipairs(players) do
+			if player.Parent then
+				self:startGameForPlayer(player)
+			end
+		end
+	end)
 end
 
 return GameManager

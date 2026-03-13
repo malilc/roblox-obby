@@ -40,6 +40,13 @@ function DailyBonusUI.new(parent: ScreenGui, callbacks: {hideHudButton: boolean?
 			self.lastData = data
 			self:_updateHudButton(data)
 			if data.claimed then
+				-- Wait for Update Log to close first (avoid overlap)
+				local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
+				if pg then
+					while pg:FindFirstChild("UpdateLogGui") do
+						task.wait(0.5)
+					end
+				end
 				self:showCalendar(data)
 			end
 		end)

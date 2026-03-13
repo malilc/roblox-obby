@@ -160,6 +160,18 @@
         },
         "CheckGamePass": {
           "$className": "RemoteEvent"
+        },
+        "HostStartMatch": {
+          "$className": "RemoteEvent"
+        },
+        "DismissPromo": {
+          "$className": "RemoteEvent"
+        },
+        "SetActiveTrail": {
+          "$className": "RemoteEvent"
+        },
+        "TrailUpdate": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {
@@ -500,6 +512,11 @@
     "SoundService": {
       "$properties": {
         "RespectFilteringEnabled": true
+      }
+    },
+    "ReplicatedFirst": {
+      "Loading": {
+        "$path": "src/loading"
       }
     },
     "StarterGui": {

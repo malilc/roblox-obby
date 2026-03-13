@@ -25,7 +25,7 @@ local PANEL_Y_OFFSET = -math.floor(PANEL_H / 2) -- vertically centered
 local BUTTONS = {
 	{ id = "Shop",     icon = "\u{1F6D2}", label = "Shop",     color = Theme.ACCENT_CYAN },
 	{ id = "Classes",  icon = "\u{2694}",  label = "Classes",  color = Theme.SUCCESS },
-	{ id = "Titles",   icon = "\u{1F4CB}", label = "Titles",   color = Theme.ACCENT_PINK },
+	{ id = "Titles",   icon = "\u{2B50}",  label = "Collection", color = Theme.ACCENT_PINK },
 	{ id = "Daily",    icon = "\u{1F381}", label = "Daily",    color = Theme.PRIMARY },
 	{ id = "Help",     icon = "\u{2753}",  label = "Help",     color = Theme.INFO },
 	{ id = "Settings", icon = "\u{2699}",  label = "Settings", color = Theme.TEXT_MUTED },

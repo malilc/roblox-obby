@@ -1,5 +1,41 @@
 -- Game Configuration
 local Config = {
+	-- Update log version (bump this to re-show update log to all players)
+	PromoVersion = "1.0",
+
+	-- Update log entries (newest first — shown in scrollable panel)
+	UpdateLog = {
+		{
+			version = "1.0",
+			title = "Launch Update",
+			notes = {
+				{heading = "Match System", items = {
+					"Create & join match rooms with other players",
+					"Auto-join waiting rooms from the selection zone",
+					"Host can start the match when ready",
+					"Stage voting system for multiplayer",
+				}},
+				{heading = "Race Features", items = {
+					"15-minute race timer with time warnings",
+					"30-second finish countdown after 1st place",
+					"Live rankings display during races",
+					"Spectator mode for finished players",
+				}},
+				{heading = "Classes & Items", items = {
+					"8 unique character classes with special powers",
+					"Ultimate skills: Sprint, Double Jump, Iron Will",
+					"Mario Kart-style items to boost or sabotage",
+					"Class mastery system with unlockable titles",
+				}},
+				{heading = "Progression", items = {
+					"Gems & Wins tracking with leaderboards",
+					"Daily login rewards (7-day streak)",
+					"Shop with item purchases & class gacha",
+				}},
+			},
+		},
+	},
+
 	-- Lobby Settings
 	Lobby = {
 		SpawnPosition = Vector3.new(0, 102, -8),
@@ -9,7 +45,7 @@ local Config = {
 	-- Match Settings (Multiplayer Race)
 	Match = {
 		MinPlayers = 1,        -- Solo testing enabled
-		MaxPlayers = 16,       -- Maximum players per match
+		MaxPlayers = 24,       -- Maximum players per match
 		WaitTime = 3,          -- Testing: 3 วิ, Production: 30-60 วิ
 		IsTestingMode = true,  -- Toggle สำหรับ testing
 		TimeLimit = 900,       -- 15 นาที (900 วินาที) per match
@@ -132,7 +168,7 @@ local Config = {
 		PerStageXP = 20,
 		FinishBonusXP = 60,
 		-- Ultimate skill unlock level
-		UltimateUnlockLevel = 20,
+		UltimateUnlockLevel = 10,
 		-- Ultimate skills configuration
 		UltimateSkills = {
 			Runner = {
@@ -178,31 +214,27 @@ local Config = {
 				frameColor = Color3.fromRGB(220, 170, 70),
 			},
 		},
-		-- Cosmetic-only rewards (no gameplay power)
+		-- Mastery rewards (Skill is gameplay, Title/Trail are cosmetic)
 		Rewards = {
 			Normal = {
-				{id = "normal_title_balanced_cadet", level = 5, rewardType = "Title", rarity = "Common", name = "Balanced Cadet", description = "Title for mastering the basics"},
-				{id = "normal_trail_calm_flow", level = 10, rewardType = "Trail", rarity = "Rare", name = "Calm Flow", description = "Soft white trail effect"},
-				{id = "normal_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Normal Specialist", description = "Profile badge for Normal mastery"},
-				{id = "normal_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Normal Master Frame", description = "Class card frame for max Normal mastery"},
+				-- No skill — Normal is the free basic class
+				{id = "normal_title_balanced_cadet", level = 15, rewardType = "Title", rarity = "Epic", name = "Balanced Cadet", description = "Title for mastering the basics"},
+				{id = "normal_trail_calm_flow", level = 20, rewardType = "Trail", rarity = "Legendary", name = "Calm Flow", description = "Soft white trail effect"},
 			},
 			Runner = {
-				{id = "runner_title_quickstep", level = 5, rewardType = "Title", rarity = "Common", name = "Quickstep", description = "Title for speed-focused players"},
-				{id = "runner_trail_speed_streak", level = 10, rewardType = "Trail", rarity = "Rare", name = "Speed Streak", description = "Fast blue streak trail"},
-				{id = "runner_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Runner Specialist", description = "Profile badge for Runner mastery"},
-				{id = "runner_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Runner Master Frame", description = "Class card frame for max Runner mastery"},
+				{id = "runner_skill_sprint", level = 10, rewardType = "Skill", rarity = "Rare", name = "Sprint", description = "Press Shift to run 50% faster for 3 seconds"},
+				{id = "runner_title_quickstep", level = 15, rewardType = "Title", rarity = "Epic", name = "Quickstep", description = "Title for speed-focused players"},
+				{id = "runner_trail_speed_streak", level = 20, rewardType = "Trail", rarity = "Legendary", name = "Speed Streak", description = "Fast blue streak trail"},
 			},
 			Jumper = {
-				{id = "jumper_title_skybound", level = 5, rewardType = "Title", rarity = "Common", name = "Skybound", description = "Title for aerial control specialists"},
-				{id = "jumper_trail_arc_glow", level = 10, rewardType = "Trail", rarity = "Rare", name = "Arc Glow", description = "Light green arc-like trail"},
-				{id = "jumper_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Jumper Specialist", description = "Profile badge for Jumper mastery"},
-				{id = "jumper_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Jumper Master Frame", description = "Class card frame for max Jumper mastery"},
+				{id = "jumper_skill_doublejump", level = 10, rewardType = "Skill", rarity = "Rare", name = "Double Jump", description = "Jump again in mid-air"},
+				{id = "jumper_title_skybound", level = 15, rewardType = "Title", rarity = "Epic", name = "Skybound", description = "Title for aerial control specialists"},
+				{id = "jumper_trail_arc_glow", level = 20, rewardType = "Trail", rarity = "Legendary", name = "Arc Glow", description = "Light green arc-like trail"},
 			},
 			Tank = {
-				{id = "tank_title_iron_stance", level = 5, rewardType = "Title", rarity = "Common", name = "Iron Stance", description = "Title for durable playstyle"},
-				{id = "tank_trail_heavy_pulse", level = 10, rewardType = "Trail", rarity = "Rare", name = "Heavy Pulse", description = "Dense gold pulse trail"},
-				{id = "tank_badge_specialist", level = 15, rewardType = "Badge", rarity = "Epic", name = "Tank Specialist", description = "Profile badge for Tank mastery"},
-				{id = "tank_frame_master", level = 20, rewardType = "CardFrame", rarity = "Legendary", name = "Tank Master Frame", description = "Class card frame for max Tank mastery"},
+				{id = "tank_skill_ironwill", level = 10, rewardType = "Skill", rarity = "Rare", name = "Iron Will", description = "Immune to all item stuns"},
+				{id = "tank_title_iron_stance", level = 15, rewardType = "Title", rarity = "Epic", name = "Iron Stance", description = "Title for durable playstyle"},
+				{id = "tank_trail_heavy_pulse", level = 20, rewardType = "Trail", rarity = "Legendary", name = "Heavy Pulse", description = "Dense gold pulse trail"},
 			},
 		},
 	},
@@ -223,7 +255,7 @@ local Config = {
 			{id = "items", title = "Items", icon = "🎁", content = '<font color="#1A6B8A"><b>How to Get Items</b></font>\n  Run through <font color="#806000">item boxes</font> on the course to collect them.\n\n<font color="#1A6B8A"><b>Using Items</b></font>\n  Press <font color="#806000">[1]</font> or <font color="#806000">[2]</font> to use items from your slots.\n  On mobile, tap the item buttons on screen.\n\n<font color="#1A6B8A"><b>Rarities</b></font>\n  <font color="#777788">Common</font> · <font color="#2A7A2A">Uncommon</font> · <font color="#2255CC">Rare</font> · <font color="#7733AA">Epic</font>\n  Players behind get <font color="#806000">better items</font>!'},
 			{id = "classes", title = "Classes", icon = "⚔️", content = '<font color="#1A6B8A"><b>Choose a Class</b></font>\n  Pick your play style in the lobby before a match.\n\n<font color="#777788"><b>Normal</b></font> — Balanced stats <font color="#1A7A3A">(Free)</font>\n<font color="#BB5511"><b>Runner</b></font> — +15% speed, -10% jump\n<font color="#1177AA"><b>Jumper</b></font> — -10% speed, +20% jump\n<font color="#806000"><b>Tank</b></font> — -15% speed, stun immunity\n\n  Unlock new classes with <font color="#806000">currency</font>!'},
 			{id = "mastery", title = "Mastery & Titles", icon = "🏆", content = '<font color="#1A6B8A"><b>Mastery XP</b></font>\n  Earn XP by completing stages in matches.\n  Each class levels up independently <font color="#806000">(Lv.1 — 20)</font>.\n\n<font color="#1A6B8A"><b>Titles</b></font>\n  Unlock cosmetic titles at mastery milestones.\n  Equip titles to show off your skill!\n  Titles appear above your character.'},
-			{id = "ultimates", title = "Ultimate Skills", icon = "⚡", content = '<font color="#1A6B8A"><b>How to Unlock</b></font>\n  Reach <font color="#806000">mastery level 20</font> on a class to unlock its ultimate!\n\n<font color="#1A6B8A"><b>Ultimate Skills</b></font>\n  <font color="#BB5511"><b>Runner</b></font> — Sprint <font color="#555566">(Shift)</font>: 50% speed boost\n  <font color="#1177AA"><b>Jumper</b></font> — Double Jump <font color="#555566">(Space in air)</font>\n  <font color="#806000"><b>Tank</b></font> — Iron Will: immune to stuns'},
+			{id = "ultimates", title = "Ultimate Skills", icon = "⚡", content = '<font color="#1A6B8A"><b>How to Unlock</b></font>\n  Reach <font color="#806000">mastery level 10</font> on a class to unlock its skill!\n\n<font color="#1A6B8A"><b>Skills</b></font>\n  <font color="#BB5511"><b>Runner</b></font> — Sprint <font color="#555566">(Shift)</font>: 50% speed boost\n  <font color="#1177AA"><b>Jumper</b></font> — Double Jump <font color="#555566">(Space in air)</font>\n  <font color="#806000"><b>Tank</b></font> — Iron Will: immune to stuns'},
 		},
 		HintDuration = 8,
 	},

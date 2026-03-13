@@ -17,6 +17,7 @@ function StageSelectionUI.new(parent: ScreenGui)
 	self.isVisible = false
 	self.isVotingMode = false  -- Flag for multiplayer voting mode
 	self.currentVotes = {}     -- Store votes from other players
+	self.availableRooms = {}   -- Available rooms to join
 
 	-- Remotes
 	local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -28,6 +29,10 @@ function StageSelectionUI.new(parent: ScreenGui)
 	-- Stage voting remotes
 	self.voteStagesRemote = remotes:WaitForChild("VoteStages")
 	self.stageVoteUpdateRemote = remotes:WaitForChild("StageVoteUpdate")
+
+	-- Match remotes (for room list + joining)
+	self.matchUpdateRemote = remotes:WaitForChild("MatchUpdate")
+	self.joinMatchRemote = remotes:WaitForChild("JoinMatch")
 
 	-- Create UI
 	self:createUI()
@@ -553,6 +558,67 @@ function StageSelectionUI:createUI()
 	countdownMessage.Parent = countdownFrame
 	self.countdownMessage = countdownMessage
 
+	-- Available Rooms Banner (shows when rooms exist)
+	local roomsBanner = Instance.new("Frame")
+	roomsBanner.Name = "RoomsBanner"
+	roomsBanner.Size = UDim2.new(1, 0, 0, 40)
+	roomsBanner.Position = UDim2.new(0, 0, 0, -45)
+	roomsBanner.BackgroundColor3 = Theme.ACCENT_CYAN
+	roomsBanner.BackgroundTransparency = 0.15
+	roomsBanner.BorderSizePixel = 0
+	roomsBanner.Visible = false
+	roomsBanner.Parent = mainFrame
+	self.roomsBanner = roomsBanner
+
+	local bannerCorner = Instance.new("UICorner")
+	bannerCorner.CornerRadius = Theme.CORNER_SM
+	bannerCorner.Parent = roomsBanner
+
+	local bannerStroke = Instance.new("UIStroke")
+	bannerStroke.Color = Theme.ACCENT_CYAN
+	bannerStroke.Thickness = Theme.STROKE_THIN
+	bannerStroke.Transparency = 0.3
+	bannerStroke.Parent = roomsBanner
+
+	local bannerLabel = Instance.new("TextLabel")
+	bannerLabel.Name = "BannerLabel"
+	bannerLabel.Size = UDim2.new(1, -120, 1, 0)
+	bannerLabel.Position = UDim2.new(0, 12, 0, 0)
+	bannerLabel.BackgroundTransparency = 1
+	bannerLabel.Text = "1 room waiting..."
+	bannerLabel.TextColor3 = Theme.TEXT_ON_ACCENT
+	bannerLabel.TextSize = 14
+	bannerLabel.Font = Enum.Font.GothamBold
+	bannerLabel.TextXAlignment = Enum.TextXAlignment.Left
+	bannerLabel.Parent = roomsBanner
+	self.roomsBannerLabel = bannerLabel
+
+	local joinBtn = Instance.new("TextButton")
+	joinBtn.Name = "JoinRoomBtn"
+	joinBtn.Size = UDim2.new(0, 90, 0, 28)
+	joinBtn.Position = UDim2.new(1, -100, 0.5, 0)
+	joinBtn.AnchorPoint = Vector2.new(0, 0.5)
+	joinBtn.BackgroundColor3 = Theme.SUCCESS
+	joinBtn.BorderSizePixel = 0
+	joinBtn.Text = "JOIN"
+	joinBtn.TextColor3 = Theme.TEXT_ON_ACCENT
+	joinBtn.TextSize = 14
+	joinBtn.Font = Enum.Font.GothamBold
+	joinBtn.Parent = roomsBanner
+	self.joinRoomBtn = joinBtn
+
+	local joinCorner = Instance.new("UICorner")
+	joinCorner.CornerRadius = UDim.new(0, 6)
+	joinCorner.Parent = joinBtn
+
+	joinBtn.MouseButton1Click:Connect(function()
+		if #self.availableRooms > 0 then
+			local roomId = self.availableRooms[1].id
+			self.joinMatchRemote:FireServer(roomId)
+			self:hide()
+		end
+	end)
+
 	-- Initialize default tab
 	self:switchTab("Easy")
 end
@@ -573,6 +639,13 @@ function StageSelectionUI:setupRemotes()
 	-- Stage voting update
 	self.stageVoteUpdateRemote.OnClientEvent:Connect(function(data)
 		self:onStageVoteUpdate(data)
+	end)
+
+	-- Room list updates (available rooms to join)
+	self.matchUpdateRemote.OnClientEvent:Connect(function(data)
+		if data.type == "roomList" then
+			self:updateAvailableRooms(data.rooms)
+		end
 	end)
 end
 
@@ -618,6 +691,11 @@ function StageSelectionUI:show()
 	self:switchTab(self.activeTab)
 	self:updateOrderBadges()
 
+	-- Show/hide rooms banner based on actual room data
+	if self.roomsBanner then
+		self.roomsBanner.Visible = #self.availableRooms > 0
+	end
+
 	-- Simple fade in
 	self.mainFrame.BackgroundTransparency = 1
 	local fadeIn = TweenService:Create(self.mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -629,6 +707,11 @@ end
 function StageSelectionUI:hide()
 	if not self.isVisible then return end
 	self.isVisible = false
+
+	-- Hide rooms banner
+	if self.roomsBanner then
+		self.roomsBanner.Visible = false
+	end
 
 	-- Simple fade out
 	local fadeOut = TweenService:Create(self.mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
@@ -965,6 +1048,35 @@ function StageSelectionUI:updateCountdown(data: {number: number, message: string
 				self.countdownFrame.Visible = false
 			end)
 		end)
+	end
+end
+
+-- Update available rooms display
+function StageSelectionUI:updateAvailableRooms(rooms)
+	self.availableRooms = rooms or {}
+
+	if #self.availableRooms > 0 then
+		local room = self.availableRooms[1]
+		local isRacing = (room.state == "Racing" or room.state == "Starting")
+
+		if isRacing then
+			self.roomsBannerLabel.Text = string.format(
+				"Match in progress (%d players)",
+				room.playerCount
+			)
+			self.joinRoomBtn.Text = "SPECTATE"
+			self.roomsBanner.BackgroundColor3 = Theme.WARNING
+		else
+			self.roomsBannerLabel.Text = string.format(
+				"%s's room (%d/%d)",
+				room.hostName, room.playerCount, room.maxPlayers
+			)
+			self.joinRoomBtn.Text = "JOIN"
+			self.roomsBanner.BackgroundColor3 = Theme.ACCENT_CYAN
+		end
+		self.roomsBanner.Visible = self.isVisible
+	else
+		self.roomsBanner.Visible = false
 	end
 end
 

@@ -439,8 +439,8 @@ function ClassSelectionUI:createUI()
 
 	local confirmGradient = Instance.new("UIGradient")
 	confirmGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 90)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 110, 60)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 110, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 75, 40)),
 	})
 	confirmGradient.Rotation = 0
 	confirmGradient.Parent = confirmBg
@@ -786,10 +786,9 @@ function ClassSelectionUI:createDetailPanel(container: Frame)
 
 	-- ── Section 5: Rewards Row (Y=290) ──
 	local REWARD_ICONS = {
+		{type = "Skill", icon = "\xE2\x9A\xA1", suffix = "_skill_"},
 		{type = "Title", icon = "\xF0\x9F\x8F\xB7\xEF\xB8\x8F", suffix = "_title_"},
 		{type = "Trail", icon = "\xE2\x9C\xA8", suffix = "_trail_"},
-		{type = "Badge", icon = "\xF0\x9F\x8F\x85", suffix = "_badge_"},
-		{type = "CardFrame", icon = "\xF0\x9F\x96\xBC\xEF\xB8\x8F", suffix = "_frame_"},
 	}
 
 	local rewardIconLabels = {}
@@ -827,6 +826,7 @@ function ClassSelectionUI:createDetailPanel(container: Frame)
 
 		table.insert(rewardIconLabels, {
 			label = iconLabel,
+			frame = iconFrame,
 			rewardType = rewardDef.type,
 			suffix = rewardDef.suffix,
 		})
@@ -943,13 +943,13 @@ function ClassSelectionUI:updateDetailPanel()
 	self.detailXpBarFill.Size = UDim2.new(fillPct, 0, 1, 0)
 	self.detailXpBarFill.BackgroundColor3 = if masteryIsMax then COLORS.MASTERY_MAX else COLORS.MASTERY_BAR
 
-	-- Ultimate info
+	-- Skill info
 	if ultimateSkillConfig then
 		if hasUltimate then
-			self.detailUltimateLabel.Text = string.format("\u{26A1} Ultimate: %s — %s", ultimateSkillConfig.name, ultimateSkillConfig.description or "")
+			self.detailUltimateLabel.Text = string.format("\u{26A1} Skill: %s — %s", ultimateSkillConfig.name, ultimateSkillConfig.description or "")
 			self.detailUltimateLabel.TextColor3 = COLORS.MASTERY_MAX
 		else
-			self.detailUltimateLabel.Text = string.format("\u{26A1} Ultimate: %s (unlock at Lv.%d)", ultimateSkillConfig.name, ultimateUnlockLevel)
+			self.detailUltimateLabel.Text = string.format("\u{26A1} Skill: %s (unlock at Lv.%d)", ultimateSkillConfig.name, ultimateUnlockLevel)
 			self.detailUltimateLabel.TextColor3 = COLORS.TEXT_SECONDARY
 		end
 	else
@@ -968,19 +968,40 @@ function ClassSelectionUI:updateDetailPanel()
 			end
 		end
 
-		local classPrefix = string.lower(classId)
-		for _, iconData in ipairs(self.detailRewardIcons) do
-			local isRewardUnlocked = false
-			for rewardId, _ in pairs(unlockedById) do
-				if string.find(rewardId, classPrefix .. iconData.suffix) then
-					isRewardUnlocked = true
-					break
-				end
-			end
-			iconData.label.TextTransparency = isRewardUnlocked and 0 or 0.6
+		-- Check which reward types this class has
+		local classRewardDefs = Config.Mastery.Rewards[classId] or {}
+		local hasRewardType = {}
+		for _, rd in ipairs(classRewardDefs) do
+			hasRewardType[rd.rewardType] = true
 		end
 
-		self.detailRewardsCount.Text = string.format("(%d/%d unlocked)", unlockedCount, #rewards)
+		local classPrefix = string.lower(classId)
+		local iconSize = 24
+		local iconSpacing = 12
+		local iconStartX = 20
+		local visibleIndex = 0
+
+		for _, iconData in ipairs(self.detailRewardIcons) do
+			local classHasThis = hasRewardType[iconData.rewardType] == true
+			iconData.frame.Visible = classHasThis
+
+			if classHasThis then
+				iconData.frame.Position = UDim2.new(0, iconStartX + visibleIndex * (iconSize + 50 + iconSpacing), 0, 290)
+				visibleIndex += 1
+
+				local isRewardUnlocked = false
+				for rewardId, _ in pairs(unlockedById) do
+					if string.find(rewardId, classPrefix .. iconData.suffix) then
+						isRewardUnlocked = true
+						break
+					end
+				end
+				iconData.label.TextTransparency = isRewardUnlocked and 0 or 0.6
+			end
+		end
+
+		local totalRewards = #classRewardDefs
+		self.detailRewardsCount.Text = string.format("(%d/%d unlocked)", unlockedCount, totalRewards)
 	end
 end
 
@@ -1197,10 +1218,10 @@ function ClassSelectionUI:setConfirmButtonState(text: string, isEnabled: boolean
 				self.confirmStroke.Transparency = 0.3
 			end
 		elseif text == "EQUIPPED" then
-			-- EQUIPPED — muted green gradient (disabled but styled)
+			-- EQUIPPED — dark green gradient (disabled but styled)
 			self.confirmGradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 90)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 110, 60)),
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 110, 60)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 75, 40)),
 			})
 			if self.confirmStroke then
 				self.confirmStroke.Color = Color3.fromRGB(80, 190, 110)

@@ -21,7 +21,7 @@ end
 
 function SpectatorManager:onPlayerSpectate(player: Player)
 	local state = self.deps.getPlayerState(player)
-	if state ~= "Finished" then return end
+	if state ~= "Finished" and state ~= "Lobby" then return end
 
 	self.deps.setPlayerState(player, "Spectating")
 
