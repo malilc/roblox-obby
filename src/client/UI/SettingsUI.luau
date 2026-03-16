@@ -10,10 +10,10 @@ local UIFactory = require(script.Parent.UIFactory)
 local SettingsUI = {}
 SettingsUI.__index = SettingsUI
 
-local PANEL_W = 260
-local PANEL_H = 200
-local ROW_H = 44
-local PAD = 14
+local PANEL_W = 360
+local PANEL_H = 380
+local ROW_H = 50
+local PAD = 16
 
 function SettingsUI.new(parent: ScreenGui, callbacks: {onHide: (() -> ())?}?)
 	local self = setmetatable({}, SettingsUI)
@@ -47,11 +47,11 @@ function SettingsUI:_build()
 	-- Title
 	UIFactory.createLabel(self.container, {
 		name = "Title",
-		size = UDim2.new(1, 0, 0, 36),
+		size = UDim2.new(1, 0, 0, 42),
 		position = UDim2.new(0, 0, 0, 6),
 		text = "\u{2699}  Settings",
 		textColor = Theme.TEXT_PRIMARY,
-		textSize = 18,
+		textSize = 22,
 		font = Enum.Font.GothamBlack,
 		bgTransparency = 1,
 	})
@@ -59,10 +59,10 @@ function SettingsUI:_build()
 	-- Close button
 	local closeBtn = UIFactory.createButton(self.container, {
 		name = "CloseBtn",
-		size = UDim2.new(0, 28, 0, 28),
-		position = UDim2.new(1, -34, 0, 10),
+		size = UDim2.new(0, 32, 0, 32),
+		position = UDim2.new(1, -40, 0, 10),
 		text = "X",
-		textSize = 14,
+		textSize = 16,
 		bgColor = Theme.BG_SURFACE,
 		textColor = Theme.TEXT_MUTED,
 		cornerSize = "full",
@@ -75,13 +75,13 @@ function SettingsUI:_build()
 	local sep = Instance.new("Frame")
 	sep.Name = "Separator"
 	sep.Size = UDim2.new(1, -PAD * 2, 0, 1)
-	sep.Position = UDim2.new(0, PAD, 0, 44)
+	sep.Position = UDim2.new(0, PAD, 0, 50)
 	sep.BackgroundColor3 = Theme.BG_ELEVATED
 	sep.BorderSizePixel = 0
 	sep.Parent = self.container
 
 	-- Music toggle row
-	local musicY = 56
+	local musicY = 62
 	self.musicToggle = self:_createToggleRow("Music", "\u{1F3B5}", musicY, true, function(enabled)
 		self.musicEnabled = enabled
 		self:_applyMusicVolume()
@@ -111,7 +111,7 @@ function SettingsUI:_createToggleRow(label: string, icon: string, yPos: number, 
 		position = UDim2.new(0, 0, 0, 0),
 		text = icon .. "  " .. label,
 		textColor = Theme.TEXT_PRIMARY,
-		textSize = 15,
+		textSize = 17,
 		font = Enum.Font.GothamBold,
 		textXAlignment = Enum.TextXAlignment.Left,
 		bgTransparency = 1,
@@ -121,8 +121,8 @@ function SettingsUI:_createToggleRow(label: string, icon: string, yPos: number, 
 	local enabled = default
 	local toggleBg = UIFactory.createPanel(row, {
 		name = "ToggleBg",
-		size = UDim2.new(0, 52, 0, 28),
-		position = UDim2.new(1, -52, 0.5, -14),
+		size = UDim2.new(0, 56, 0, 30),
+		position = UDim2.new(1, -56, 0.5, -15),
 		bgColor = if enabled then Theme.SUCCESS else Theme.BG_SURFACE,
 		cornerSize = "full",
 		strokeColor = Theme.BG_ELEVATED,
@@ -131,8 +131,8 @@ function SettingsUI:_createToggleRow(label: string, icon: string, yPos: number, 
 
 	local knob = Instance.new("Frame")
 	knob.Name = "Knob"
-	knob.Size = UDim2.new(0, 22, 0, 22)
-	knob.Position = if enabled then UDim2.new(1, -25, 0.5, -11) else UDim2.new(0, 3, 0.5, -11)
+	knob.Size = UDim2.new(0, 24, 0, 24)
+	knob.Position = if enabled then UDim2.new(1, -27, 0.5, -12) else UDim2.new(0, 3, 0.5, -12)
 	knob.BackgroundColor3 = Theme.TEXT_PRIMARY
 	knob.BorderSizePixel = 0
 	knob.Parent = toggleBg
@@ -151,7 +151,7 @@ function SettingsUI:_createToggleRow(label: string, icon: string, yPos: number, 
 
 	clickArea.MouseButton1Click:Connect(function()
 		enabled = not enabled
-		local targetPos = if enabled then UDim2.new(1, -25, 0.5, -11) else UDim2.new(0, 3, 0.5, -11)
+		local targetPos = if enabled then UDim2.new(1, -27, 0.5, -12) else UDim2.new(0, 3, 0.5, -12)
 		local targetColor = if enabled then Theme.SUCCESS else Theme.BG_SURFACE
 
 		TweenService:Create(knob, TweenInfo.new(0.15), { Position = targetPos }):Play()

@@ -155,25 +155,16 @@ function DailyBonusUI:showCalendar(data)
 	local modalGui = Instance.new("ScreenGui")
 	modalGui.Name = "DailyLoginModalGui"
 	modalGui.ResetOnSpawn = false
-	modalGui.IgnoreGuiInset = true
+	modalGui.IgnoreGuiInset = false
 	modalGui.DisplayOrder = 100
 	modalGui.Parent = playerGui
-
-	-- === OVERLAY ===
-	local overlay = Instance.new("Frame")
-	overlay.Name = "DailyLoginOverlay"
-	overlay.Size = UDim2.new(1, 0, 1, 0)
-	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
-	overlay.BackgroundTransparency = 1
-	overlay.BorderSizePixel = 0
-	overlay.ZIndex = 1
-	overlay.Parent = modalGui
 
 	-- === MAIN PANEL ===
 	local panel = Instance.new("Frame")
 	panel.Name = "DailyLoginPanel"
-	panel.Size = UDim2.new(0, 500, 0, 410)
-	panel.Position = UDim2.new(0.5, -250, 0.5, -120)
+	panel.Size = UDim2.new(0, 780, 0, 580)
+	panel.AnchorPoint = Vector2.new(0.5, 0.5)
+	panel.Position = UDim2.new(0.5, 0, 0.5, 0)
 	panel.BackgroundColor3 = Theme.BG_BASE
 	panel.BorderSizePixel = 0
 	panel.ZIndex = 2
@@ -182,7 +173,7 @@ function DailyBonusUI:showCalendar(data)
 	Theme.applyCorner(panel, "lg")
 
 	local panelStroke = Instance.new("UIStroke")
-	panelStroke.Color = COLORS.GOLD
+	panelStroke.Color = Theme.ACCENT_CYAN
 	panelStroke.Thickness = Theme.STROKE_MED
 	panelStroke.Transparency = 1
 	panelStroke.Parent = panel
@@ -207,74 +198,70 @@ function DailyBonusUI:showCalendar(data)
 	panelShadow.Parent = panel
 	Theme.applyCorner(panelShadow, "lg")
 
-	-- === TITLE BAR ===
-	local titleBar = Instance.new("Frame")
-	titleBar.Size = UDim2.new(1, 0, 0, 58)
-	titleBar.BackgroundColor3 = COLORS.GOLD
-	titleBar.BorderSizePixel = 0
-	titleBar.ZIndex = 62
-	titleBar.Parent = panel
-	Theme.applyCorner(titleBar, "md")
-
-	-- Round only top corners by placing a fill rect to cover bottom corners
-	local titleFill = Instance.new("Frame")
-	titleFill.Size = UDim2.new(1, 0, 0.5, 0)
-	titleFill.Position = UDim2.new(0, 0, 0.5, 0)
-	titleFill.BackgroundColor3 = COLORS.GOLD
-	titleFill.BorderSizePixel = 0
-	titleFill.ZIndex = 62
-	titleFill.Parent = titleBar
-
-	local titleGrad = Instance.new("UIGradient")
-	titleGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Theme.PRIMARY),
-		ColorSequenceKeypoint.new(1, Theme.PRIMARY_DARK),
-	})
-	titleGrad.Rotation = 90
-	titleGrad.Parent = titleBar
-
-	local titleIcon = Instance.new("TextLabel")
-	titleIcon.BackgroundTransparency = 1
-	titleIcon.Text = "\u{1F381}"
-	titleIcon.TextSize = 26
-	titleIcon.Font = Enum.Font.GothamBold
-	titleIcon.TextColor3 = Theme.TEXT_DARK
-	titleIcon.Size = UDim2.new(0, 40, 1, 0)
-	titleIcon.Position = UDim2.new(0, 10, 0, 0)
-	titleIcon.TextXAlignment = Enum.TextXAlignment.Center
-	titleIcon.ZIndex = 63
-	titleIcon.Parent = titleBar
-
-	local titleText = Instance.new("TextLabel")
-	titleText.BackgroundTransparency = 1
-	titleText.Text = "DAILY LOGIN REWARD"
-	titleText.TextSize = 20
-	titleText.Font = Enum.Font.GothamBlack
-	titleText.TextColor3 = Theme.TEXT_DARK
-	titleText.Size = UDim2.new(1, -60, 0.6, 0)
-	titleText.Position = UDim2.new(0, 46, 0, 4)
-	titleText.TextXAlignment = Enum.TextXAlignment.Left
-	titleText.ZIndex = 63
-	titleText.Parent = titleBar
+	-- === HEADER (matches Group 1 standard) ===
+	local header = Instance.new("TextLabel")
+	header.Name = "Header"
+	header.Size = UDim2.new(0, 400, 0, 40)
+	header.Position = UDim2.new(0, 22, 0, 10)
+	header.BackgroundTransparency = 1
+	header.RichText = true
+	header.Text = '<font size="22">\u{1F381}</font>  <font face="GothamBold" size="28"><b>DAILY REWARD</b></font>'
+	header.TextColor3 = Theme.TEXT_PRIMARY
+	header.TextSize = 28
+	header.Font = Enum.Font.GothamBold
+	header.TextXAlignment = Enum.TextXAlignment.Left
+	header.ZIndex = 63
+	header.Parent = panel
 
 	local subText = Instance.new("TextLabel")
+	subText.Name = "SubText"
 	subText.BackgroundTransparency = 1
 	subText.Text = isClaim and ("Day " .. claimedDay .. " / 7  \u{2022}  +" .. tostring(rewards[claimedDay] or 0) .. " \u{1F4B0} + " .. tostring(gemRewards[claimedDay] or 0) .. " \u{1F48E}") or ("Day " .. claimedDay .. " / 7  \u{2022}  Already Claimed \u{2713}")
-	subText.TextSize = 13
+	subText.TextSize = 16
 	subText.Font = Enum.Font.GothamBold
-	subText.TextColor3 = COLORS.SUBTITLE
-	subText.Size = UDim2.new(1, -60, 0.4, 0)
-	subText.Position = UDim2.new(0, 46, 0.6, 0)
+	subText.TextColor3 = Theme.TEXT_MUTED
+	subText.Size = UDim2.new(0, 400, 0, 22)
+	subText.Position = UDim2.new(0, 22, 0, 44)
 	subText.TextXAlignment = Enum.TextXAlignment.Left
 	subText.ZIndex = 63
-	subText.Parent = titleBar
+	subText.Parent = panel
+
+	-- === CLOSE BUTTON (Group 1 standard) ===
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Name = "CloseButton"
+	closeBtn.Size = UDim2.new(0, 40, 0, 40)
+	closeBtn.Position = UDim2.new(1, -54, 0, 12)
+	closeBtn.BackgroundColor3 = Theme.DANGER
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Text = ""
+	closeBtn.ZIndex = 65
+	closeBtn.Parent = panel
+	Theme.applyCorner(closeBtn, "sm")
+
+	local closeBtnStroke = Instance.new("UIStroke")
+	closeBtnStroke.Color = Theme.DANGER
+	closeBtnStroke.Thickness = 1
+	closeBtnStroke.Transparency = 0.3
+	closeBtnStroke.Parent = closeBtn
+
+	local closeBtnLabel = Instance.new("TextLabel")
+	closeBtnLabel.Size = UDim2.new(1, 0, 1, 0)
+	closeBtnLabel.BackgroundTransparency = 1
+	closeBtnLabel.Text = "X"
+	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
+	closeBtnLabel.TextSize = 20
+	closeBtnLabel.Font = Enum.Font.GothamBold
+	closeBtnLabel.ZIndex = 66
+	closeBtnLabel.Parent = closeBtn
+
+	-- (close button click connected after close() is defined below)
 
 	-- === 7 DAY CARDS ===
-	local cardW = 62
-	local cardH = 140
-	local cardSpacing = 6
-	local cardsStartX = (500 - (7 * cardW + 6 * cardSpacing)) / 2
-	local cardsY = 68
+	local cardW = 90
+	local cardH = 280
+	local cardSpacing = 10
+	local cardsStartX = (780 - (7 * cardW + 6 * cardSpacing)) / 2
+	local cardsY = 78
 	local todayCard = nil  -- reference to the current day card for claim overlay
 
 	for day = 1, 7 do
@@ -314,12 +301,12 @@ function DailyBonusUI:showCalendar(data)
 		local dayLbl = Instance.new("TextLabel")
 		dayLbl.BackgroundTransparency = 1
 		dayLbl.Text = "DAY " .. day
-		dayLbl.TextSize = 10
+		dayLbl.TextSize = 15
 		dayLbl.Font = Enum.Font.GothamBlack
 		dayLbl.TextColor3 = isToday and Theme.TEXT_DARK or (isPast and COLORS.GREEN or COLORS.FUTURE_TEXT)
 		dayLbl.TextXAlignment = Enum.TextXAlignment.Center
-		dayLbl.Size = UDim2.new(1, 0, 0, 20)
-		dayLbl.Position = UDim2.new(0, 0, 0, 4)
+		dayLbl.Size = UDim2.new(1, 0, 0, 30)
+		dayLbl.Position = UDim2.new(0, 0, 0, 10)
 		dayLbl.ZIndex = 63
 		dayLbl.Parent = card
 
@@ -328,16 +315,16 @@ function DailyBonusUI:showCalendar(data)
 		local iconText, iconSize
 		if showCheck then
 			iconText = "\u{2705}" -- ✅
-			iconSize = 22
+			iconSize = 30
 		elseif isToday and isClaim then
 			iconText = "\u{1F4B0}" -- 🪙
-			iconSize = 22
+			iconSize = 30
 		elseif day == 7 then
 			iconText = "\u{1F451}" -- 👑
-			iconSize = 24
+			iconSize = 32
 		else
 			iconText = "\u{1F381}" -- 🎁
-			iconSize = 22
+			iconSize = 30
 		end
 		local iconLbl = Instance.new("TextLabel")
 		iconLbl.BackgroundTransparency = 1
@@ -346,8 +333,8 @@ function DailyBonusUI:showCalendar(data)
 		iconLbl.Font = Enum.Font.GothamBold
 		iconLbl.TextColor3 = showCheck and COLORS.GREEN or (isToday and Theme.TEXT_DARK or COLORS.FUTURE_TEXT)
 		iconLbl.TextXAlignment = Enum.TextXAlignment.Center
-		iconLbl.Size = UDim2.new(1, 0, 0, 36)
-		iconLbl.Position = UDim2.new(0, 0, 0, 26)
+		iconLbl.Size = UDim2.new(1, 0, 0, 56)
+		iconLbl.Position = UDim2.new(0, 0, 0, 50)
 		iconLbl.ZIndex = 63
 		iconLbl.Parent = card
 
@@ -357,12 +344,12 @@ function DailyBonusUI:showCalendar(data)
 		local amtLbl = Instance.new("TextLabel")
 		amtLbl.BackgroundTransparency = 1
 		amtLbl.Text = amtText
-		amtLbl.TextSize = 11
+		amtLbl.TextSize = 16
 		amtLbl.Font = Enum.Font.GothamBold
 		amtLbl.TextColor3 = isToday and Theme.TEXT_DARK or Theme.TEXT_MUTED
 		amtLbl.TextXAlignment = Enum.TextXAlignment.Center
-		amtLbl.Size = UDim2.new(1, 0, 0, 16)
-		amtLbl.Position = UDim2.new(0, 0, 0, 62)
+		amtLbl.Size = UDim2.new(1, 0, 0, 24)
+		amtLbl.Position = UDim2.new(0, 0, 0, 150)
 		amtLbl.ZIndex = 63
 		amtLbl.Parent = card
 
@@ -372,12 +359,12 @@ function DailyBonusUI:showCalendar(data)
 		local gemLbl = Instance.new("TextLabel")
 		gemLbl.BackgroundTransparency = 1
 		gemLbl.Text = gemText
-		gemLbl.TextSize = 11
+		gemLbl.TextSize = 16
 		gemLbl.Font = Enum.Font.GothamBold
 		gemLbl.TextColor3 = isPast and Theme.TEXT_MUTED or (isToday and Theme.TEXT_DARK or COLORS.GEM)
 		gemLbl.TextXAlignment = Enum.TextXAlignment.Center
-		gemLbl.Size = UDim2.new(1, 0, 0, 16)
-		gemLbl.Position = UDim2.new(0, 0, 0, 78)
+		gemLbl.Size = UDim2.new(1, 0, 0, 24)
+		gemLbl.Position = UDim2.new(0, 0, 0, 180)
 		gemLbl.ZIndex = 63
 		gemLbl.Parent = card
 
@@ -388,12 +375,12 @@ function DailyBonusUI:showCalendar(data)
 			local badge = Instance.new("TextLabel")
 			badge.BackgroundTransparency = 1
 			badge.Text = badgeText
-			badge.TextSize = 9
+			badge.TextSize = 14
 			badge.Font = Enum.Font.GothamBold
 			badge.TextColor3 = badgeColor
 			badge.TextXAlignment = Enum.TextXAlignment.Center
-			badge.Size = UDim2.new(1, -4, 0, 16)
-			badge.Position = UDim2.new(0, 2, 1, -20)
+			badge.Size = UDim2.new(1, -4, 0, 26)
+			badge.Position = UDim2.new(0, 2, 1, -34)
 			badge.ZIndex = 63
 			badge.Parent = card
 		end
@@ -405,7 +392,7 @@ function DailyBonusUI:showCalendar(data)
 	end
 
 	-- === PROGRESS BAR ===
-	local progressY = cardsY + cardH + 10
+	local progressY = cardsY + cardH + 14
 	local progressContainer = Instance.new("Frame")
 	progressContainer.Name = "ProgressBarContainer"
 	progressContainer.Size = UDim2.new(1, -40, 0, 20)
@@ -464,13 +451,13 @@ function DailyBonusUI:showCalendar(data)
 	end
 
 	-- === COUNTDOWN TIMER ===
-	local timerY = progressY + 24
+	local timerY = progressY + 28
 	local timerLabel = Instance.new("TextLabel")
 	timerLabel.Name = "CountdownTimer"
 	timerLabel.Size = UDim2.new(1, -40, 0, 18)
 	timerLabel.Position = UDim2.new(0, 20, 0, timerY)
 	timerLabel.BackgroundTransparency = 1
-	timerLabel.TextSize = 12
+	timerLabel.TextSize = 14
 	timerLabel.Font = Enum.Font.Gotham
 	timerLabel.ZIndex = 63
 	timerLabel.Parent = panel
@@ -507,8 +494,8 @@ function DailyBonusUI:showCalendar(data)
 	-- === ACTION BUTTON (Frame+TextLabel pattern to avoid gradient tinting text) ===
 	local actionBtn = Instance.new("TextButton")
 	actionBtn.Name            = "ActionButton"
-	actionBtn.Size            = UDim2.new(0, 220, 0, 40)
-	actionBtn.Position        = UDim2.new(0.5, -110, 1, -52)
+	actionBtn.Size            = UDim2.new(0, 260, 0, 46)
+	actionBtn.Position        = UDim2.new(0.5, -130, 1, -58)
 	actionBtn.BackgroundTransparency = 1
 	actionBtn.BorderSizePixel = 0
 	actionBtn.Text            = ""
@@ -550,18 +537,17 @@ function DailyBonusUI:showCalendar(data)
 	btnLabel.BackgroundTransparency = 1
 	btnLabel.Text = isClaim and "\u{2728}  CLAIM!" or "OK"
 	btnLabel.TextColor3 = isClaim and Theme.TEXT_DARK or Color3.new(1, 1, 1)
-	btnLabel.TextSize = 16
+	btnLabel.TextSize = 18
 	btnLabel.Font = Enum.Font.GothamBlack
 	btnLabel.ZIndex = actionBtn.ZIndex + 1
 	btnLabel.Parent = actionBtn
 
-	-- === ANIMATE IN ===
-	TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.55 }):Play()
-	TweenService:Create(panel, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		BackgroundTransparency = 0.05,
-		Position = UDim2.new(0.5, -250, 0.5, -200),
+	-- === ANIMATE IN (fade only, same as other Group 1 panels) ===
+	-- overlay removed — no dark background (matches other panels)
+	TweenService:Create(panel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0.02,
 	}):Play()
-	TweenService:Create(panelStroke, TweenInfo.new(0.35), { Transparency = 0.2 }):Play()
+	TweenService:Create(panelStroke, TweenInfo.new(0.2), { Transparency = 0.5 }):Play()
 
 	-- === CLOSE ===
 	local closing = false
@@ -572,10 +558,9 @@ function DailyBonusUI:showCalendar(data)
 		self._closeCalendar = nil
 		-- Mark as viewed so HUD button opens view mode next time
 		if self.lastData then self.lastData.claimed = false end
-		TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play()
-		local out = TweenService:Create(panel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		-- overlay removed
+		local out = TweenService:Create(panel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			BackgroundTransparency = 1,
-			Position = UDim2.new(0.5, -250, 0.5, -120),
 		})
 		out:Play()
 		out.Completed:Connect(function()
@@ -585,6 +570,11 @@ function DailyBonusUI:showCalendar(data)
 
 	-- Store close function so hideCalendar() can call it externally
 	self._closeCalendar = close
+
+	-- Connect close button now that close() is defined
+	closeBtn.MouseButton1Click:Connect(function()
+		close()
+	end)
 
 	actionBtn.MouseButton1Click:Connect(function()
 		if isClaim then
@@ -626,7 +616,7 @@ function DailyBonusUI:showCalendar(data)
 				claimedLbl.BackgroundTransparency = 1
 				claimedLbl.Text               = "CLAIMED!"
 				claimedLbl.TextColor3         = Theme.TEXT_DARK
-				claimedLbl.TextSize           = 9
+				claimedLbl.TextSize           = 12
 				claimedLbl.Font               = Enum.Font.GothamBlack
 				claimedLbl.ZIndex             = 71
 				claimedLbl.Parent             = claimOverlay
