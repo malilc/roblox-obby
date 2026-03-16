@@ -9,11 +9,14 @@ local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
 -- Helper: create a Sound with SFX SoundGroup assigned
-local function createSFXSound(): Sound
-	local sound = createSFXSound()
-	local sfxGroup = SoundService:FindFirstChild("SFX")
-	if sfxGroup then
-		sound.SoundGroup = sfxGroup
+local _sfxGroup = nil
+local function createSFXSound()
+	local sound = Instance.new("Sound")
+	if not _sfxGroup then
+		_sfxGroup = SoundService:FindFirstChild("SFX")
+	end
+	if _sfxGroup then
+		sound.SoundGroup = _sfxGroup
 	end
 	return sound
 end
