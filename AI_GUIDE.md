@@ -2106,7 +2106,7 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
     - `setActive(id)` tweens bg + stroke to show active panel
     - Toggle behavior: clicking opens/closes panels with mutual exclusion
     - Feedback button opens FeedbackUI panel (managed panel)
-    - Invite button calls `SocialService:PromptGameInvite()` (no panel, native Roblox UI)
+    - Invite button calls `SocialService:PromptGameInvite()` (no panel, native Roblox UI) — skipped in Studio via `RunService:IsStudio()` check
     - `hide()`: slides panel off-screen left (during gameplay/race)
     - `show()`: slides panel back in (on ReturnToLobby)
     - Hidden on CountdownUpdate (race start), shown on ReturnToLobby

@@ -28,6 +28,7 @@ local FeedbackUI = require(script.Parent.FeedbackUI)
 local MenuGridUI = require(script.Parent.MenuGridUI)
 
 local SocialService = game:GetService("SocialService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -161,8 +162,14 @@ function MainUI.new()
 			self:toggleMenuPanel("feedbackUI")
 		end,
 		onInvite = function()
-			pcall(function()
-				SocialService:PromptGameInvite(LocalPlayer)
+			if RunService:IsStudio() then
+				self:showInviteNotification("Invite only works in published games")
+				return
+			end
+			task.spawn(function()
+				pcall(function()
+					SocialService:PromptGameInvite(LocalPlayer)
+				end)
 			end)
 		end,
 		onHelp = function()
@@ -442,6 +449,44 @@ function MainUI:showDeathNotification()
 				if notification.Parent then
 					notification:Destroy()
 				end
+			end)
+		end
+	end)
+end
+
+function MainUI:showInviteNotification(message: string)
+	local notification = Instance.new("TextLabel")
+	notification.Name = "InviteNotification"
+	notification.Size = UDim2.new(0, 220, 0, 30)
+	notification.Position = UDim2.new(0.5, -110, 0, 60)
+	notification.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	notification.BackgroundTransparency = 0.15
+	notification.BorderSizePixel = 0
+	notification.Text = message
+	notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+	notification.TextSize = 13
+	notification.Font = Enum.Font.GothamBold
+	notification.TextTransparency = 1
+	notification.Parent = self.screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = Theme.CORNER_SM
+	corner.Parent = notification
+
+	TweenService:Create(notification, TweenInfo.new(0.2), {
+		TextTransparency = 0,
+		BackgroundTransparency = 0.3,
+	}):Play()
+
+	task.delay(2, function()
+		if notification.Parent then
+			local fade = TweenService:Create(notification, TweenInfo.new(0.3), {
+				TextTransparency = 1,
+				BackgroundTransparency = 1,
+			})
+			fade:Play()
+			fade.Completed:Connect(function()
+				if notification.Parent then notification:Destroy() end
 			end)
 		end
 	end)
