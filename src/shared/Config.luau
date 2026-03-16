@@ -24,7 +24,7 @@ local Config = {
 				{heading = "Classes & Items", items = {
 					"8 unique character classes with special powers",
 					"Ultimate skills: Sprint, Double Jump, Iron Will",
-					"Mario Kart-style items to boost or sabotage",
+					"Race items to boost or sabotage",
 					"Class mastery system with unlockable titles",
 				}},
 				{heading = "Progression", items = {

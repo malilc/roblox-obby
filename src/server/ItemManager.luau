@@ -1,4 +1,4 @@
--- ItemManager: จัดการระบบ Items (แบบ Mario Kart)
+-- ItemManager: จัดการระบบ Items (racing game style)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

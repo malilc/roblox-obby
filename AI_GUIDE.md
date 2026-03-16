@@ -15,7 +15,7 @@ src/
 │   ├── MapManager.luau          # จัดการ map/stages + animations + per-match instancing
 │   ├── StageTracker.luau         # ⭐ Lightweight stage tracking (per-round, no DataStore)
 │   ├── CurrencyManager.luau     # 💰 ระบบเงิน + Class Unlock + Mastery + Daily Login + DataStore
-│   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Mario Kart
+│   ├── ItemManager.luau         # 🎯 ระบบ Items แบบ Racing Game
 │   ├── MatchManager.luau        # 🏁 ระบบ Matchmaking/Race + Stage Voting
 │   ├── ClassManager.luau        # 🎭 ระบบ Character Classes
 │   ├── LeaderboardManager.luau  # 🏆 Dual Leaderboards: Gems + Wins (2 OrderedDataStores + 2 Physical Boards)
@@ -568,7 +568,7 @@ local Config = {
 
 ---
 
-## 🎯 Item System (Mario Kart Style)
+## 🎯 Item System (Racing Game Style)
 
 ### ไฟล์ที่เกี่ยวข้อง:
 - `src/shared/ItemTypes.luau` - นิยาม Items ทั้งหมด
@@ -2059,7 +2059,7 @@ wally install    # ติดตั้ง Jest Lua → DevPackages/
 14b. **Trail Field**: ใน profile มี `activeTrail` (string? หรือ nil) สำหรับ trail ที่เลือก equip (ไม่ผูกกับ class อีกแล้ว)
 15. **Daily Login Fields**: ใน profile มี `lastLoginTime` (number?) + `loginStreak` (number 1–7)
 
-### 🎯 Item System (Mario Kart Style)
+### 🎯 Item System (Racing Game Style)
 14. **Dual Slots**: ผู้เล่นถือได้ 2 items, กด 1/2 เพื่อใช้
 15. **Item Box**: Lucky Block model (asset 129696127925672) — golden voxel "?" block + bobbing animation
 16. **Weighted Random**: คนอันดับท้ายได้ item หายากมากกว่า (catch-up)
