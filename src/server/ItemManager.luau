@@ -662,7 +662,7 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	-- Fire sound
 	local fireSound = Instance.new("Sound")
 	fireSound.SoundId = "rbxassetid://287390459"
-	fireSound.Volume = 0.3
+	fireSound.Volume = 0.1
 	fireSound.Parent = rootPart
 	fireSound:Play()
 	task.delay(2, function()
@@ -907,7 +907,7 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	-- Drop sound
 	local dropSound = Instance.new("Sound")
 	dropSound.SoundId = "rbxassetid://70557734865364" -- Banana drop sound
-	dropSound.Volume = 0.4
+	dropSound.Volume = 0.21
 	dropSound.Parent = banana
 	dropSound:Play()
 	
@@ -1038,7 +1038,7 @@ function ItemManager:applySlip(player: Player, itemDef)
 	-- Slip sound (play immediately)
 	local slipSound = Instance.new("Sound")
 	slipSound.SoundId = "rbxassetid://129432532096499" -- Banana slip sound
-	slipSound.Volume = 0.8
+	slipSound.Volume = 0.42
 	slipSound.PlayOnRemove = false
 	slipSound.Parent = humanoidRootPart
 	slipSound:Play()
@@ -1169,7 +1169,7 @@ function ItemManager:useShield(player: Player, itemDef): boolean
 		if humanoidRootPart then
 			local activateSound = Instance.new("Sound")
 			activateSound.SoundId = "rbxassetid://105300932320033" -- Shield activate
-			activateSound.Volume = 0.5
+			activateSound.Volume = 0.26
 			activateSound.Parent = humanoidRootPart
 			activateSound:Play()
 			task.delay(2, function()
@@ -1353,7 +1353,7 @@ function ItemManager:removeShieldVisual(player: Player)
 			-- Shield break sound
 			local breakSound = Instance.new("Sound")
 			breakSound.SoundId = "rbxassetid://122218831341898" -- Shield break
-			breakSound.Volume = 0.6
+			breakSound.Volume = 0.32
 			breakSound.Parent = humanoidRootPart
 			breakSound:Play()
 			task.delay(2, function()
@@ -1457,7 +1457,7 @@ function ItemManager:useSpeedBoost(player: Player, itemDef): boolean
 	if humanoidRootPart then
 		local boostSound = Instance.new("Sound")
 		boostSound.SoundId = "rbxassetid://105300932320033" -- Speed boost activate
-		boostSound.Volume = 0.7
+		boostSound.Volume = 0.37
 		boostSound.Parent = humanoidRootPart
 		boostSound:Play()
 		task.delay(3, function()
@@ -1725,7 +1725,7 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 	-- Teleport charge-up sound
 	local chargeSound = Instance.new("Sound")
 	chargeSound.SoundId = "rbxassetid://93826112721753" -- Swap teleport
-	chargeSound.Volume = 0.6
+	chargeSound.Volume = 0.32
 	chargeSound.PlaybackSpeed = 0.8
 	chargeSound.Parent = myHRP
 	chargeSound:Play()
@@ -1761,7 +1761,7 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 	-- Thunder sound (global)
 	local thunderSound = Instance.new("Sound")
 	thunderSound.SoundId = "rbxassetid://1093102664"
-	thunderSound.Volume = 0.8
+	thunderSound.Volume = 0.42
 	thunderSound.PlaybackSpeed = 1.2
 	thunderSound.RollOffMode = Enum.RollOffMode.Linear
 	thunderSound.RollOffMaxDistance = 1000
@@ -1885,7 +1885,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		-- Zap sound on hit
 		local zapSound = Instance.new("Sound")
 		zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
-		zapSound.Volume = 0.4
+		zapSound.Volume = 0.21
 		zapSound.PlaybackSpeed = 1.5
 		zapSound.Parent = humanoidRootPart
 		zapSound:Play()
@@ -1930,7 +1930,7 @@ function ItemManager:applyDummyStun(dummy: Model, duration: number)
 	-- Zap sound
 	local zapSound = Instance.new("Sound")
 	zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
-	zapSound.Volume = 0.4
+	zapSound.Volume = 0.21
 	zapSound.Parent = humanoidRootPart
 	zapSound:Play()
 	
@@ -1969,7 +1969,7 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	-- Slip sound
 	local slipSound = Instance.new("Sound")
 	slipSound.SoundId = "rbxassetid://129432532096499"
-	slipSound.Volume = 0.8
+	slipSound.Volume = 0.42
 	slipSound.Parent = humanoidRootPart
 	slipSound:Play()
 	task.delay(3, function()
@@ -2437,7 +2437,7 @@ function ItemManager:createExplosionEffect(position: Vector3)
 	-- Explosion sound
 	local explosionSound = Instance.new("Sound")
 	explosionSound.SoundId = "rbxassetid://287390954"
-	explosionSound.Volume = 0.7
+	explosionSound.Volume = 0.3
 	explosionSound.Parent = effectPart
 	explosionSound:Play()
 	
