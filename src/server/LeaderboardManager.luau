@@ -211,8 +211,11 @@ function LeaderboardManager:_createBoard(
 		rowCorner.CornerRadius = UDim.new(0, 8)
 		rowCorner.Parent = row
 
+		-- Text color: light on dark rows, dark on light rows
+		local rowTextColor = isEven and Theme.BG_BASE or WHITE
+
 		-- Rank
-		local rankColor = if i <= 3 then style.rankColors[i] else MUTED
+		local rankColor = if i <= 3 then style.rankColors[i] else (isEven and Theme.BG_BASE or MUTED)
 		local rankLbl = Instance.new("TextLabel")
 		rankLbl.Size = UDim2.new(0, 90, 1, 0)
 		rankLbl.Position = UDim2.new(0, 0, 0, 0)
@@ -231,8 +234,8 @@ function LeaderboardManager:_createBoard(
 		nameLbl.Position = UDim2.new(0, 96, 0, 0)
 		nameLbl.BackgroundTransparency = 1
 		nameLbl.Text = "---"
-		nameLbl.TextColor3 = WHITE
-		nameLbl.TextSize = 28
+		nameLbl.TextColor3 = rowTextColor
+		nameLbl.TextSize = 42
 		nameLbl.Font = Enum.Font.Gotham
 		nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 		nameLbl.ZIndex = 3
@@ -246,7 +249,7 @@ function LeaderboardManager:_createBoard(
 		scoreLbl.BackgroundTransparency = 1
 		scoreLbl.Text = "---"
 		scoreLbl.TextColor3 = style.scoreColor
-		scoreLbl.TextSize = 28
+		scoreLbl.TextSize = 42
 		scoreLbl.Font = Enum.Font.GothamBold
 		scoreLbl.TextXAlignment = Enum.TextXAlignment.Right
 		scoreLbl.ZIndex = 3
