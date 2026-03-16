@@ -195,7 +195,7 @@ function TitleCollectionUI:createUI()
 	-- Main container - light modal
 	local container = Instance.new("Frame")
 	container.Name = "TitleCollectionContainer"
-	container.Size = UDim2.new(0, 660, 0, 540)
+	container.Size = UDim2.new(0, 780, 0, 580)
 	container.Position = UDim2.new(0.5, 0, 0.5, 0)
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
 	container.BackgroundColor3 = COLORS.BG_PRIMARY
@@ -244,17 +244,17 @@ function TitleCollectionUI:createUI()
 	header.Position = UDim2.new(0, 22, 0, 10)
 	header.BackgroundTransparency = 1
 	header.RichText = true
-	header.Text = '<font size="20">\u{2B50}</font>  <font face="GothamBold" size="24"><b>COLLECTION</b></font>'
+	header.Text = '<font size="22">\u{2B50}</font>  <font face="GothamBold" size="28"><b>COLLECTION</b></font>'
 	header.TextColor3 = Theme.TEXT_PRIMARY
-	header.TextSize = 24
+	header.TextSize = 28
 	header.Font = Enum.Font.GothamBold
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.Parent = container
 
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 36, 0, 36)
-	closeButton.Position = UDim2.new(1, -50, 0, 12)
+	closeButton.Size = UDim2.new(0, 40, 0, 40)
+	closeButton.Position = UDim2.new(1, -54, 0, 12)
 	closeButton.BackgroundColor3 = Theme.DANGER
 	closeButton.BorderSizePixel = 0
 	closeButton.Text = ""
@@ -273,7 +273,7 @@ function TitleCollectionUI:createUI()
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
 	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
-	closeBtnLabel.TextSize = 18
+	closeBtnLabel.TextSize = 20
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeButton.ZIndex + 1
 	closeBtnLabel.Parent = closeButton
@@ -304,7 +304,7 @@ function TitleCollectionUI:createUI()
 		tabLabel.BackgroundTransparency = 1
 		tabLabel.Text = icon .. " " .. label
 		tabLabel.TextColor3 = COLORS.TEXT_SECONDARY
-		tabLabel.TextSize = 14
+		tabLabel.TextSize = 15
 		tabLabel.Font = Enum.Font.GothamBold
 		tabLabel.Parent = tabFrame
 
@@ -338,8 +338,8 @@ function TitleCollectionUI:createUI()
 		end)
 	end
 
-	createTabButton(TAB_TITLES, "\u{1F3F7}", 0, 140)
-	createTabButton(TAB_TRAILS, "\u{2728}", 148, 140)
+	createTabButton(TAB_TITLES, "\u{1F3F7}", 0, 170)
+	createTabButton(TAB_TRAILS, "\u{2728}", 178, 170)
 
 	-- ===== ACTIVE BANNER =====
 	local bannerFrame = Instance.new("Frame")
@@ -998,7 +998,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		-- Compact card (62px height)
 		local card = Instance.new("Frame")
 		card.Name = "ItemEntry"
-		card.Size = UDim2.new(1, -4, 0, 62)
+		card.Size = UDim2.new(1, -4, 0, 72)
 		card.BackgroundColor3 = if entry.unlocked then COLORS.BG_CARD else COLORS.BG_CARD_LOCKED
 		card.BackgroundTransparency = 0
 		card.BorderSizePixel = 0
@@ -1040,7 +1040,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Text = string.format("%s [%s] %s", rarityEmoji, entry.rarity, entry.name)
 		nameLabel.TextColor3 = if entry.unlocked then theme.textColor else COLORS.TEXT_LOCKED
-		nameLabel.TextSize = 15
+		nameLabel.TextSize = 17
 		nameLabel.Font = Enum.Font.GothamBold
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -1057,7 +1057,7 @@ function TitleCollectionUI:rebuildEntries(showFeedback: boolean?, feedbackSource
 		detailLabel.BackgroundTransparency = 1
 		detailLabel.Text = detailText
 		detailLabel.TextColor3 = if entry.unlocked then COLORS.TEXT_SECONDARY else COLORS.TEXT_LOCKED
-		detailLabel.TextSize = 12
+		detailLabel.TextSize = 14
 		detailLabel.Font = Enum.Font.Gotham
 		detailLabel.TextXAlignment = Enum.TextXAlignment.Left
 		detailLabel.Parent = card

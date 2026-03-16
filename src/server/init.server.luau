@@ -22,6 +22,15 @@ if lobby then
 	end
 end
 
+-- Create SFX SoundGroup (controls all SFX volume from client SettingsUI)
+local SoundService = game:GetService("SoundService")
+if not SoundService:FindFirstChild("SFX") then
+	local sfxGroup = Instance.new("SoundGroup")
+	sfxGroup.Name = "SFX"
+	sfxGroup.Volume = 1
+	sfxGroup.Parent = SoundService
+end
+
 -- Initialize game
 local game_manager = GameManager.new()
 
