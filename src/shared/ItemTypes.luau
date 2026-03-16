@@ -1,4 +1,4 @@
--- ItemTypes: นิยาม Item ทั้งหมดสำหรับเกม (แบบ Mario Kart)
+-- ItemTypes: นิยาม Item ทั้งหมดสำหรับเกม (racing game style)
 
 export type ItemRarity = "Common" | "Uncommon" | "Rare" | "Epic"
 

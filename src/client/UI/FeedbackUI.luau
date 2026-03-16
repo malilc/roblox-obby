@@ -11,9 +11,9 @@ local UIFactory = require(script.Parent.UIFactory)
 local FeedbackUI = {}
 FeedbackUI.__index = FeedbackUI
 
-local PANEL_W = 320
-local PANEL_H = 340
-local PAD = 14
+local PANEL_W = 360
+local PANEL_H = 380
+local PAD = 16
 local MAX_LENGTH = 500
 
 local CATEGORIES = {
@@ -54,11 +54,11 @@ function FeedbackUI:_build()
 	-- Title
 	UIFactory.createLabel(self.container, {
 		name = "Title",
-		size = UDim2.new(1, 0, 0, 36),
+		size = UDim2.new(1, 0, 0, 42),
 		position = UDim2.new(0, 0, 0, 6),
 		text = "\u{1F4E8}  Send Feedback",
 		textColor = Theme.TEXT_PRIMARY,
-		textSize = 18,
+		textSize = 22,
 		font = Enum.Font.GothamBlack,
 		bgTransparency = 1,
 	})
@@ -66,10 +66,10 @@ function FeedbackUI:_build()
 	-- Close button
 	UIFactory.createButton(self.container, {
 		name = "CloseBtn",
-		size = UDim2.new(0, 28, 0, 28),
-		position = UDim2.new(1, -34, 0, 10),
+		size = UDim2.new(0, 32, 0, 32),
+		position = UDim2.new(1, -40, 0, 10),
 		text = "X",
-		textSize = 14,
+		textSize = 16,
 		bgColor = Theme.BG_SURFACE,
 		textColor = Theme.TEXT_MUTED,
 		cornerSize = "full",
@@ -82,13 +82,13 @@ function FeedbackUI:_build()
 	local sep = Instance.new("Frame")
 	sep.Name = "Separator"
 	sep.Size = UDim2.new(1, -PAD * 2, 0, 1)
-	sep.Position = UDim2.new(0, PAD, 0, 44)
+	sep.Position = UDim2.new(0, PAD, 0, 50)
 	sep.BackgroundColor3 = Theme.BG_ELEVATED
 	sep.BorderSizePixel = 0
 	sep.Parent = self.container
 
 	-- Category buttons
-	local catY = 54
+	local catY = 60
 	local catBtnW = math.floor((PANEL_W - PAD * 2 - 8) / 3)
 	self._catButtons = {}
 
@@ -97,10 +97,10 @@ function FeedbackUI:_build()
 		local darkColor = Theme.darkenForText and Theme.darkenForText(cat.color, 0.45) or Theme.TEXT_PRIMARY
 		local btn = UIFactory.createButton(self.container, {
 			name = cat.id .. "CatBtn",
-			size = UDim2.new(0, catBtnW, 0, 32),
+			size = UDim2.new(0, catBtnW, 0, 36),
 			position = UDim2.new(0, x, 0, catY),
 			text = cat.icon .. " " .. cat.label,
-			textSize = 13,
+			textSize = 15,
 			font = Enum.Font.GothamBold,
 			bgColor = if self._selectedCategory == cat.id then cat.color else Theme.BG_SURFACE,
 			textColor = if self._selectedCategory == cat.id then Theme.TEXT_ON_ACCENT else darkColor,
@@ -113,7 +113,7 @@ function FeedbackUI:_build()
 	end
 
 	-- TextBox
-	local textBoxY = catY + 42
+	local textBoxY = catY + 46
 	local textBoxH = 120
 
 	local textBoxBg = UIFactory.createPanel(self.container, {
@@ -135,7 +135,7 @@ function FeedbackUI:_build()
 	textBox.PlaceholderText = "Describe the bug or your suggestion..."
 	textBox.PlaceholderColor3 = Theme.TEXT_MUTED
 	textBox.TextColor3 = Theme.TEXT_PRIMARY
-	textBox.TextSize = 14
+	textBox.TextSize = 16
 	textBox.Font = Enum.Font.Gotham
 	textBox.TextXAlignment = Enum.TextXAlignment.Left
 	textBox.TextYAlignment = Enum.TextYAlignment.Top
@@ -175,7 +175,7 @@ function FeedbackUI:_build()
 	local submitY = charCountY + 22
 	self._submitBtn = UIFactory.createButton(self.container, {
 		name = "SubmitBtn",
-		size = UDim2.new(1, -PAD * 2, 0, 36),
+		size = UDim2.new(1, -PAD * 2, 0, 40),
 		position = UDim2.new(0, PAD, 0, submitY),
 		text = "Submit",
 		textSize = 15,

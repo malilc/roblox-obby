@@ -1,12 +1,26 @@
--- ItemManager: จัดการระบบ Items (แบบ Mario Kart)
+-- ItemManager: จัดการระบบ Items (racing game style)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
 local Logger = require(ReplicatedStorage.Shared.Logger)
+
+-- Helper: create a Sound with SFX SoundGroup assigned
+local _sfxGroup = nil
+local function createSFXSound()
+	local sound = Instance.new("Sound")
+	if not _sfxGroup then
+		_sfxGroup = SoundService:FindFirstChild("SFX")
+	end
+	if _sfxGroup then
+		sound.SoundGroup = _sfxGroup
+	end
+	return sound
+end
 
 local ItemManager = {}
 ItemManager.__index = ItemManager
@@ -660,7 +674,7 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	light.Parent = missile
 	
 	-- Fire sound
-	local fireSound = Instance.new("Sound")
+	local fireSound = createSFXSound()
 	fireSound.SoundId = "rbxassetid://287390459"
 	fireSound.Volume = 0.1
 	fireSound.Parent = rootPart
@@ -905,7 +919,7 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	glow.Parent = banana
 	
 	-- Drop sound
-	local dropSound = Instance.new("Sound")
+	local dropSound = createSFXSound()
 	dropSound.SoundId = "rbxassetid://70557734865364" -- Banana drop sound
 	dropSound.Volume = 0.21
 	dropSound.Parent = banana
@@ -1036,7 +1050,7 @@ function ItemManager:applySlip(player: Player, itemDef)
 	end)
 	
 	-- Slip sound (play immediately)
-	local slipSound = Instance.new("Sound")
+	local slipSound = createSFXSound()
 	slipSound.SoundId = "rbxassetid://129432532096499" -- Banana slip sound
 	slipSound.Volume = 0.42
 	slipSound.PlayOnRemove = false
@@ -1167,7 +1181,7 @@ function ItemManager:useShield(player: Player, itemDef): boolean
 	if character then
 		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 		if humanoidRootPart then
-			local activateSound = Instance.new("Sound")
+			local activateSound = createSFXSound()
 			activateSound.SoundId = "rbxassetid://105300932320033" -- Shield activate
 			activateSound.Volume = 0.26
 			activateSound.Parent = humanoidRootPart
@@ -1351,7 +1365,7 @@ function ItemManager:removeShieldVisual(player: Player)
 			self:createShieldBreakEffect(humanoidRootPart.Position)
 			
 			-- Shield break sound
-			local breakSound = Instance.new("Sound")
+			local breakSound = createSFXSound()
 			breakSound.SoundId = "rbxassetid://122218831341898" -- Shield break
 			breakSound.Volume = 0.32
 			breakSound.Parent = humanoidRootPart
@@ -1455,7 +1469,7 @@ function ItemManager:useSpeedBoost(player: Player, itemDef): boolean
 	-- Speed boost sound
 	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 	if humanoidRootPart then
-		local boostSound = Instance.new("Sound")
+		local boostSound = createSFXSound()
 		boostSound.SoundId = "rbxassetid://105300932320033" -- Speed boost activate
 		boostSound.Volume = 0.37
 		boostSound.Parent = humanoidRootPart
@@ -1723,7 +1737,7 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 	local targetCFrame = targetHRP.CFrame
 	
 	-- Teleport charge-up sound
-	local chargeSound = Instance.new("Sound")
+	local chargeSound = createSFXSound()
 	chargeSound.SoundId = "rbxassetid://93826112721753" -- Swap teleport
 	chargeSound.Volume = 0.32
 	chargeSound.PlaybackSpeed = 0.8
@@ -1759,7 +1773,7 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 	Logger.debug("ItemManager", player.Name, "used Lightning!")
 	
 	-- Thunder sound (global)
-	local thunderSound = Instance.new("Sound")
+	local thunderSound = createSFXSound()
 	thunderSound.SoundId = "rbxassetid://1093102664"
 	thunderSound.Volume = 0.42
 	thunderSound.PlaybackSpeed = 1.2
@@ -1883,7 +1897,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		end)
 		
 		-- Zap sound on hit
-		local zapSound = Instance.new("Sound")
+		local zapSound = createSFXSound()
 		zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
 		zapSound.Volume = 0.21
 		zapSound.PlaybackSpeed = 1.5
@@ -1928,7 +1942,7 @@ function ItemManager:applyDummyStun(dummy: Model, duration: number)
 	spark.Parent = humanoidRootPart
 	
 	-- Zap sound
-	local zapSound = Instance.new("Sound")
+	local zapSound = createSFXSound()
 	zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
 	zapSound.Volume = 0.21
 	zapSound.Parent = humanoidRootPart
@@ -1967,7 +1981,7 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
 	
 	-- Slip sound
-	local slipSound = Instance.new("Sound")
+	local slipSound = createSFXSound()
 	slipSound.SoundId = "rbxassetid://129432532096499"
 	slipSound.Volume = 0.42
 	slipSound.Parent = humanoidRootPart
@@ -2435,7 +2449,7 @@ function ItemManager:createExplosionEffect(position: Vector3)
 	flash.Parent = effectPart
 	
 	-- Explosion sound
-	local explosionSound = Instance.new("Sound")
+	local explosionSound = createSFXSound()
 	explosionSound.SoundId = "rbxassetid://287390954"
 	explosionSound.Volume = 0.3
 	explosionSound.Parent = effectPart

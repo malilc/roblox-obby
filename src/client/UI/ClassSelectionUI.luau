@@ -293,7 +293,7 @@ function ClassSelectionUI:createUI()
 	-- Main container (initially hidden)
 	local container = Instance.new("Frame")
 	container.Name = "ClassSelectionContainer"
-	container.Size = UDim2.new(0, 720, 0, 480)
+	container.Size = UDim2.new(0, 780, 0, 580)
 	container.Position = UDim2.new(0.5, 0, 0.5, 0)
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
 	container.BackgroundColor3 = COLORS.BG_PRIMARY
@@ -342,9 +342,9 @@ function ClassSelectionUI:createUI()
 	header.Position = UDim2.new(0, 22, 0, 10)
 	header.BackgroundTransparency = 1
 	header.RichText = true
-	header.Text = '<font size="20">\u{2694}</font>  <font face="GothamBold" size="24"><b>CLASSES</b></font>'
+	header.Text = '<font size="22">\u{2694}</font>  <font face="GothamBold" size="28"><b>CLASSES</b></font>'
 	header.TextColor3 = Theme.TEXT_PRIMARY
-	header.TextSize = 24
+	header.TextSize = 28
 	header.Font = Enum.Font.GothamBold
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.Parent = container
@@ -352,8 +352,8 @@ function ClassSelectionUI:createUI()
 	-- Close button
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Name = "CloseButton"
-	closeBtn.Size = UDim2.new(0, 36, 0, 36)
-	closeBtn.Position = UDim2.new(1, -50, 0, 12)
+	closeBtn.Size = UDim2.new(0, 40, 0, 40)
+	closeBtn.Position = UDim2.new(1, -54, 0, 12)
 	closeBtn.BackgroundColor3 = Theme.DANGER
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Text = ""
@@ -371,7 +371,7 @@ function ClassSelectionUI:createUI()
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
 	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
-	closeBtnLabel.TextSize = 18
+	closeBtnLabel.TextSize = 20
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeBtn.ZIndex + 1
 	closeBtnLabel.Parent = closeBtn
@@ -383,7 +383,7 @@ function ClassSelectionUI:createUI()
 	-- ── Left: Class List (ScrollingFrame) ──
 	local classListFrame = Instance.new("ScrollingFrame")
 	classListFrame.Name = "ClassListFrame"
-	classListFrame.Size = UDim2.new(0, 170, 0, 360)
+	classListFrame.Size = UDim2.new(0, 180, 0, 460)
 	classListFrame.Position = UDim2.new(0, 20, 0, 58)
 	classListFrame.BackgroundColor3 = Theme.BG_OVERLAY
 	classListFrame.BackgroundTransparency = 0.5
@@ -601,8 +601,8 @@ end
 function ClassSelectionUI:createDetailPanel(container: Frame)
 	local panel = Instance.new("Frame")
 	panel.Name = "DetailPanel"
-	panel.Size = UDim2.new(0, 500, 0, 360)
-	panel.Position = UDim2.new(0, 200, 0, 58)
+	panel.Size = UDim2.new(0, 560, 0, 460)
+	panel.Position = UDim2.new(0, 210, 0, 58)
 	panel.BackgroundColor3 = COLORS.BG_CARD
 	panel.BackgroundTransparency = 0.05
 	panel.BorderSizePixel = 0
@@ -642,7 +642,7 @@ function ClassSelectionUI:createDetailPanel(container: Frame)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = ""
 	nameLabel.TextColor3 = COLORS.TEXT_PRIMARY
-	nameLabel.TextSize = 24
+	nameLabel.TextSize = 26
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Parent = content
@@ -655,7 +655,7 @@ function ClassSelectionUI:createDetailPanel(container: Frame)
 	descLabel.BackgroundTransparency = 1
 	descLabel.Text = ""
 	descLabel.TextColor3 = COLORS.TEXT_SECONDARY
-	descLabel.TextSize = 13
+	descLabel.TextSize = 15
 	descLabel.Font = Enum.Font.Gotham
 	descLabel.TextXAlignment = Enum.TextXAlignment.Left
 	descLabel.TextWrapped = true

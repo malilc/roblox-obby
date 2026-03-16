@@ -75,7 +75,7 @@ function TutorialUI:createUI()
 	-- === Main Panel (directly on ScreenGui, no overlay) ===
 	local panel = Instance.new("Frame")
 	panel.Name = "TutorialPanel"
-	panel.Size = UDim2.new(0, 680, 0, 500)
+	panel.Size = UDim2.new(0, 780, 0, 580)
 	panel.Position = UDim2.new(0.5, 0, 0.5, 0)
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.BackgroundColor3 = Theme.BG_BASE
@@ -124,9 +124,9 @@ function TutorialUI:createUI()
 	header.Position = UDim2.new(0, 22, 0, 10)
 	header.BackgroundTransparency = 1
 	header.RichText = true
-	header.Text = '<font size="20">\u{2753}</font>  <font face="GothamBold" size="24"><b>GAME GUIDE</b></font>'
+	header.Text = '<font size="22">\u{2753}</font>  <font face="GothamBold" size="28"><b>GAME GUIDE</b></font>'
 	header.TextColor3 = Theme.TEXT_PRIMARY
-	header.TextSize = 24
+	header.TextSize = 28
 	header.Font = Enum.Font.GothamBold
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.Parent = panel
@@ -134,8 +134,8 @@ function TutorialUI:createUI()
 	-- Close button
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 36, 0, 36)
-	closeButton.Position = UDim2.new(1, -50, 0, 12)
+	closeButton.Size = UDim2.new(0, 40, 0, 40)
+	closeButton.Position = UDim2.new(1, -54, 0, 12)
 	closeButton.BackgroundColor3 = Theme.DANGER
 	closeButton.BorderSizePixel = 0
 	closeButton.Text = ""
@@ -153,7 +153,7 @@ function TutorialUI:createUI()
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
 	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
-	closeBtnLabel.TextSize = 18
+	closeBtnLabel.TextSize = 20
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeButton.ZIndex + 1
 	closeBtnLabel.Parent = closeButton
@@ -177,7 +177,7 @@ function TutorialUI:createUI()
 	tabLayout.Parent = tabBar
 
 	-- Tab กว้างขึ้นเพื่อไม่ตัดข้อความ
-	local panelWidth = 680
+	local panelWidth = 780
 	local tabWidth = math.floor((panelWidth - 30 - 5 * (#sections - 1)) / #sections)
 
 	for i, section in ipairs(sections) do
@@ -188,7 +188,7 @@ function TutorialUI:createUI()
 		tabButton.BackgroundTransparency = 0.1
 		tabButton.Text = (section.icon or "") .. " " .. section.title
 		tabButton.TextColor3 = if i == 1 then Theme.TEXT_PRIMARY else Theme.TEXT_MUTED
-		tabButton.TextSize = 13
+		tabButton.TextSize = 15
 		tabButton.Font = Enum.Font.GothamBold
 		tabButton.AutoButtonColor = false
 		tabButton.LayoutOrder = i
@@ -235,7 +235,7 @@ function TutorialUI:createUI()
 	contentLabel.BackgroundTransparency = 1
 	contentLabel.Text = sections[1] and sections[1].content or ""
 	contentLabel.TextColor3 = Theme.TEXT_PRIMARY
-	contentLabel.TextSize = 17
+	contentLabel.TextSize = 18
 	contentLabel.LineHeight = 1.5
 	contentLabel.RichText = true
 	contentLabel.Font = Enum.Font.Gotham

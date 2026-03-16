@@ -105,7 +105,7 @@ function ShopUI:createUI()
 	-- Main frame
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "ShopFrame"
-	mainFrame.Size = UDim2.new(0, 780, 0, 560)
+	mainFrame.Size = UDim2.new(0, 780, 0, 580)
 	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 	mainFrame.BackgroundColor3 = Theme.BG_BASE
@@ -190,9 +190,9 @@ function ShopUI:createHeader(parent: Frame)
 	title.Position = UDim2.new(0, 22, 0, 10)
 	title.BackgroundTransparency = 1
 	title.RichText = true
-	title.Text = '<font size="20">\u{1F6D2}</font>  <font face="GothamBold" size="24"><b>SHOP</b></font>'
+	title.Text = '<font size="22">\u{1F6D2}</font>  <font face="GothamBold" size="28"><b>SHOP</b></font>'
 	title.TextColor3 = Theme.TEXT_PRIMARY
-	title.TextSize = 24
+	title.TextSize = 28
 	title.Font = Enum.Font.GothamBold
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Parent = parent
@@ -203,8 +203,8 @@ function ShopUI:createHeader(parent: Frame)
 	-- Close button
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Name = "CloseButton"
-	closeBtn.Size = UDim2.new(0, 36, 0, 36)
-	closeBtn.Position = UDim2.new(1, -50, 0, 12)
+	closeBtn.Size = UDim2.new(0, 40, 0, 40)
+	closeBtn.Position = UDim2.new(1, -54, 0, 12)
 	closeBtn.BackgroundColor3 = Theme.DANGER
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Text = ""
@@ -222,7 +222,7 @@ function ShopUI:createHeader(parent: Frame)
 	closeBtnLabel.BackgroundTransparency = 1
 	closeBtnLabel.Text = "X"
 	closeBtnLabel.TextColor3 = Theme.TEXT_ON_ACCENT
-	closeBtnLabel.TextSize = 18
+	closeBtnLabel.TextSize = 20
 	closeBtnLabel.Font = Enum.Font.GothamBold
 	closeBtnLabel.ZIndex = closeBtn.ZIndex + 1
 	closeBtnLabel.Parent = closeBtn
