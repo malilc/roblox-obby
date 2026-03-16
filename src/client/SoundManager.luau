@@ -43,6 +43,7 @@ function SoundManager:_createSounds()
 	self.bgm = bgm
 
 	-- SFX
+	local sfxGroup = SoundService:WaitForChild("SFX", 5)
 	for name, id in pairs(SOUNDS) do
 		if string.sub(name, 1, 3) == "SFX" then
 			local sfx = Instance.new("Sound")
@@ -51,6 +52,9 @@ function SoundManager:_createSounds()
 			sfx.Volume = 0.6
 			sfx.Looped = false
 			sfx.RollOffMaxDistance = 0
+			if sfxGroup then
+				sfx.SoundGroup = sfxGroup
+			end
 			sfx.Parent = SoundService
 			self.sounds[name] = sfx
 		end

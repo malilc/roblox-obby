@@ -172,11 +172,10 @@ function SettingsUI:_applyMusicVolume()
 end
 
 function SettingsUI:_applySfxVolume()
-	-- Set volume for all SFX sounds
-	for _, sound in pairs(SoundService:GetChildren()) do
-		if sound:IsA("Sound") and string.sub(sound.Name, 1, 3) == "SFX" then
-			sound.Volume = if self.sfxEnabled then 0.6 else 0
-		end
+	-- Control SFX SoundGroup volume (affects all SFX including item sounds)
+	local sfxGroup = SoundService:FindFirstChild("SFX")
+	if sfxGroup then
+		sfxGroup.Volume = if self.sfxEnabled then 1 else 0
 	end
 end
 
