@@ -92,9 +92,6 @@ Workspace/
 │   ├── DirtPath_Main      # ทางเดินหลัก Slate สีน้ำตาล (spawn → SelectionZone)
 │   ├── DirtPath_ShopBranch # ทางแยกไป Shop
 │   ├── Stage_Platform     # แท่น Concrete ยกสูง (24x1.5x24, ใต้ SelectionZone)
-│   ├── Stage_Pillar_NE/NW/SE/SW  # เสา Concrete 4 ต้น
-│   ├── Stage_Roof         # หลังคาไม้ (Wood, 26x1x26)
-│   ├── Stage_RailBack/Left/Right  # ราว Concrete 3 ด้าน (เปิดหน้า)
 │   ├── Stage_StepFront    # ขั้นบันไดเข้า (Concrete)
 │   ├── Hedge_N/S/E/W      # พุ่มไม้ขอบ Lobby (Grass, สูง 3 studs)
 │   └── InvisWall_N/S/E/W  # กำแพงล่องหน (Transparency=1, สูง 20 studs, กันตก)
