@@ -1261,7 +1261,7 @@ function StageTemplates.createStage10(startPosition: Vector3): Model
 	local coin2 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.5, 2, 0))
 	coin2.Parent = itemPickups
 
-	local coin3 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.875, 2, amplitude))
+	local coin3 = createItemPickup(startPosition + Vector3.new(STAGE_LENGTH * 0.875, 2, -amplitude))
 	coin3.Parent = itemPickups
 
 	-- End Part (สีม่วง - จบสีรุ้ง)
