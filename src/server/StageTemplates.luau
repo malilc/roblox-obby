@@ -1133,19 +1133,17 @@ function StageTemplates.createStage9(startPosition: Vector3): Model
 	})
 	rope3.Parent = obstacles
 
-	-- เชือกราวตกแต่ง 2 เส้น (ซ้าย-ขวา)
-	for side = -1, 1, 2 do
-		local sideRail = Instance.new("Part")
-		sideRail.Name = "FinalHandrail_" .. (if side == -1 then "L" else "R")
-		sideRail.Anchored = true
-		sideRail.Size = Vector3.new(rope3Length, 0.4, 0.4)
-		sideRail.Position = startPosition + Vector3.new(rope3Start + rope3Length / 2, 3, side * 2)
-		sideRail.Color = ropeColor
-		sideRail.Material = Enum.Material.Fabric
-		sideRail.CanCollide = false
-		sideRail.Transparency = 0.3
-		sideRail.Parent = obstacles
-	end
+	-- เชือกราวตกแต่ง (เส้นเดียว ตรงกลาง เหมือน section ก่อนหน้า)
+	local handrail3 = Instance.new("Part")
+	handrail3.Name = "FinalHandrail"
+	handrail3.Anchored = true
+	handrail3.Size = Vector3.new(rope3Length, 0.4, 0.4)
+	handrail3.Position = startPosition + Vector3.new(rope3Start + rope3Length / 2, 3, 0)
+	handrail3.Color = ropeColor
+	handrail3.Material = Enum.Material.Fabric
+	handrail3.CanCollide = false
+	handrail3.Transparency = 0.3
+	handrail3.Parent = obstacles
 
 	-- === Item Pickups ===
 	local coin1 = createItemPickup(startPosition + Vector3.new(22, 2, 0))
@@ -1876,6 +1874,7 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 		glove:SetAttribute("PunchPhase", cfg.phase)
 		glove:SetAttribute("PushForce", 2500)
 		glove:SetAttribute("PushUpForce", 1200)
+		glove:SetAttribute("StunDuration", 0.75)
 		glove.Parent = obstacles
 
 		local light = Instance.new("PointLight")

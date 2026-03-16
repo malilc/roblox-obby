@@ -269,6 +269,43 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 								itemEffectRemote:FireClient(player, "HitEffect", {})
 							end
 						end
+
+						-- Stun: temporarily freeze player movement
+						local stunDuration = descendant:GetAttribute("StunDuration")
+						if stunDuration and stunDuration > 0 then
+							local savedWalkSpeed = humanoid.WalkSpeed
+							local savedJumpPower = humanoid.JumpPower
+							humanoid.WalkSpeed = 0
+							humanoid.JumpPower = 0
+
+							-- Stun visual (💫 above head)
+							local existingStun = rootPart:FindFirstChild("PunchStunVisual")
+							if existingStun then existingStun:Destroy() end
+
+							local stunVisual = Instance.new("BillboardGui")
+							stunVisual.Name = "PunchStunVisual"
+							stunVisual.Size = UDim2.new(0, 50, 0, 50)
+							stunVisual.StudsOffset = Vector3.new(0, 3, 0)
+							stunVisual.AlwaysOnTop = true
+							stunVisual.Parent = rootPart
+
+							local stars = Instance.new("TextLabel")
+							stars.Size = UDim2.new(1, 0, 1, 0)
+							stars.BackgroundTransparency = 1
+							stars.Text = "💫"
+							stars.TextSize = 30
+							stars.Parent = stunVisual
+
+							task.delay(stunDuration, function()
+								if humanoid and humanoid.Parent then
+									humanoid.WalkSpeed = savedWalkSpeed
+									humanoid.JumpPower = savedJumpPower
+								end
+								if stunVisual.Parent then
+									stunVisual:Destroy()
+								end
+							end)
+						end
 					end
 				end)
 			end
