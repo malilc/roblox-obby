@@ -662,6 +662,12 @@ itemBox.Parent = itemPickups
 
 ### Sound Effects:
 
+All SFX (item sounds + client SFX) use a shared **SoundGroup "SFX"** in SoundService.
+- Server creates `SoundGroup "SFX"` in `init.server.luau`
+- ItemManager uses `createSFXSound()` helper — assigns SoundGroup automatically + caches reference
+- SoundManager assigns SoundGroup to client SFX sounds
+- SettingsUI toggles `SoundGroup.Volume` (0 or 1) — controls **all** SFX from one place
+
 | Item | Sound |
 |------|-------|
 | Banana Drop | rbxassetid://70557734865364 |
