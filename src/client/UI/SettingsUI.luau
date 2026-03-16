@@ -61,11 +61,11 @@ function SettingsUI:_build()
 		name = "CloseBtn",
 		size = UDim2.new(0, 28, 0, 28),
 		position = UDim2.new(1, -34, 0, 10),
-		text = "\u{2715}",
+		text = "X",
 		textSize = 14,
 		bgColor = Theme.BG_SURFACE,
 		textColor = Theme.TEXT_MUTED,
-		cornerSize = "sm",
+		cornerSize = "full",
 		onClick = function()
 			self:hide()
 		end,

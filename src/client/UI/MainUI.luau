@@ -24,7 +24,10 @@ local DailyBonusUI = require(script.Parent.DailyBonusUI)
 local LeaderboardUI = require(script.Parent.LeaderboardUI)
 local ShopUI = require(script.Parent.ShopUI)
 local SettingsUI = require(script.Parent.SettingsUI)
+local FeedbackUI = require(script.Parent.FeedbackUI)
 local MenuGridUI = require(script.Parent.MenuGridUI)
+
+local SocialService = game:GetService("SocialService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -35,9 +38,10 @@ local PANEL_TO_BUTTON = {
 	titleCollectionUI = "Titles",
 	tutorialUI        = "Help",
 	settingsUI        = "Settings",
+	feedbackUI        = "Feedback",
 }
 
-local MANAGED_PANELS = {"shopUI", "classSelectionUI", "titleCollectionUI", "tutorialUI", "settingsUI"}
+local MANAGED_PANELS = {"shopUI", "classSelectionUI", "titleCollectionUI", "tutorialUI", "settingsUI", "feedbackUI"}
 
 local MainUI = {}
 MainUI.__index = MainUI
@@ -119,6 +123,13 @@ function MainUI.new()
 		end,
 	})
 
+	-- FeedbackUI
+	self.feedbackUI = FeedbackUI.new(screenGui, {
+		onHide = function()
+			self:_syncGridButton("feedbackUI", false)
+		end,
+	})
+
 	-- TitleHUD with callback to open collection (hidden — replaced by menu grid)
 	self.titleHUDUI = TitleHUDUI.new(screenGui, function()
 		self:toggleMenuPanel("titleCollectionUI")
@@ -145,6 +156,14 @@ function MainUI.new()
 					or { claimed = false, day = 1, rewards = {25, 50, 75, 100, 150, 200, 500}, gemRewards = {1, 1, 2, 2, 3, 3, 5} }
 				self.dailyBonusUI:showCalendar(data)
 			end
+		end,
+		onFeedback = function()
+			self:toggleMenuPanel("feedbackUI")
+		end,
+		onInvite = function()
+			pcall(function()
+				SocialService:PromptGameInvite(LocalPlayer)
+			end)
 		end,
 		onHelp = function()
 			self:toggleMenuPanel("tutorialUI")

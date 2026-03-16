@@ -14,6 +14,7 @@ local SpectatorManager = require(script.Parent.SpectatorManager)
 local SelectionZoneManager = require(script.Parent.SelectionZoneManager)
 local ShopZoneManager = require(script.Parent.ShopZoneManager)
 local ShopManager = require(script.Parent.ShopManager)
+local FeedbackManager = require(script.Parent.FeedbackManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Logger = require(ReplicatedStorage.Shared.Logger)
@@ -97,6 +98,9 @@ function GameManager.new()
 
 	-- Shop Manager (purchases + gacha)
 	self.shopManager = ShopManager.new(self.currencyManager, self.itemManager, self.classManager, self)
+
+	-- Feedback Manager (Discord webhook)
+	self.feedbackManager = FeedbackManager.new()
 
 	-- Player event connections (for cleanup on leave)
 	self.playerConnections = {} :: {[Player]: {RBXScriptConnection}}

@@ -303,6 +303,17 @@ local Config = {
 		PlatformServoSpeed = 50,        -- ความเร็ว servo ของ moving platform
 	},
 
+	-- Feedback System (Discord Webhook)
+	Feedback = {
+		WebhookUrls = {
+			Bug = "https://discord.com/api/webhooks/1483045557097463870/NTQtBCu94zm8xuL2ay7YYBJy9tg1ocQzU7sT1VGDCD-q2eP_NgFP9SDVCmC2WAzzmK_f",
+			Suggestion = "https://discord.com/api/webhooks/1483054910374285322/n7v1ifkk5P1rwI-MbeuWWRTdl4-CucfhbwZJ5FWwFgih6QIK4-j9kuLhQKFe8bpPmsDV",
+			Other = "https://discord.com/api/webhooks/1483055015009456219/v8njgEZmbxM93hZzBl0MrqgOFxi8q8-qzOUZcopqtx3lQqDDoZqE-NwOcAfVEVNJ8yn-",
+		},
+		MaxLength = 500,
+		CooldownSeconds = 60,
+	},
+
 	-- Debug / Development Settings
 	Debug = {
 		Enabled = true,    -- Master toggle: set false for production

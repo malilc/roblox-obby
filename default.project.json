@@ -169,6 +169,12 @@
         },
         "TrailUpdate": {
           "$className": "RemoteEvent"
+        },
+        "SendFeedback": {
+          "$className": "RemoteEvent"
+        },
+        "FeedbackResponse": {
+          "$className": "RemoteEvent"
         }
       },
       "StageTemplates": {
