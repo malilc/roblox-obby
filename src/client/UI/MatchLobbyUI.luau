@@ -227,17 +227,40 @@ function MatchLobbyUI:createUI()
 	buttonsFrame.BackgroundTransparency = 1
 	buttonsFrame.Parent = container
 
-	-- START MATCH button (host only)
+	-- LEAVE button (left side)
+	local leaveBtn = Instance.new("TextButton")
+	leaveBtn.Name = "LeaveMatch"
+	leaveBtn.Size = UDim2.new(0.48, 0, 1, 0)
+	leaveBtn.Position = UDim2.new(0, 0, 0, 0)
+	leaveBtn.BackgroundColor3 = Theme.DANGER
+	leaveBtn.BorderSizePixel = 0
+	leaveBtn.Text = ""
+	leaveBtn.Visible = false
+	leaveBtn.Parent = buttonsFrame
+	self.leaveButton = leaveBtn
+
+	local leaveBtnCorner = Instance.new("UICorner")
+	leaveBtnCorner.CornerRadius = Theme.CORNER_SM
+	leaveBtnCorner.Parent = leaveBtn
+
+	local leaveLabel = Instance.new("TextLabel")
+	leaveLabel.Size = UDim2.new(1, 0, 1, 0)
+	leaveLabel.BackgroundTransparency = 1
+	leaveLabel.Text = "LEAVE"
+	leaveLabel.TextColor3 = Color3.new(1, 1, 1)
+	leaveLabel.TextSize = 16
+	leaveLabel.Font = Enum.Font.GothamBold
+	leaveLabel.ZIndex = leaveBtn.ZIndex + 1
+	leaveLabel.Parent = leaveBtn
+
+	-- START MATCH button (right side, host only)
 	local startMatchBtn = Instance.new("TextButton")
 	startMatchBtn.Name = "StartMatch"
 	startMatchBtn.Size = UDim2.new(0.48, 0, 1, 0)
-	startMatchBtn.Position = UDim2.new(0, 0, 0, 0)
+	startMatchBtn.Position = UDim2.new(0.52, 0, 0, 0)
 	startMatchBtn.BackgroundColor3 = Theme.SUCCESS
 	startMatchBtn.BorderSizePixel = 0
-	startMatchBtn.Text = "START MATCH"
-	startMatchBtn.TextColor3 = Theme.TEXT_ON_ACCENT
-	startMatchBtn.TextSize = 16
-	startMatchBtn.Font = Enum.Font.GothamBold
+	startMatchBtn.Text = ""
 	startMatchBtn.Visible = false
 	startMatchBtn.Parent = buttonsFrame
 	self.startMatchButton = startMatchBtn
@@ -245,6 +268,16 @@ function MatchLobbyUI:createUI()
 	local startBtnCorner = Instance.new("UICorner")
 	startBtnCorner.CornerRadius = Theme.CORNER_SM
 	startBtnCorner.Parent = startMatchBtn
+
+	local startLabel = Instance.new("TextLabel")
+	startLabel.Size = UDim2.new(1, 0, 1, 0)
+	startLabel.BackgroundTransparency = 1
+	startLabel.Text = "START MATCH"
+	startLabel.TextColor3 = Color3.new(1, 1, 1)
+	startLabel.TextSize = 16
+	startLabel.Font = Enum.Font.GothamBold
+	startLabel.ZIndex = startMatchBtn.ZIndex + 1
+	startLabel.Parent = startMatchBtn
 
 	-- Start button gradient
 	local startGrad = Instance.new("UIGradient")
@@ -261,25 +294,6 @@ function MatchLobbyUI:createUI()
 	startStroke.Thickness = Theme.STROKE_THIN
 	startStroke.Transparency = 0.3
 	startStroke.Parent = startMatchBtn
-
-	-- Leave button
-	local leaveBtn = Instance.new("TextButton")
-	leaveBtn.Name = "LeaveMatch"
-	leaveBtn.Size = UDim2.new(0.48, 0, 1, 0)
-	leaveBtn.Position = UDim2.new(0.52, 0, 0, 0)
-	leaveBtn.BackgroundColor3 = Theme.DANGER
-	leaveBtn.BorderSizePixel = 0
-	leaveBtn.Text = "LEAVE"
-	leaveBtn.TextColor3 = Theme.TEXT_ON_ACCENT
-	leaveBtn.TextSize = 16
-	leaveBtn.Font = Enum.Font.GothamBold
-	leaveBtn.Visible = false
-	leaveBtn.Parent = buttonsFrame
-	self.leaveButton = leaveBtn
-
-	local leaveBtnCorner = Instance.new("UICorner")
-	leaveBtnCorner.CornerRadius = Theme.CORNER_SM
-	leaveBtnCorner.Parent = leaveBtn
 
 	-- Leave button gradient
 	local leaveGrad = Instance.new("UIGradient")
