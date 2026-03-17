@@ -256,6 +256,7 @@ function ShopManager:setupGamePassListeners()
 					self.playerGamePasses[player] = {}
 				end
 				self.playerGamePasses[player][id] = true
+				self:saveGamePassesToProfile(player)
 				self:sendGamePassUpdate(player)
 				Logger.info("ShopManager", player.Name, "purchased game pass:", id)
 				break
@@ -265,29 +266,79 @@ function ShopManager:setupGamePassListeners()
 end
 
 function ShopManager:checkAllGamePasses(player: Player)
-	local owned = {}
+	if not self.playerGamePasses[player] then
+		self.playerGamePasses[player] = {}
+	end
+	local passes = self.playerGamePasses[player]
+
+	-- Load saved passes from DataStore profile (has priority — includes test toggles)
+	self:loadGamePassesFromProfile(player)
+
+	-- Merge real ownership from Roblox API
+	-- Only set true if saved state is nil (not explicitly set)
+	-- saved true = owned, saved false = explicitly disabled, nil = use API
 	for id, passDef in pairs(Config.GamePasses) do
-		if passDef.gamePassId ~= 0 then
+		if passDef.gamePassId ~= 0 and passes[id] == nil then
 			local success, hasPass = pcall(function()
 				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passDef.gamePassId)
 			end)
 			if success and hasPass then
-				owned[id] = true
+				passes[id] = true
 			end
 		end
 	end
-	self.playerGamePasses[player] = owned
 end
 
 function ShopManager:hasGamePass(player: Player, passId: string): boolean
 	local passes = self.playerGamePasses[player]
-	return passes ~= nil and passes[passId] == true
+	if not passes then return false end
+	return passes[passId] == true
 end
 
 function ShopManager:sendGamePassUpdate(player: Player)
 	self.gamePassUpdateRemote:FireClient(player, {
 		ownedPasses = self.playerGamePasses[player] or {},
 	})
+end
+
+-- Save gamepass ownership to CurrencyManager profile (immediate save)
+function ShopManager:saveGamePassesToProfile(player: Player)
+	local passes = self.playerGamePasses[player]
+	if not passes or not self.currencyManager then return end
+
+	local playerData = self.currencyManager.playerData[player]
+	if not playerData then return end
+
+	-- Copy table (not reference) so ShopManager cleanup doesn't affect saved data
+	local copy = {}
+	for id, owned in pairs(passes) do
+		copy[id] = owned
+	end
+	playerData.ownedGamePasses = copy
+
+	-- Save immediately (not just pendingSaves — ensures data persists even if Studio stops)
+	task.spawn(function()
+		self.currencyManager:savePlayerData(player)
+	end)
+end
+
+-- Load saved gamepass ownership from CurrencyManager profile
+function ShopManager:loadGamePassesFromProfile(player: Player)
+	if not self.currencyManager then return end
+
+	local playerData = self.currencyManager.playerData[player]
+	if not playerData or not playerData.ownedGamePasses then return end
+
+	if not self.playerGamePasses[player] then
+		self.playerGamePasses[player] = {}
+	end
+
+	-- Load saved state: true = owned, false = explicitly disabled
+	for id, value in pairs(playerData.ownedGamePasses) do
+		if Config.GamePasses[id] then
+			self.playerGamePasses[player][id] = value
+		end
+	end
 end
 
 -- ========== TEST GAMEPASS TOGGLE (Debug only) ==========
@@ -320,11 +371,10 @@ function ShopManager:toggleTestGamePass(player: Player, passId: string, enabled:
 		self.playerGamePasses[player] = {}
 	end
 
-	if enabled then
-		self.playerGamePasses[player][passId] = true
-	else
-		self.playerGamePasses[player][passId] = nil
-	end
+	self.playerGamePasses[player][passId] = enabled
+
+	-- Save to DataStore
+	self:saveGamePassesToProfile(player)
 
 	-- Send updated state to client
 	self:sendGamePassUpdate(player)

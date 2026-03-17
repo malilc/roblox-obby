@@ -698,14 +698,8 @@ function GameManager:onPlayerFinished(player: Player)
 
 	-- Gamepass upsell (show purchase buttons for passes the player doesn't own)
 	local gamePassUpsell = {}
-	if not self.shopManager:hasGamePass(player, "DoubleCoin") and Config.GamePasses.DoubleCoin then
-		gamePassUpsell.doubleCoin = Config.GamePasses.DoubleCoin.gamePassId
-	end
 	if not self.shopManager:hasGamePass(player, "ExtraSlot") and Config.GamePasses.ExtraSlot then
 		gamePassUpsell.extraSlot = Config.GamePasses.ExtraSlot.gamePassId
-	end
-	if not self.shopManager:hasGamePass(player, "VIP") and Config.GamePasses.VIP then
-		gamePassUpsell.vip = Config.GamePasses.VIP.gamePassId
 	end
 	if not self.shopManager:hasGamePass(player, "DoubleXP") and Config.GamePasses.DoubleXP then
 		local passId = Config.GamePasses.DoubleXP.gamePassId

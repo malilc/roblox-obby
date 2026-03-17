@@ -1420,10 +1420,12 @@ local SOUNDS = {
 ### Gamepass System (Benefits + Multipliers):
 
 **Ownership Check Flow:**
-1. Player joins → `GameManager:onPlayerAdded()` calls `shopManager:checkAllGamePasses(player)` (UserOwnsGamePassAsync)
-2. Player opens Shop → re-checks all passes
-3. After native Roblox purchase → `PromptGamePassPurchaseFinished` updates cache
-4. Test toggles (debug only) → `ToggleTestGamePass` remote, in-memory only (resets on leave)
+1. Player joins → `CurrencyManager:loadPlayerData()` loads `ownedGamePasses` from DataStore
+2. `shopManager:checkAllGamePasses()` merges: DataStore saved state → Roblox API (only if saved state is nil)
+3. Saved `false` = explicitly disabled (overrides API true — important for Studio testing where developer owns all passes)
+4. After native Roblox purchase → `PromptGamePassPurchaseFinished` updates cache + saves to DataStore
+5. Test toggles (debug) → `ToggleTestGamePass` remote → saves to DataStore immediately (persists across sessions)
+6. Debounce 0.5s on client toggle to prevent double-fire
 
 **Coin Multiplier** (`GameManager:getCoinMultiplier()`) — **additive stacking**:
 - Base: ×1
@@ -1714,7 +1716,7 @@ Leaderstats เป็น built-in UI ของ Roblox ที่แสดงส�
   - Finish Bonus = +25
   - **TOTAL**: when coin multiplier > 1, shows `TOTAL +base ×multiplier = +total` (e.g. "TOTAL +33 ×3 = +99")
   - Uses server-authoritative `totalEarned` (actual currency delta) instead of client-side recalculation
-- **Gamepass Upsell**: up to 2 buttons shown for passes player doesn't own (DoubleCoin/VIP/DoubleXP/ExtraSlot)
+- **Gamepass Upsell**: up to 2 buttons shown for passes player doesn't own (ExtraSlot/DoubleXP only — DoubleCoin/VIP excluded)
   - Clicking prompts `MarketplaceService:PromptGamePassPurchase()`
   - Panel expands from 600→660px when upsell buttons are shown
 - **OK Button**: ✅ OK — ใช้ Frame+TextLabel pattern (แยก UIGradient ออกจาก text)
