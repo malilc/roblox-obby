@@ -1776,7 +1776,10 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 	local floorColor = Color3.fromRGB(220, 215, 200)
 	local sideWallColor = Color3.fromRGB(180, 175, 165)
 	local gloveRed = Color3.fromRGB(200, 35, 30)
-	local armWoodColor = Color3.fromRGB(190, 150, 90)
+	local gloveDarkRed = Color3.fromRGB(160, 25, 20)
+	local cuffColor = Color3.fromRGB(50, 50, 55)
+	local springColor = Color3.fromRGB(140, 145, 155)
+	local springRingColor = Color3.fromRGB(110, 115, 125)
 
 	-- Start Part
 	local startPart = createPart({
@@ -1833,19 +1836,30 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 		{ xOffset = 85, side = -1, phase = 0.875 },
 	}
 
-	local gloveSize = Vector3.new(4, 4, 4)
-	local armSize = Vector3.new(2, 2, 10)
-	local punchDistance = 14   -- นวม+แขนรวม 14 studs ปิดทาง 12 studs
+	local gloveSize = Vector3.new(5, 5, 5)
+	local cuffSize = Vector3.new(4, 4, 1.5)
+	local armSize = Vector3.new(2, 2, 7.5)
+	local springRingSize = Vector3.new(3.2, 3.2, 0.8)
+	local punchDistance = 14   -- นวม+cuff+แขนรวม 14 studs ปิดทาง 12 studs
 	local punchSpeed = 0.5     -- 2 วินาทีต่อรอบ จังหวะชัดเจน
 	local fistY = 3.5
 
 	for i, cfg in ipairs(gloveConfigs) do
-		-- ตำแหน่ง retracted: นวมซ่อนหลังกำแพง
+		-- ตำแหน่ง retracted: นวมอยู่นอกขอบทาง
 		local retractedZ = (pathWidth / 2 + gloveSize.Z / 2 + 1) * cfg.side
 		local punchDir = Vector3.new(0, 0, -cfg.side)
 		local glovePos = startPosition + Vector3.new(cfg.xOffset, fistY, retractedZ)
 
-		-- === นวมแดง (Glove) — IsPunching (CFrame-based, anchored) ===
+		-- Helper: set punch attributes ให้ทุก part เคลื่อนที่พร้อมกัน
+		local function setPunchAttrs(part)
+			part:SetAttribute("IsPunching", true)
+			part:SetAttribute("PunchDirection", punchDir)
+			part:SetAttribute("PunchDistance", punchDistance)
+			part:SetAttribute("PunchSpeed", punchSpeed)
+			part:SetAttribute("PunchPhase", cfg.phase)
+		end
+
+		-- === นวมแดง (Glove fist) ===
 		local glove = createPart({
 			Name = "Glove_" .. i,
 			Size = gloveSize,
@@ -1853,11 +1867,7 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 			Color = gloveRed,
 			Material = Enum.Material.SmoothPlastic,
 		})
-		glove:SetAttribute("IsPunching", true)
-		glove:SetAttribute("PunchDirection", punchDir)
-		glove:SetAttribute("PunchDistance", punchDistance)
-		glove:SetAttribute("PunchSpeed", punchSpeed)
-		glove:SetAttribute("PunchPhase", cfg.phase)
+		setPunchAttrs(glove)
 		glove:SetAttribute("PushForce", 2500)
 		glove:SetAttribute("PushUpForce", 1200)
 		glove:SetAttribute("StunDuration", 0.75)
@@ -1869,21 +1879,58 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 		light.Range = 10
 		light.Parent = glove
 
-		-- === แขนไม้ (Arm) — IsPunching ด้วย (เคลื่อนที่เหมือนนวม) ===
-		local armZ = retractedZ + cfg.side * (gloveSize.Z / 2 + armSize.Z / 2)
+		-- === นิ้วโป้ง (Thumb bump) ===
+		local thumb = createPart({
+			Name = "Thumb_" .. i,
+			Size = Vector3.new(2, 1.5, 2.5),
+			Position = glovePos + Vector3.new(0, gloveSize.Y / 2 - 0.3, -cfg.side * 0.5),
+			Color = gloveDarkRed,
+			Material = Enum.Material.SmoothPlastic,
+		})
+		thumb.CanCollide = false
+		setPunchAttrs(thumb)
+		thumb.Parent = obstacles
+
+		-- === Cuff (ปลอกข้อมือ สีเข้ม) ===
+		local cuffZ = retractedZ + cfg.side * (gloveSize.Z / 2 + cuffSize.Z / 2)
+		local cuff = createPart({
+			Name = "Cuff_" .. i,
+			Size = cuffSize,
+			Position = startPosition + Vector3.new(cfg.xOffset, fistY, cuffZ),
+			Color = cuffColor,
+			Material = Enum.Material.SmoothPlastic,
+		})
+		setPunchAttrs(cuff)
+		cuff.Parent = obstacles
+
+		-- === แขนสปริง (Spring arm — แท่งโลหะกลาง) ===
+		local armZ = retractedZ + cfg.side * (gloveSize.Z / 2 + cuffSize.Z + armSize.Z / 2)
 		local arm = createPart({
 			Name = "Arm_" .. i,
 			Size = armSize,
 			Position = startPosition + Vector3.new(cfg.xOffset, fistY, armZ),
-			Color = armWoodColor,
-			Material = Enum.Material.Wood,
+			Color = springColor,
+			Material = Enum.Material.DiamondPlate,
 		})
-		arm:SetAttribute("IsPunching", true)
-		arm:SetAttribute("PunchDirection", punchDir)
-		arm:SetAttribute("PunchDistance", punchDistance)
-		arm:SetAttribute("PunchSpeed", punchSpeed)
-		arm:SetAttribute("PunchPhase", cfg.phase)
+		setPunchAttrs(arm)
 		arm.Parent = obstacles
+
+		-- === Spring rings (วงแหวนสปริงตามแขน — accordion look) ===
+		local armStartZ = retractedZ + cfg.side * (gloveSize.Z / 2 + cuffSize.Z)
+		for ring = 1, 3 do
+			local t = ring / 4  -- 0.25, 0.5, 0.75 ตามความยาวแขน
+			local ringZ = armStartZ + cfg.side * (armSize.Z * t)
+			local springRing = createPart({
+				Name = "Spring_" .. i .. "_" .. ring,
+				Size = springRingSize,
+				Position = startPosition + Vector3.new(cfg.xOffset, fistY, ringZ),
+				Color = springRingColor,
+				Material = Enum.Material.Metal,
+			})
+			springRing.CanCollide = false
+			setPunchAttrs(springRing)
+			springRing.Parent = obstacles
+		end
 
 		-- === Warning zone บนพื้น (สีแดงโปร่ง บอกตำแหน่งอันตราย) ===
 		local warningZone = createPart({
