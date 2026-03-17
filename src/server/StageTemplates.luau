@@ -1817,20 +1817,6 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 		edgeTrim.Parent = obstacles
 	end
 
-	-- === กำแพงสูง 2 ฝั่ง (ซ่อนนวม+แขนเมื่อหดกลับ) ===
-	local wallHeight = 8
-	local wallThickness = 4
-	for _, sideZ in ipairs({-1, 1}) do
-		local wall = createPart({
-			Name = "Wall_" .. (sideZ == 1 and "R" or "L"),
-			Size = Vector3.new(pathLength, wallHeight, wallThickness),
-			Position = startPosition + Vector3.new(pathStart + pathLength / 2, wallHeight / 2, (pathWidth / 2 + wallThickness / 2) * sideZ),
-			Color = sideWallColor,
-			Material = Enum.Material.SmoothPlastic,
-		})
-		wall.Parent = obstacles
-	end
-
 	-- === Config นวมชกมวย ===
 	-- นวมซ่อนหลังกำแพง (retracted) แล้วยื่นข้ามทางเต็มความกว้าง (punch)
 	-- ผู้เล่นเดินแกน X, นวมขยับแกน Z (ตั้งฉากกับทางเดิน)
@@ -1898,17 +1884,6 @@ function StageTemplates.createStage14(startPosition: Vector3): Model
 		arm:SetAttribute("PunchSpeed", punchSpeed)
 		arm:SetAttribute("PunchPhase", cfg.phase)
 		arm.Parent = obstacles
-
-		-- === เสาฐาน (static, ไม่ขยับ) ===
-		local postZ = (pathWidth / 2 + wallThickness + 0.5) * cfg.side
-		local post = createPart({
-			Name = "Post_" .. i,
-			Size = Vector3.new(3, wallHeight, 3),
-			Position = startPosition + Vector3.new(cfg.xOffset, wallHeight / 2, postZ),
-			Color = Color3.fromRGB(160, 155, 145),
-			Material = Enum.Material.SmoothPlastic,
-		})
-		post.Parent = obstacles
 
 		-- === Warning zone บนพื้น (สีแดงโปร่ง บอกตำแหน่งอันตราย) ===
 		local warningZone = createPart({
