@@ -22,6 +22,7 @@ function ItemTestingUI.new()
 	self.toggleButton = nil
 	self.soloWinsEnabled = false
 	self.testGamePasses = {} -- {[passId] = boolean}
+	self.gamePassDebounce = {} -- {[passId] = boolean}
 	self.masteryLevels = {}
 	self.classEntries = {}
 
@@ -725,8 +726,8 @@ function ItemTestingUI:createGamePassToggle(passId: string, label: string, order
 	local btn = Instance.new("TextButton")
 	btn.Name = passId .. "ToggleBtn"
 	btn.Size = UDim2.new(1, 0, 0, 45)
-	btn.BackgroundColor3 = Theme.BG_ELEVATED
-	btn.Text = "🎫 " .. label .. ": OFF"
+	btn.BackgroundColor3 = Theme.BG_SURFACE
+	btn.Text = "\u{1F3AB} " .. label .. ": OFF"
 	btn.TextColor3 = Theme.TEXT_PRIMARY
 	btn.TextSize = 15
 	btn.Font = Enum.Font.GothamBold
@@ -739,19 +740,26 @@ function ItemTestingUI:createGamePassToggle(passId: string, label: string, order
 
 	btn.MouseButton1Click:Connect(function()
 		self:toggleTestGamePass(passId, btn, label)
-		self:playClickEffect(btn)
 	end)
 end
 
 function ItemTestingUI:toggleTestGamePass(passId: string, btn: TextButton, label: string)
+	if self.gamePassDebounce[passId] then return end
+	self.gamePassDebounce[passId] = true
+	task.delay(0.5, function()
+		self.gamePassDebounce[passId] = nil
+	end)
+
 	local enabled = not (self.testGamePasses[passId] or false)
 	self.testGamePasses[passId] = enabled
 
 	if enabled then
-		btn.Text = "🎫 " .. label .. ": ON"
+		btn.Text = "\u{1F3AB} " .. label .. ": ON"
+		btn.BackgroundColor3 = Color3.fromRGB(200, 245, 210)
 		btn.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
 	else
-		btn.Text = "🎫 " .. label .. ": OFF"
+		btn.Text = "\u{1F3AB} " .. label .. ": OFF"
+		btn.BackgroundColor3 = Theme.BG_SURFACE
 		btn.TextColor3 = Theme.TEXT_PRIMARY
 	end
 

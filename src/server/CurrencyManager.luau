@@ -604,6 +604,7 @@ function CurrencyManager:loadPlayerData(player: Player)
 		playerData.dismissedPromoVersion = if type(data.dismissedPromoVersion) == "string" then data.dismissedPromoVersion else nil
 		playerData.lastLoginTime = tonumber(data.lastLoginTime) or nil
 		playerData.loginStreak = tonumber(data.loginStreak) or 0
+		playerData.ownedGamePasses = if type(data.ownedGamePasses) == "table" then data.ownedGamePasses else nil
 
 		Logger.debug("CurrencyManager", "Loaded profile for", player.Name, "- Currency:", playerData.currency, "- Gems:", playerData.gems, "- Wins:", playerData.wins, "- Equipped:", playerData.equippedClass)
 	else
@@ -734,6 +735,7 @@ function CurrencyManager:savePlayerData(player: Player)
 			existingData.dismissedPromoVersion = playerData.dismissedPromoVersion
 			existingData.lastLoginTime  = playerData.lastLoginTime
 			existingData.loginStreak    = playerData.loginStreak
+			existingData.ownedGamePasses = playerData.ownedGamePasses
 			return existingData
 		end)
 	end)
