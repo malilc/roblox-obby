@@ -17,7 +17,8 @@ function ItemUI.new(parent: ScreenGui)
 	local self = setmetatable({}, ItemUI)
 
 	self.parent = parent
-	self.itemSlots = {nil, nil} -- 2 item slots
+	self.itemSlots = {nil, nil, nil} -- up to 3 item slots (3rd with ExtraSlot gamepass)
+	self.maxSlots = 2 -- default, updated by server
 	self.hasShield = false
 	self.isBoosted = false
 	self.isSlowed = false
@@ -39,7 +40,7 @@ function ItemUI.new(parent: ScreenGui)
 end
 
 function ItemUI:createUI()
-	-- Main item container (กลางล่าง) - กว้างขึ้นสำหรับ 2 slots
+	-- Main item container (กลางล่าง) - starts with 2 slots, expands to 3 with ExtraSlot
 	local container = Instance.new("Frame")
 	container.Name = "ItemContainer"
 	container.Size = UDim2.new(0, 160, 0, 95)
@@ -48,9 +49,13 @@ function ItemUI:createUI()
 	container.Parent = self.parent
 	self.container = container
 
-	-- สร้าง 2 item slots (horizontal layout)
-	for slotIndex = 1, 2 do
+	-- สร้าง 3 item slots (horizontal layout), slot 3 hidden by default
+	for slotIndex = 1, 3 do
 		self:createSlot(slotIndex, container)
+	end
+	-- Hide slot 3 by default (shown when server sends maxSlots = 3)
+	if self.slotFrames[3] then
+		self.slotFrames[3].Visible = false
 	end
 
 	-- Tooltip popup (ซ่อนไว้ก่อน แสดงเมื่อคลิก)
@@ -165,8 +170,8 @@ function ItemUI:createUI()
 	slowIcon.Visible = false
 	self.slowIcon = slowIcon
 
-	-- Initialize both slots as empty
-	for i = 1, 2 do
+	-- Initialize all slots as empty
+	for i = 1, 3 do
 		self:updateSlotDisplay(i, nil)
 	end
 end
@@ -328,6 +333,9 @@ function ItemUI:setupInput()
 		-- Keybind 2 = use slot 2
 		elseif input.KeyCode == Enum.KeyCode.Two then
 			self:useItemFromSlot(2)
+		-- Keybind 3 = use slot 3 (ExtraSlot gamepass)
+		elseif input.KeyCode == Enum.KeyCode.Three then
+			self:useItemFromSlot(3)
 		end
 	end)
 end
@@ -530,10 +538,27 @@ function ItemUI:hideTooltip()
 end
 
 function ItemUI:updateItems(data: {[string]: any})
-	-- Update item slots (array of 2)
-	-- Server ส่ง itemSlots = {slot1, slot2} โดย false = empty, table = has item
+	-- Update max slots from server (ExtraSlot gamepass)
+	local maxSlots = data.maxSlots or self.maxSlots
+	if maxSlots ~= self.maxSlots then
+		self.maxSlots = maxSlots
+		-- Show/hide slot 3 and resize container
+		if self.slotFrames[3] then
+			self.slotFrames[3].Visible = (maxSlots >= 3)
+		end
+		if maxSlots >= 3 then
+			self.container.Size = UDim2.new(0, 240, 0, 95)
+			self.container.Position = UDim2.new(0.5, -120, 1, -105)
+		else
+			self.container.Size = UDim2.new(0, 160, 0, 95)
+			self.container.Position = UDim2.new(0.5, -80, 1, -105)
+		end
+	end
+
+	-- Update item slots (array of 2-3)
+	-- Server ส่ง itemSlots = {slot1, slot2, slot3?} โดย false = empty, table = has item
 	if data.itemSlots then
-		for slotIndex = 1, 2 do
+		for slotIndex = 1, maxSlots do
 			local slotData = data.itemSlots[slotIndex]
 			if slotData == false then
 				-- Slot is empty

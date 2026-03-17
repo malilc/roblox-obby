@@ -590,4 +590,18 @@ if not promoShown then
 	end)
 end
 
+-- VIP Chat Tag: prepend [VIP] to chat messages from VIP players
+local TextChatService = game:GetService("TextChatService")
+TextChatService.OnIncomingMessage = function(message: TextChatMessage)
+	local props = Instance.new("TextChatMessageProperties")
+	local sender = message.TextSource
+	if sender then
+		local senderPlayer = Players:GetPlayerByUserId(sender.UserId)
+		if senderPlayer and senderPlayer:GetAttribute("IsVIP") == true then
+			props.PrefixText = '<font color="#FFD232">[VIP]</font> ' .. message.PrefixText
+		end
+	end
+	return props
+end
+
 Logger.info("Client", "Ready to play!")

@@ -1,6 +1,8 @@
 -- SummaryUI: แสดง Summary เมื่อจบเกม
 
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -392,6 +394,8 @@ function SummaryUI:createUI()
 	totalLabel.TextXAlignment = Enum.TextXAlignment.Left
 	totalLabel.ZIndex = 53
 	totalLabel.Parent = totalHighlight
+	self.totalLabel = totalLabel
+	self.totalHighlight = totalHighlight
 
 	local totalValue = Instance.new("TextLabel")
 	totalValue.Name = "Value"
@@ -574,7 +578,7 @@ function SummaryUI:createCurrencyRow(key: string, labelText: string, index: numb
 	return row
 end
 
-function SummaryUI:createStageTag(stageNum: number, index: number): Frame
+function SummaryUI:createStageTag(stageNum: number, index: number, _coinMultiplier: number?): Frame
 	local stageData = StageInfo.getStage(stageNum)
 	local stageReward = stageData and stageData.reward or 0
 	local diffInfo = stageData and StageInfo.DifficultyInfo[stageData.difficulty]
@@ -638,9 +642,13 @@ function SummaryUI:createStageTag(stageNum: number, index: number): Frame
 	return tag
 end
 
-function SummaryUI:show(data: {gemsEarned: number, timeSpent: number, coinsCollected: number, coinValue: number, stagesCleared: number, stageValue: number, finishBonus: number, totalCurrency: number, stageOrder: {number}?, isWin: boolean?, isTop30: boolean?})
+function SummaryUI:show(data: {gemsEarned: number, timeSpent: number, coinsCollected: number, coinValue: number, stagesCleared: number, stageValue: number, finishBonus: number, totalCurrency: number, stageOrder: {number}?, isWin: boolean?, isTop30: boolean?, isDoubleCoin: boolean?})
 	if self.isVisible then return end
 	self.isVisible = true
+
+	-- Update total row for DoubleCoin
+	self.totalLabel.Text = "\u{2728} TOTAL EARNED"
+	self.totalHighlight.BackgroundColor3 = Theme.BG_ELEVATED
 
 	-- Clear previous stage tags
 	for _, child in ipairs(self.stagesList:GetChildren()) do
@@ -649,12 +657,16 @@ function SummaryUI:show(data: {gemsEarned: number, timeSpent: number, coinsColle
 		end
 	end
 
-	-- Create stage tags
+	-- Create stage tags (with multiplied reward display)
 	local stageOrder = data.stageOrder or {}
+	local multiplier = data.coinMultiplier or 1
 	for i, stageNum in ipairs(stageOrder) do
-		local tag = self:createStageTag(stageNum, i)
+		local tag = self:createStageTag(stageNum, i, multiplier)
 		tag.Parent = self.stagesList
 	end
+
+	-- Setup gamepass upsell buttons
+	self:setupGamePassUpsell(data.gamePassUpsell)
 
 	-- Show rank indicator
 	local pos = data.finishPosition or 0
@@ -700,13 +712,18 @@ function SummaryUI:show(data: {gemsEarned: number, timeSpent: number, coinsColle
 	-- Show top30 indicator
 	self.top30Label.Visible = data.isTop30 == true
 
+	-- Determine panel height based on whether upsell buttons are shown
+	local hasUpsell = data.gamePassUpsell and (data.gamePassUpsell.doubleCoin or data.gamePassUpsell.extraSlot or data.gamePassUpsell.vip or data.gamePassUpsell.doubleXP)
+	local panelHeight = if hasUpsell then 660 else 600
+	self.okButton.Position = UDim2.new(0.5, 0, 0, panelHeight - 55)
+
 	-- Reset and show frame
 	self.mainFrame.Size = UDim2.new(0, 0, 0, 0)
 	self.mainFrame.Visible = true
 
 	-- Scale in animation
 	local scaleIn = TweenService:Create(self.mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-		Size = UDim2.new(0, 400, 0, 600)
+		Size = UDim2.new(0, 400, 0, panelHeight)
 	})
 	scaleIn:Play()
 
@@ -845,28 +862,33 @@ function SummaryUI:animateStats(data: {gemsEarned: number, timeSpent: number, is
 	end
 end
 
-function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: number, stagesCleared: number, stageValue: number, stageRewardsTotal: number, finishBonus: number})
+function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: number, stagesCleared: number, stageValue: number, stageRewardsTotal: number, finishBonus: number, isDoubleCoin: boolean?, coinMultiplier: number?, totalEarned: number?})
+	local coinMultiplier = data.coinMultiplier or 1
 	local coinsCollected = data.coinsCollected or 0
-	local coinValue = data.coinValue or 1
+	-- Show BASE values in breakdown (before multiplier)
+	local baseCoinValue = (data.coinValue or 1) / coinMultiplier
+	local baseStageValue = (data.stageValue or 5) / coinMultiplier
+	local baseStageRewardsTotal = (data.stageRewardsTotal or 0) / coinMultiplier
+	local baseFinishBonus = (data.finishBonus or 25) / coinMultiplier
+
+	-- Base totals (before multiplier)
+	local baseCoinsTotal = coinsCollected * baseCoinValue
 	local stagesCleared = data.stagesCleared or 0
-	local stageValue = data.stageValue or 5
-	local stageRewardsTotal = data.stageRewardsTotal or 0
-	local finishBonus = data.finishBonus or 25
+	local baseStageTotal = stagesCleared * baseStageValue
+	local baseSubtotal = baseCoinsTotal + baseStageTotal + baseStageRewardsTotal + baseFinishBonus
 
-	-- Calculate totals
-	local coinsTotal = coinsCollected * coinValue
-	local stageTotal = stagesCleared * stageValue
-	local grandTotal = coinsTotal + stageTotal + stageRewardsTotal + finishBonus
+	-- Grand total = server delta (already includes multiplier)
+	local grandTotal = data.totalEarned or (baseSubtotal * coinMultiplier)
 
-	-- Animate Coins row
+	-- Animate Coins row (show base values)
 	task.delay(0, function()
 		local row = self.currencyRows.coins
 		local breakdown = row:FindFirstChild("Breakdown")
 		local value = row:FindFirstChild("Value")
 
 		if breakdown and value then
-			breakdown.Text = "(" .. coinsCollected .. " \u{00D7} " .. coinValue .. ")"
-			value.Text = "+" .. coinsTotal
+			breakdown.Text = "(" .. coinsCollected .. " \u{00D7} " .. baseCoinValue .. ")"
+			value.Text = "+" .. baseCoinsTotal
 
 			value.TextSize = 11
 			TweenService:Create(value, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
@@ -875,15 +897,15 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 		end
 	end)
 
-	-- Animate Stage Clear row
+	-- Animate Stage Clear row (show base values)
 	task.delay(0.1, function()
 		local row = self.currencyRows.stage
 		local breakdown = row:FindFirstChild("Breakdown")
 		local value = row:FindFirstChild("Value")
 
 		if breakdown and value then
-			breakdown.Text = "(" .. stagesCleared .. " \u{00D7} " .. stageValue .. ")"
-			value.Text = "+" .. stageTotal
+			breakdown.Text = "(" .. stagesCleared .. " \u{00D7} " .. baseStageValue .. ")"
+			value.Text = "+" .. baseStageTotal
 
 			value.TextSize = 11
 			TweenService:Create(value, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
@@ -892,7 +914,7 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 		end
 	end)
 
-	-- Animate Stage Rewards row
+	-- Animate Stage Rewards row (show base values)
 	task.delay(0.2, function()
 		local row = self.currencyRows.rewards
 		local breakdown = row:FindFirstChild("Breakdown")
@@ -900,7 +922,7 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 
 		if breakdown and value then
 			breakdown.Text = ""
-			value.Text = "+" .. stageRewardsTotal
+			value.Text = "+" .. baseStageRewardsTotal
 			value.TextColor3 = Theme.TEXT_PRIMARY
 
 			value.TextSize = 11
@@ -910,7 +932,7 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 		end
 	end)
 
-	-- Animate Finish Bonus row
+	-- Animate Finish Bonus row (show base values)
 	task.delay(0.3, function()
 		local row = self.currencyRows.finish
 		local breakdown = row:FindFirstChild("Breakdown")
@@ -918,7 +940,7 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 
 		if breakdown and value then
 			breakdown.Text = ""
-			value.Text = "+" .. finishBonus
+			value.Text = "+" .. baseFinishBonus
 
 			value.TextSize = 11
 			TweenService:Create(value, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
@@ -929,7 +951,19 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 
 	-- Animate Total
 	task.delay(0.45, function()
-		self.totalValueLabel.Text = "+" .. grandTotal
+		if coinMultiplier > 1 then
+			-- Show: actual base → ×multiplier → final total
+			local actualBase = math.floor(grandTotal / coinMultiplier)
+			local mulText = (coinMultiplier == math.floor(coinMultiplier))
+				and tostring(math.floor(coinMultiplier))
+				or string.format("%.1f", coinMultiplier)
+			self.totalLabel.Text = "\u{2728} TOTAL +" .. actualBase .. " \u{00D7}" .. mulText
+			self.totalValueLabel.Text = "+" .. grandTotal
+			self.totalHighlight.BackgroundColor3 = Theme.PRIMARY:Lerp(Theme.BG_ELEVATED, 0.55)
+		else
+			self.totalLabel.Text = "\u{2728} TOTAL EARNED"
+			self.totalValueLabel.Text = "+" .. grandTotal
+		end
 
 		-- Flash animation
 		self.totalValueLabel.TextColor3 = Color3.fromRGB(255, 255, 150)
@@ -938,6 +972,137 @@ function SummaryUI:animateCurrency(data: {coinsCollected: number, coinValue: num
 		TweenService:Create(self.totalValueLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
 			TextSize = 20,
 			TextColor3 = Theme.darkenForText(Theme.MEDAL_GOLD, 0.40)
+		}):Play()
+
+		-- Pulse the total highlight when coin multiplier active
+		if coinMultiplier > 1 then
+			task.spawn(function()
+				while self.isVisible do
+					TweenService:Create(self.totalHighlight, TweenInfo.new(0.6), {
+						BackgroundTransparency = 0.3
+					}):Play()
+					task.wait(0.6)
+					TweenService:Create(self.totalHighlight, TweenInfo.new(0.6), {
+						BackgroundTransparency = 0.6
+					}):Play()
+					task.wait(0.6)
+				end
+			end)
+		end
+	end)
+end
+
+function SummaryUI:setupGamePassUpsell(upsellData: {doubleCoin: number?, extraSlot: number?, vip: number?, doubleXP: number?}?)
+	-- Clear previous upsell buttons
+	if self.upsellContainer then
+		self.upsellContainer:Destroy()
+		self.upsellContainer = nil
+	end
+
+	if not upsellData then return end
+
+	-- Collect upsell entries
+	local entries = {}
+	if upsellData.doubleCoin then
+		table.insert(entries, {text = "\u{1F4B0} 2\u{00D7} Coins!", id = upsellData.doubleCoin, color = Theme.PRIMARY})
+	end
+	if upsellData.vip then
+		table.insert(entries, {text = "\u{2B50} VIP Pass!", id = upsellData.vip, color = Theme.MEDAL_GOLD})
+	end
+	if upsellData.doubleXP then
+		table.insert(entries, {text = "\u{1F4AB} 2\u{00D7} XP!", id = upsellData.doubleXP, color = Color3.fromRGB(120, 80, 220)})
+	end
+	if upsellData.extraSlot then
+		table.insert(entries, {text = "\u{1F392} 3rd Slot!", id = upsellData.extraSlot, color = Theme.ACCENT_CYAN})
+	end
+
+	if #entries == 0 then return end
+
+	-- Show max 2 buttons (most relevant)
+	local showEntries = {}
+	for i = 1, math.min(2, #entries) do
+		table.insert(showEntries, entries[i])
+	end
+
+	-- Container for upsell buttons
+	local container = Instance.new("Frame")
+	container.Name = "GamePassUpsell"
+	container.Size = UDim2.new(1, -40, 0, 50)
+	container.Position = UDim2.new(0, 20, 0, 520)
+	container.BackgroundTransparency = 1
+	container.ZIndex = 51
+	container.Parent = self.mainFrame
+	self.upsellContainer = container
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Padding = UDim.new(0, 8)
+	layout.Parent = container
+
+	local buttonWidth = if #showEntries >= 2 then 170 else 240
+
+	for _, entry in ipairs(showEntries) do
+		self:createUpsellButton(container, entry.text, entry.id, buttonWidth, entry.color)
+	end
+end
+
+function SummaryUI:createUpsellButton(parent: Frame, text: string, gamePassId: number, width: number, color: Color3)
+	local btn = Instance.new("TextButton")
+	btn.Name = "UpsellBtn"
+	btn.Size = UDim2.new(0, width, 0, 40)
+	btn.BackgroundColor3 = color
+	btn.BackgroundTransparency = 0.1
+	btn.BorderSizePixel = 0
+	btn.Text = ""
+	btn.AutoButtonColor = false
+	btn.ZIndex = 52
+	btn.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = Theme.CORNER_SM
+	corner.Parent = btn
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color
+	stroke.Thickness = Theme.STROKE_MED
+	stroke.Transparency = 0.3
+	stroke.Parent = btn
+
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color),
+		ColorSequenceKeypoint.new(1, color:Lerp(Theme.BG_ELEVATED, 0.3))
+	})
+	gradient.Rotation = 90
+	gradient.Parent = btn
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = Theme.TEXT_ON_ACCENT
+	label.TextSize = 14
+	label.Font = Enum.Font.GothamBold
+	label.ZIndex = 53
+	label.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		local player = Players.LocalPlayer
+		if player and gamePassId then
+			MarketplaceService:PromptGamePassPurchase(player, gamePassId)
+		end
+	end)
+
+	-- Hover
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.15), {
+			BackgroundTransparency = 0.0,
+		}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.15), {
+			BackgroundTransparency = 0.1,
 		}):Play()
 	end)
 end

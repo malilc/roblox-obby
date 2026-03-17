@@ -137,6 +137,9 @@
         "SetTestGems": {
           "$className": "RemoteEvent"
         },
+        "ToggleTestGamePass": {
+          "$className": "RemoteEvent"
+        },
         "ShowShop": {
           "$className": "RemoteEvent"
         },

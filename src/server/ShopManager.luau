@@ -33,6 +33,7 @@ function ShopManager.new(currencyManager, itemManager, classManager, gameManager
 
 	self:setupRemotes()
 	self:setupGamePassListeners()
+	self:setupTestGamePassRemote()
 
 	Logger.info("ShopManager", "Initialized")
 	return self
@@ -54,6 +55,7 @@ function ShopManager:setupRemotes()
 
 	-- Client requests game pass ownership re-check (after purchase)
 	self.checkGamePassRemote.OnServerEvent:Connect(function(player)
+		if self:isRateLimited(player) then return end
 		self:checkAllGamePasses(player)
 		self:sendGamePassUpdate(player)
 	end)
@@ -286,6 +288,61 @@ function ShopManager:sendGamePassUpdate(player: Player)
 	self.gamePassUpdateRemote:FireClient(player, {
 		ownedPasses = self.playerGamePasses[player] or {},
 	})
+end
+
+-- ========== TEST GAMEPASS TOGGLE (Debug only) ==========
+
+function ShopManager:setupTestGamePassRemote()
+	if not Config.Debug or not Config.Debug.Enabled then return end
+
+	local remotes = ReplicatedStorage:WaitForChild("Remotes")
+	local toggleRemote = remotes:FindFirstChild("ToggleTestGamePass")
+	if not toggleRemote then return end
+
+	toggleRemote.OnServerEvent:Connect(function(player, data)
+		if not Config.Debug or not Config.Debug.ItemTesting then return end
+		if type(data) ~= "table" or type(data.passId) ~= "string" then return end
+
+		self:toggleTestGamePass(player, data.passId, data.enabled)
+	end)
+
+	Logger.info("ShopManager", "ToggleTestGamePass remote initialized for testing")
+end
+
+function ShopManager:toggleTestGamePass(player: Player, passId: string, enabled: boolean)
+	-- Validate passId exists in Config
+	if not Config.GamePasses[passId] then
+		Logger.warn("ShopManager", "Invalid test gamepass:", passId)
+		return
+	end
+
+	if not self.playerGamePasses[player] then
+		self.playerGamePasses[player] = {}
+	end
+
+	if enabled then
+		self.playerGamePasses[player][passId] = true
+	else
+		self.playerGamePasses[player][passId] = nil
+	end
+
+	-- Send updated state to client
+	self:sendGamePassUpdate(player)
+
+	-- If ExtraSlot changed, re-send item update so client updates UI
+	if passId == "ExtraSlot" and self.itemManager then
+		self.itemManager:sendItemUpdate(player)
+	end
+
+	-- If VIP changed, re-apply visual effects
+	if passId == "VIP" and self.gameManager then
+		local character = player.Character
+		if character then
+			self.gameManager:applyVIPEffects(player, character)
+		end
+	end
+
+	Logger.info("ShopManager", player.Name, "test gamepass", passId, "=", tostring(enabled))
 end
 
 -- ========== STATE SYNC ==========

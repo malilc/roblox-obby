@@ -21,6 +21,7 @@ function ItemTestingUI.new()
 	self.mainFrame = nil
 	self.toggleButton = nil
 	self.soloWinsEnabled = false
+	self.testGamePasses = {} -- {[passId] = boolean}
 	self.masteryLevels = {}
 	self.classEntries = {}
 
@@ -352,6 +353,23 @@ function ItemTestingUI:createItemButtons()
 			end
 		end
 	end)
+
+	-- === Game Passes Section ===
+	local gpSeparator = Instance.new("TextLabel")
+	gpSeparator.Name = "GamePassSeparator"
+	gpSeparator.Size = UDim2.new(1, 0, 0, 25)
+	gpSeparator.BackgroundTransparency = 1
+	gpSeparator.Text = "── Game Passes ──"
+	gpSeparator.TextColor3 = Theme.darkenForText(Theme.ACCENT_CYAN, 0.40)
+	gpSeparator.TextSize = 14
+	gpSeparator.Font = Enum.Font.GothamBold
+	gpSeparator.LayoutOrder = layoutOrder + 220
+	gpSeparator.Parent = self.scrollFrame
+
+	self:createGamePassToggle("DoubleCoin", "2x Coins", layoutOrder + 221)
+	self:createGamePassToggle("VIP", "VIP (1.5x Coins+XP)", layoutOrder + 222)
+	self:createGamePassToggle("ExtraSlot", "3rd Item Slot", layoutOrder + 223)
+	self:createGamePassToggle("DoubleXP", "2x XP", layoutOrder + 224)
 
 	-- === Gems Section ===
 	local gemSeparator = Instance.new("TextLabel")
@@ -699,6 +717,49 @@ function ItemTestingUI:setTestGems(action: string, amount: number)
 			Logger.debug("ItemTestingUI", "SetTestGems:", action, amount)
 		else
 			Logger.warn("ItemTestingUI", "SetTestGems remote not found!")
+		end
+	end
+end
+
+function ItemTestingUI:createGamePassToggle(passId: string, label: string, order: number)
+	local btn = Instance.new("TextButton")
+	btn.Name = passId .. "ToggleBtn"
+	btn.Size = UDim2.new(1, 0, 0, 45)
+	btn.BackgroundColor3 = Theme.BG_ELEVATED
+	btn.Text = "🎫 " .. label .. ": OFF"
+	btn.TextColor3 = Theme.TEXT_PRIMARY
+	btn.TextSize = 15
+	btn.Font = Enum.Font.GothamBold
+	btn.LayoutOrder = order
+	btn.Parent = self.scrollFrame
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = Theme.CORNER_SM
+	corner.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		self:toggleTestGamePass(passId, btn, label)
+		self:playClickEffect(btn)
+	end)
+end
+
+function ItemTestingUI:toggleTestGamePass(passId: string, btn: TextButton, label: string)
+	local enabled = not (self.testGamePasses[passId] or false)
+	self.testGamePasses[passId] = enabled
+
+	if enabled then
+		btn.Text = "🎫 " .. label .. ": ON"
+		btn.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
+	else
+		btn.Text = "🎫 " .. label .. ": OFF"
+		btn.TextColor3 = Theme.TEXT_PRIMARY
+	end
+
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if remotes then
+		local toggleRemote = remotes:FindFirstChild("ToggleTestGamePass")
+		if toggleRemote then
+			toggleRemote:FireServer({ passId = passId, enabled = enabled })
 		end
 	end
 end

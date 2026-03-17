@@ -240,6 +240,12 @@ function GameManager:onPlayerAdded(player: Player)
 	-- Setup leaderstats
 	self:setupLeaderstats(player)
 
+	-- Check game passes on join (so benefits work immediately)
+	task.spawn(function()
+		self.shopManager:checkAllGamePasses(player)
+		self.shopManager:sendGamePassUpdate(player)
+	end)
+
 	-- Send cached leaderboard to new player
 	task.delay(Config.Timing.LeaderboardSendDelay, function()
 		if player.Parent then
@@ -317,6 +323,84 @@ function GameManager:onCharacterAdded(player: Player, character: Model)
 	if self.currencyManager and self.currencyManager.applyActiveTitleToCharacter then
 		self.currencyManager:applyActiveTitleToCharacter(player, character)
 	end
+
+	-- Apply VIP visual effects
+	self:applyVIPEffects(player, character)
+end
+
+-- VIP visual effects: badge, golden glow, chat tag
+function GameManager:applyVIPEffects(player: Player, character: Model)
+	-- Clean up previous VIP effects
+	self:removeVIPEffects(character)
+
+	local isVIP = self.shopManager and self.shopManager:hasGamePass(player, "VIP")
+	player:SetAttribute("IsVIP", isVIP == true)
+
+	if not isVIP then return end
+
+	local head = character:FindFirstChild("Head")
+
+	-- 1. VIP Badge (BillboardGui above title)
+	if head then
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "VIPBadgeBillboard"
+		billboard.Size = UDim2.new(0, 100, 0, 22)
+		billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.8, 0)
+		billboard.AlwaysOnTop = true
+		billboard.MaxDistance = 80
+		billboard.Parent = head
+
+		local container = Instance.new("Frame")
+		container.Name = "Container"
+		container.Size = UDim2.new(1, 0, 1, 0)
+		container.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
+		container.BackgroundTransparency = 0.15
+		container.BorderSizePixel = 0
+		container.Parent = billboard
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = container
+
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 80)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 170, 40)),
+		})
+		gradient.Rotation = 90
+		gradient.Parent = container
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(180, 140, 30)
+		stroke.Thickness = 1.5
+		stroke.Transparency = 0.1
+		stroke.Parent = container
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = "\u{2B50} VIP"
+		label.TextColor3 = Color3.fromRGB(60, 40, 0)
+		label.TextStrokeTransparency = 0.6
+		label.TextStrokeColor3 = Color3.fromRGB(255, 255, 200)
+		label.TextScaled = true
+		label.Font = Enum.Font.GothamBlack
+		label.Parent = container
+	end
+
+	Logger.debug("GameManager", "VIP effects applied to", player.Name)
+end
+
+function GameManager:removeVIPEffects(character: Model)
+	if not character then return end
+
+	-- Remove badge
+	local head = character:FindFirstChild("Head")
+	if head then
+		local badge = head:FindFirstChild("VIPBadgeBillboard")
+		if badge then badge:Destroy() end
+	end
+
 end
 
 -- Setup touch events for character
@@ -386,6 +470,32 @@ function GameManager:checkPlayerPosition(player: Player)
 	end
 end
 
+function GameManager:getCoinMultiplier(player: Player): number
+	local multiplier = 1
+	if self.shopManager then
+		if self.shopManager:hasGamePass(player, "DoubleCoin") then
+			multiplier = multiplier + 1 -- +1.0 = ×2
+		end
+		if self.shopManager:hasGamePass(player, "VIP") then
+			multiplier = multiplier + 0.5 -- +0.5 = ×1.5
+		end
+	end
+	return multiplier
+end
+
+function GameManager:getXPMultiplier(player: Player): number
+	local multiplier = 1
+	if self.shopManager then
+		if self.shopManager:hasGamePass(player, "DoubleXP") then
+			multiplier = multiplier + 1 -- +1.0 = ×2
+		end
+		if self.shopManager:hasGamePass(player, "VIP") then
+			multiplier = multiplier + 0.5 -- +0.5 = ×1.5
+		end
+	end
+	return multiplier
+end
+
 function GameManager:addMasteryXP(player: Player, amount: number, reason: string)
 	if amount <= 0 then return end
 	if not self.currencyManager or not self.classManager then return end
@@ -393,7 +503,9 @@ function GameManager:addMasteryXP(player: Player, amount: number, reason: string
 	local classId = self.classManager:getPlayerClass(player)
 	if not classId then return end
 
-	self.currencyManager:addMasteryXP(player, classId, amount, reason)
+	local xpMultiplier = self:getXPMultiplier(player)
+	local finalAmount = math.floor(amount * xpMultiplier)
+	self.currencyManager:addMasteryXP(player, classId, finalAmount, reason)
 end
 
 -- On stage complete
@@ -409,18 +521,20 @@ function GameManager:onStageComplete(player: Player, stageIndex: number)
 
 	-- Give currency for completing stage (except stage 1 start)
 	if stageIndex > 1 then
+		local coinMultiplier = self:getCoinMultiplier(player)
+
 		-- Stage Clear bonus (คงที่)
-		self.currencyManager:addCurrency(player, Config.Currency.PerStage)
+		self.currencyManager:addCurrency(player, Config.Currency.PerStage * coinMultiplier)
 
 		local stageMasteryXP = (Config.Mastery and Config.Mastery.PerStageXP) or 0
 		self:addMasteryXP(player, stageMasteryXP, "StageComplete")
-		
+
 		-- Stage Reward (ตามด่านที่ผ่าน)
 		local completedStageNum = stageOrder[stageIndex - 1] -- ด่านที่เพิ่งผ่าน
 		local stageData = StageInfo.getStage(completedStageNum)
 		local stageReward = if stageData then stageData.reward else 0
 		if stageReward > 0 then
-			self.currencyManager:addCurrency(player, stageReward)
+			self.currencyManager:addCurrency(player, stageReward * coinMultiplier)
 			
 			-- Track stage rewards total
 			local roundStats = self.playerRoundStats[player]
@@ -486,17 +600,20 @@ function GameManager:onPlayerFinished(player: Player)
 	local totalStages = #stageOrder
 	if totalStages == 0 then totalStages = Config.Stages.SelectionCount end
 
+	-- Coin multiplier for DoubleCoin gamepass
+	local coinMultiplier = self:getCoinMultiplier(player)
+
 	-- Give Stage Clear bonus and Stage Reward for the LAST stage (not given in onStageComplete)
 	if totalStages > 0 then
 		-- Stage Clear bonus for last stage
-		self.currencyManager:addCurrency(player, Config.Currency.PerStage)
+		self.currencyManager:addCurrency(player, Config.Currency.PerStage * coinMultiplier)
 
 		-- Stage Reward for last stage
 		local lastStageNum = stageOrder[totalStages]
 		local lastStageData = StageInfo.getStage(lastStageNum)
 		local lastStageReward = if lastStageData then lastStageData.reward else 0
 		if lastStageReward > 0 then
-			self.currencyManager:addCurrency(player, lastStageReward)
+			self.currencyManager:addCurrency(player, lastStageReward * coinMultiplier)
 
 			-- Track stage rewards total
 			local roundStats = self.playerRoundStats[player]
@@ -507,7 +624,7 @@ function GameManager:onPlayerFinished(player: Player)
 	end
 
 	-- Give currency bonus for finishing
-	self.currencyManager:addCurrency(player, Config.Currency.FinishBonus)
+	self.currencyManager:addCurrency(player, Config.Currency.FinishBonus * coinMultiplier)
 
 	local finishMasteryXP = (Config.Mastery and Config.Mastery.FinishBonusXP) or 0
 	self:addMasteryXP(player, finishMasteryXP, "Finish")
@@ -571,6 +688,32 @@ function GameManager:onPlayerFinished(player: Player)
 	-- Calculate gems earned this round
 	local gemsEarned = (gemsConfig.FinishRace or 1) + (if isTop30 then (gemsConfig.Top30Bonus or 5) else 0)
 
+	-- Calculate actual earned (server-authoritative delta)
+	local currentCurrency = self.currencyManager:getCurrency(player)
+	local startCurrency = roundStats and roundStats.startCurrency or currentCurrency
+	local totalEarned = currentCurrency - startCurrency
+
+	-- XP multiplier info
+	local xpMultiplier = self:getXPMultiplier(player)
+
+	-- Gamepass upsell (show purchase buttons for passes the player doesn't own)
+	local gamePassUpsell = {}
+	if not self.shopManager:hasGamePass(player, "DoubleCoin") and Config.GamePasses.DoubleCoin then
+		gamePassUpsell.doubleCoin = Config.GamePasses.DoubleCoin.gamePassId
+	end
+	if not self.shopManager:hasGamePass(player, "ExtraSlot") and Config.GamePasses.ExtraSlot then
+		gamePassUpsell.extraSlot = Config.GamePasses.ExtraSlot.gamePassId
+	end
+	if not self.shopManager:hasGamePass(player, "VIP") and Config.GamePasses.VIP then
+		gamePassUpsell.vip = Config.GamePasses.VIP.gamePassId
+	end
+	if not self.shopManager:hasGamePass(player, "DoubleXP") and Config.GamePasses.DoubleXP then
+		local passId = Config.GamePasses.DoubleXP.gamePassId
+		if passId and passId ~= 0 then
+			gamePassUpsell.doubleXP = passId
+		end
+	end
+
 	-- Notify client with summary data
 	self.stageCompleteRemote:FireClient(player, {
 		finished = true,
@@ -588,14 +731,19 @@ function GameManager:onPlayerFinished(player: Player)
 			timeSpent = elapsedTime,
 			-- Currency breakdown
 			coinsCollected = coinsCollected,
-			coinValue = Config.Currency.PerCoin,
+			coinValue = Config.Currency.PerCoin * coinMultiplier,
 			stagesCleared = stagesCleared,
-			stageValue = Config.Currency.PerStage,
-			stageRewardsTotal = stageRewardsTotal,
-			finishBonus = Config.Currency.FinishBonus,
-			totalCurrency = self.currencyManager:getCurrency(player),
+			stageValue = Config.Currency.PerStage * coinMultiplier,
+			stageRewardsTotal = stageRewardsTotal * coinMultiplier,
+			finishBonus = Config.Currency.FinishBonus * coinMultiplier,
+			isDoubleCoin = coinMultiplier > 1,
+			coinMultiplier = coinMultiplier,
+			xpMultiplier = xpMultiplier,
+			totalEarned = totalEarned,
+			totalCurrency = currentCurrency,
 			stageOrder = stageOrder,
 			canSpectate = canSpectate,
+			gamePassUpsell = gamePassUpsell,
 		},
 	})
 
@@ -822,6 +970,7 @@ function GameManager:startGameForPlayer(player: Player)
 		startTime = os.clock(),
 		coinsCollected = 0,
 		stageRewardsTotal = 0,
+		startCurrency = self.currencyManager:getCurrency(player),
 	}
 	
 	-- Clear checkpoint

@@ -142,7 +142,7 @@ local Config = {
 		VIP = {
 			id = "VIP",
 			name = "VIP",
-			description = "Exclusive VIP badge, special chat tag, and a golden name glow!",
+			description = "1.5x Coins + 1.5x XP, VIP badge, chat tag, and golden name glow!",
 			icon = "\u{2B50}",
 			gamePassId = 1741108491,
 			robuxPrice = 199,
@@ -157,8 +157,17 @@ local Config = {
 			robuxPrice = 149,
 			layoutOrder = 3,
 		},
+		DoubleXP = {
+			id = "DoubleXP",
+			name = "2x XP",
+			description = "Earn double mastery XP! Level up your class twice as fast.",
+			icon = "\u{1F4AB}",
+			gamePassId = 0, -- TODO: set actual Roblox Game Pass ID
+			robuxPrice = 149,
+			layoutOrder = 4,
+		},
 	},
-	GamePassOrder = { "DoubleCoin", "VIP", "ExtraSlot" },
+	GamePassOrder = { "DoubleCoin", "VIP", "ExtraSlot", "DoubleXP" },
 
 	-- Class Mastery Settings
 	Mastery = {
