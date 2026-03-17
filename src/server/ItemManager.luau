@@ -25,7 +25,7 @@ local ItemManager = {}
 ItemManager.__index = ItemManager
 
 export type PlayerItemData = {
-	itemSlots: {string?}, -- Array of 2 item slots [slot1, slot2]
+	itemSlots: {string?}, -- Array of 2-3 item slots (3rd with ExtraSlot gamepass)
 	lastUseTime: number,
 	hasShield: boolean,
 	shieldExpiry: number?,
@@ -128,19 +128,19 @@ end
 function ItemManager:clearTestItems(player: Player)
 	local data = self.playerItems[player]
 	if data then
-		data.itemSlots = {nil, nil}
+		data.itemSlots = {nil, nil, nil}
 		data.hasShield = false
 		data.shieldExpiry = nil
 		data.isSlowed = false
 		data.slowExpiry = nil
 		data.isBoosted = false
 		data.boostExpiry = nil
-		
+
 		-- Remove visual effects
 		self:removeShieldVisual(player)
 		self:removeBoostEffect(player)
 		self:removeSlowEffect(player)
-		
+
 		self:sendItemUpdate(player)
 		Logger.debug("ItemManager", "Test items cleared for", player.Name)
 	end
@@ -272,7 +272,7 @@ function ItemManager:registerDummy(dummy: Model)
 	
 	-- Create fake player data for the dummy
 	self.playerItems[dummy] = {
-		itemSlots = {nil, nil},
+		itemSlots = {nil, nil, nil},
 		hasShield = false,
 		shieldExpiry = nil,
 		isSlowed = false,
@@ -359,10 +359,20 @@ function ItemManager:isTargetAhead(myProgress: {currentStage: number, distance: 
 	return false
 end
 
+-- Get max item slots for player (2 default, 3 with ExtraSlot gamepass)
+function ItemManager:getMaxSlots(player: Player): number
+	if self.gameManager and self.gameManager.shopManager then
+		if self.gameManager.shopManager:hasGamePass(player, "ExtraSlot") then
+			return 3
+		end
+	end
+	return 2
+end
+
 -- Initialize player items
 function ItemManager:initPlayer(player: Player)
 	self.playerItems[player] = {
-		itemSlots = {nil, nil}, -- 2 item slots
+		itemSlots = {nil, nil, nil}, -- up to 3 item slots (3rd requires ExtraSlot gamepass)
 		lastUseTime = 0,
 		hasShield = false,
 		shieldExpiry = nil,
@@ -395,17 +405,20 @@ end
 function ItemManager:hasAnyItem(player: Player): boolean
 	local data = self.playerItems[player]
 	if data and data.itemSlots then
-		return data.itemSlots[1] ~= nil or data.itemSlots[2] ~= nil
+		for i = 1, self:getMaxSlots(player) do
+			if data.itemSlots[i] ~= nil then return true end
+		end
 	end
 	return false
 end
 
--- Get first empty slot (returns nil if both full)
+-- Get first empty slot (returns nil if all full)
 function ItemManager:getFirstEmptySlot(player: Player): number?
 	local data = self.playerItems[player]
 	if data and data.itemSlots then
-		if data.itemSlots[1] == nil then return 1 end
-		if data.itemSlots[2] == nil then return 2 end
+		for i = 1, self:getMaxSlots(player) do
+			if data.itemSlots[i] == nil then return i end
+		end
 	end
 	return nil
 end
@@ -418,7 +431,7 @@ function ItemManager:setItemInSlot(player: Player, slotIndex: number, itemId: st
 	local itemDef = ItemTypes.getItem(itemId)
 	if not itemDef then return false end
 
-	if slotIndex < 1 or slotIndex > 2 then return false end
+	if slotIndex < 1 or slotIndex > self:getMaxSlots(player) then return false end
 	if data.itemSlots[slotIndex] ~= nil then return false end
 
 	data.itemSlots[slotIndex] = itemId
@@ -430,8 +443,17 @@ end
 -- Get player's current item slots (for shop state sync)
 function ItemManager:getPlayerSlots(player: Player): {string?}
 	local data = self.playerItems[player]
-	if not data then return {nil, nil} end
-	return {data.itemSlots[1], data.itemSlots[2]}
+	local maxSlots = self:getMaxSlots(player)
+	if not data then
+		local slots = {}
+		for i = 1, maxSlots do slots[i] = nil end
+		return slots
+	end
+	local slots = {}
+	for i = 1, maxSlots do
+		slots[i] = data.itemSlots[i]
+	end
+	return slots
 end
 
 -- Give random item to player based on their rank
@@ -483,7 +505,7 @@ function ItemManager:useItem(player: Player, slotIndex: number)
 	
 	-- Validate slot index
 	slotIndex = slotIndex or 1
-	if slotIndex < 1 or slotIndex > 2 then
+	if slotIndex < 1 or slotIndex > self:getMaxSlots(player) then
 		slotIndex = 1
 	end
 	
@@ -2867,9 +2889,13 @@ function ItemManager:collectPickup(player: Player, pickup: Part)
 	local pickupPosition = pickup.Position
 	
 	if isCoin then
-		-- Coin - give currency
+		-- Coin - give currency (with DoubleCoin gamepass multiplier)
 		if self.currencyManager then
-			self.currencyManager:addCurrency(player, Config.Currency.PerCoin)
+			local coinMultiplier = 1
+			if self.gameManager and self.gameManager.getCoinMultiplier then
+				coinMultiplier = self.gameManager:getCoinMultiplier(player)
+			end
+			self.currencyManager:addCurrency(player, Config.Currency.PerCoin * coinMultiplier)
 		end
 		if self.gameManager then
 			self.gameManager:addCoinCollected(player)
@@ -2982,9 +3008,10 @@ function ItemManager:sendItemUpdate(player: Player)
 	local data = self.playerItems[player]
 	if not data then return end
 	
-	-- สร้าง array ของ 2 slots
+	-- สร้าง array ของ slots (2 or 3 depending on ExtraSlot gamepass)
+	local maxSlots = self:getMaxSlots(player)
 	local itemSlots = {}
-	for slotIndex = 1, 2 do
+	for slotIndex = 1, maxSlots do
 		local itemId = data.itemSlots[slotIndex]
 		if itemId then
 			local itemDef = ItemTypes.getItem(itemId)
@@ -3004,9 +3031,10 @@ function ItemManager:sendItemUpdate(player: Player)
 			itemSlots[slotIndex] = false -- empty slot
 		end
 	end
-	
+
 	self.updateScoreRemote:FireClient(player, {
-		itemSlots = itemSlots, -- Array of 2: false = empty, table = has item
+		itemSlots = itemSlots, -- Array of 2-3: false = empty, table = has item
+		maxSlots = maxSlots, -- Tell client how many slots to show
 		hasShield = data.hasShield,
 		isBoosted = data.isBoosted,
 		isSlowed = data.isSlowed,
@@ -3030,7 +3058,7 @@ function ItemManager:resetPlayer(player: Player)
 	end
 	
 	self.playerItems[player] = {
-		itemSlots = {nil, nil}, -- 2 empty slots
+		itemSlots = {nil, nil, nil}, -- up to 3 slots (3rd requires ExtraSlot gamepass)
 		lastUseTime = 0,
 		hasShield = false,
 		shieldExpiry = nil,
@@ -3039,7 +3067,7 @@ function ItemManager:resetPlayer(player: Player)
 		isBoosted = false,
 		boostExpiry = nil,
 	}
-	
+
 	self:sendItemUpdate(player)
 end
 

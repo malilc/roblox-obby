@@ -46,6 +46,8 @@ function MobileInputUI:createUI()
 	itemButtonContainer.BackgroundTransparency = 1
 	itemButtonContainer.Parent = self.parent
 
+	self.itemButtonContainer = itemButtonContainer
+
 	self.itemButton1 = self:createTouchButton(itemButtonContainer, "Item1", "[1]", UDim2.new(0, 0, 0, 0), function()
 		self.itemUI:useItemFromSlot(1)
 	end)
@@ -54,9 +56,16 @@ function MobileInputUI:createUI()
 		self.itemUI:useItemFromSlot(2)
 	end)
 
+	-- Slot 3 button (hidden by default, shown when ExtraSlot gamepass active)
+	self.itemButton3 = self:createTouchButton(itemButtonContainer, "Item3", "[3]", UDim2.new(0, 160, 0, 0), function()
+		self.itemUI:useItemFromSlot(3)
+	end)
+	self.itemButton3.Visible = false
+
 	-- Item emoji labels (แสดง icon ของ item ปัจจุบัน)
 	self.itemEmoji1 = self:createEmojiLabel(self.itemButton1)
 	self.itemEmoji2 = self:createEmojiLabel(self.itemButton2)
+	self.itemEmoji3 = self:createEmojiLabel(self.itemButton3)
 
 	-- === Ultimate Buttons (ซ้ายล่าง) ===
 	local ultimateContainer = Instance.new("Frame")
@@ -193,6 +202,27 @@ function MobileInputUI:updateItemButtons()
 	else
 		self.itemEmoji2.Visible = false
 		self.itemButton2.Text = "[2]"
+	end
+
+	-- อัพเดท item button 3 (ExtraSlot gamepass)
+	local maxSlots = self.itemUI.maxSlots or 2
+	if maxSlots >= 3 then
+		self.itemButton3.Visible = true
+		-- Resize container for 3 buttons
+		self.itemButtonContainer.Size = UDim2.new(0, 240, 0, 70)
+
+		local item3 = self.itemUI.itemSlots[3]
+		if item3 then
+			self.itemEmoji3.Text = item3.icon or ""
+			self.itemEmoji3.Visible = true
+			self.itemButton3.Text = ""
+		else
+			self.itemEmoji3.Visible = false
+			self.itemButton3.Text = "[3]"
+		end
+	else
+		self.itemButton3.Visible = false
+		self.itemButtonContainer.Size = UDim2.new(0, 160, 0, 70)
 	end
 end
 
