@@ -270,11 +270,15 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 							end
 						end
 
-						-- Stun: temporarily freeze player movement
+						-- Stun: temporarily freeze player movement (ป้องกัน stun ซ้อน)
 						local stunDuration = descendant:GetAttribute("StunDuration")
 						if stunDuration and stunDuration > 0 then
-							local savedWalkSpeed = humanoid.WalkSpeed
-							local savedJumpPower = humanoid.JumpPower
+							-- ถ้า stun อยู่แล้ว ไม่ save WalkSpeed=0 ทับ ใช้ค่าเดิมที่เก็บไว้
+							if not character:GetAttribute("IsPunchStunned") then
+								character:SetAttribute("PreStunWalkSpeed", humanoid.WalkSpeed)
+								character:SetAttribute("PreStunJumpPower", humanoid.JumpPower)
+							end
+							character:SetAttribute("IsPunchStunned", true)
 							humanoid.WalkSpeed = 0
 							humanoid.JumpPower = 0
 
@@ -297,11 +301,16 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 							stars.Parent = stunVisual
 
 							task.delay(stunDuration, function()
-								if humanoid and humanoid.Parent then
-									humanoid.WalkSpeed = savedWalkSpeed
-									humanoid.JumpPower = savedJumpPower
+								if humanoid and humanoid.Parent and character:GetAttribute("IsPunchStunned") then
+									local baseWalk = character:GetAttribute("PreStunWalkSpeed") or character:GetAttribute("BaseWalkSpeed") or 16
+									local baseJump = character:GetAttribute("PreStunJumpPower") or character:GetAttribute("BaseJumpPower") or 50
+									humanoid.WalkSpeed = baseWalk
+									humanoid.JumpPower = baseJump
+									character:SetAttribute("IsPunchStunned", false)
+									character:SetAttribute("PreStunWalkSpeed", nil)
+									character:SetAttribute("PreStunJumpPower", nil)
 								end
-								if stunVisual.Parent then
+								if stunVisual and stunVisual.Parent then
 									stunVisual:Destroy()
 								end
 							end)

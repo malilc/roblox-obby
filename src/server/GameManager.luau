@@ -700,10 +700,24 @@ function GameManager:respawnPlayer(player: Player)
 		-- Reset velocity
 		humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 		humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-		
+
+		-- Clear stun state ป้องกัน WalkSpeed=0 ค้าง
+		if character:GetAttribute("IsPunchStunned") then
+			character:SetAttribute("IsPunchStunned", false)
+			local baseWalk = character:GetAttribute("PreStunWalkSpeed") or character:GetAttribute("BaseWalkSpeed") or 16
+			local baseJump = character:GetAttribute("PreStunJumpPower") or character:GetAttribute("BaseJumpPower") or 50
+			humanoid.WalkSpeed = baseWalk
+			humanoid.JumpPower = baseJump
+			character:SetAttribute("PreStunWalkSpeed", nil)
+			character:SetAttribute("PreStunJumpPower", nil)
+			-- ลบ stun visual ถ้ามี
+			local stunVisual = humanoidRootPart:FindFirstChild("PunchStunVisual")
+			if stunVisual then stunVisual:Destroy() end
+		end
+
 		-- Teleport และหันหน้าไปทาง +X (ไปข้างหน้าในด่าน)
 		humanoidRootPart.CFrame = CFrame.lookAt(checkpoint, checkpoint + Vector3.new(1, 0, 0))
-		
+
 		Logger.debug("GameManager", "Respawned", player.Name, "at checkpoint")
 	end
 	
