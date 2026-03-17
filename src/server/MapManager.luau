@@ -409,11 +409,15 @@ function MapManager:_setupDisappearingPlatform(part: Part, mapData: MatchMapData
 					task.spawn(function()
 						-- Blink warning
 						for _ = 1, 3 do
+							if not part.Parent then return end
 							part.Transparency = 0.5
 							task.wait(disappearDelay / 6)
+							if not part.Parent then return end
 							part.Transparency = 0
 							task.wait(disappearDelay / 6)
 						end
+
+						if not part.Parent then return end
 
 						-- Disappear
 						part.Transparency = 1
@@ -421,6 +425,7 @@ function MapManager:_setupDisappearingPlatform(part: Part, mapData: MatchMapData
 
 						-- Reappear
 						task.wait(reappearDelay)
+						if not part.Parent then return end
 						part.Transparency = 0
 						part.CanCollide = true
 						data.touched = false
