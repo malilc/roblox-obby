@@ -68,8 +68,8 @@ function MovingPlatformCarrier.new()
 end
 
 -- Compute platform position from params + syncTime
-local function computePlatformPos(origPos: Vector3, axis: string, distance: number, speed: number, syncTime: number): Vector3
-	local offset = math.sin(syncTime * speed) * distance
+local function computePlatformPos(origPos: Vector3, axis: string, distance: number, speed: number, syncTime: number, phase: number?): Vector3
+	local offset = math.sin(syncTime * speed + (phase or 0)) * distance
 	if axis == "X" then
 		return origPos + Vector3.new(offset, 0, 0)
 	elseif axis == "Y" then
@@ -105,6 +105,7 @@ function MovingPlatformCarrier:_scanPlatforms()
 						axis = descendant:GetAttribute("MoveAxis") or "X",
 						distance = descendant:GetAttribute("MoveDistance") or 10,
 						speed = descendant:GetAttribute("MoveSpeed") or 3,
+						phase = descendant:GetAttribute("MovePhase") or 0,
 					})
 					knownPlatforms[descendant] = true
 				end
@@ -167,7 +168,7 @@ function MovingPlatformCarrier:_movePlatforms()
 	for _, data in ipairs(self._platforms) do
 		if data.part.Parent then
 			local prevPos = data.part.Position
-			local newPos = computePlatformPos(data.originalPosition, data.axis, data.distance, data.speed, syncTime)
+			local newPos = computePlatformPos(data.originalPosition, data.axis, data.distance, data.speed, syncTime, data.phase)
 			data.part.CFrame = data.originalCFrame - data.originalPosition + newPos
 			self._platformDelta[data.part] = data.part.Position - prevPos
 		end

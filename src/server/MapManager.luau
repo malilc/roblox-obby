@@ -282,6 +282,10 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 							humanoid.WalkSpeed = 0
 							humanoid.JumpPower = 0
 
+							-- Version counter ป้องกัน stun timer เก่ายิงทับ timer ใหม่
+							local stunVersion = (character:GetAttribute("StunVersion") or 0) + 1
+							character:SetAttribute("StunVersion", stunVersion)
+
 							-- Stun visual (💫 above head)
 							local existingStun = rootPart:FindFirstChild("PunchStunVisual")
 							if existingStun then existingStun:Destroy() end
@@ -301,7 +305,9 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 							stars.Parent = stunVisual
 
 							task.delay(stunDuration, function()
-								if humanoid and humanoid.Parent and character:GetAttribute("IsPunchStunned") then
+								if humanoid and humanoid.Parent
+									and character:GetAttribute("IsPunchStunned")
+									and character:GetAttribute("StunVersion") == stunVersion then
 									local baseWalk = character:GetAttribute("PreStunWalkSpeed") or character:GetAttribute("BaseWalkSpeed") or 16
 									local baseJump = character:GetAttribute("PreStunJumpPower") or character:GetAttribute("BaseJumpPower") or 50
 									humanoid.WalkSpeed = baseWalk
@@ -529,9 +535,10 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 				local axis = part:GetAttribute("MoveAxis") or "X"
 				local distance = part:GetAttribute("MoveDistance") or 10
 				local speed = part:GetAttribute("MoveSpeed") or 3
+				local phase = part:GetAttribute("MovePhase") or 0
 
 				-- คำนวณ offset ตามแกน (ใช้ syncTime เพื่อให้ตรงกับ client)
-				local offset = math.sin(syncTime * speed) * distance
+				local offset = math.sin(syncTime * speed + phase) * distance
 				local moveVector
 				if axis == "X" then
 					moveVector = Vector3.new(offset, 0, 0)

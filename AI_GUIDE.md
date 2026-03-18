@@ -133,7 +133,7 @@ Workspace/
 | 3 | Spin | 🌀 | Normal | 4 | แท่งหมุน kill part |
 | 4 | Disappear | 💨 | Hard | 5 | แพลตฟอร์มหายไป |
 | 5 | Combo | ⚡ | Hard | 6 | ผสมทุกกลไก |
-| 6 | Lava Rise | 🌋 | Hard | 6 | พื้น kill part ยกตัว + แพลตฟอร์มลอย |
+| 6 | Lava Rise | 🌋 | Hard | 6 | ลาวา 2 แถว (ซ้าย/ขวา) ขึ้นสลับเฟส + ช่องกลาง 6 studs + disappearing platforms (3s) |
 | 7 | Narrow | 🎯 | Hard | 7 | แพลตฟอร์มแคบ + spinner + moving narrow |
 
 - Metadata ทั้งหมดอยู่ใน `StageInfo.luau` (name, icon, difficulty, color, gradientEnd, reward)
@@ -292,6 +292,7 @@ local checkpoint = Instance.new("SpawnLocation")
 | `MoveAxis` | string | "X", "Y", หรือ "Z" |
 | `MoveDistance` | number | ระยะเคลื่อนที่ (studs) |
 | `MoveSpeed` | number | ความเร็ว |
+| `MovePhase` | number | Phase offset (radians) สำหรับ sin wave เช่น math.pi = สลับเฟส |
 | `IsSpinning` | boolean | หมุนรอบแกน Y (สำหรับ Spinner) |
 | `SpinSpeed` | number | ความเร็วหมุน |
 | `IsItemBox` | boolean | 🎯 Item Box - ให้ random item เมื่อเก็บ |

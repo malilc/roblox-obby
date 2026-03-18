@@ -42,6 +42,7 @@ function GameManager.new()
 	self.playerStates = {} :: {[Player]: PlayerState}
 	self.playerCheckpoints = {} :: {[Player]: Vector3}
 	self.teleportingToLobby = {} :: {[Player]: boolean} -- Track teleporting players
+	self.respawnCooldowns = {} :: {[Player]: boolean} -- Prevent rapid respawn from kill parts
 	
 	-- Per-player match tracking (for instanced maps)
 	self.playerMatchIds = {} :: {[Player]: string} -- Player -> MatchId mapping
@@ -286,6 +287,7 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.shopZoneManager:removePlayer(player)
 	self.shopManager:removePlayer(player)
 	self.teleportingToLobby[player] = nil
+	self.respawnCooldowns[player] = nil
 	self.soloWinsEnabled[player] = nil
 	self.playerRoundStats[player] = nil
 
@@ -818,6 +820,11 @@ end
 
 -- Respawn player at checkpoint
 function GameManager:respawnPlayer(player: Player)
+	-- Respawn cooldown ป้องกันเรียกซ้ำรัวจาก kill parts (เช่น ลาวา Stage 6)
+	if self.respawnCooldowns[player] then return end
+	self.respawnCooldowns[player] = true
+	task.delay(0.5, function() self.respawnCooldowns[player] = nil end)
+
 	local character = player.Character
 	if not character then return end
 	
@@ -1112,12 +1119,18 @@ end
 -- Setup kill parts
 function GameManager:setupKillParts()
 	local killParts = self.mapManager:getAllKillParts()
-	
+	local killCooldowns = {} -- {[Model(character)]: true} debounce per character
+
 	for _, part in ipairs(killParts) do
 		local conn = part.Touched:Connect(function(hit)
 			local humanoid = hit.Parent:FindFirstChild("Humanoid")
 			if humanoid then
-				local player = Players:GetPlayerFromCharacter(hit.Parent)
+				local character = hit.Parent
+				if killCooldowns[character] then return end
+				killCooldowns[character] = true
+				task.delay(0.5, function() killCooldowns[character] = nil end)
+
+				local player = Players:GetPlayerFromCharacter(character)
 				if player and self.playerStates[player] == "Playing" then
 					self:respawnPlayer(player)
 				end
@@ -1196,12 +1209,18 @@ function GameManager:setupKillPartsForMatch(matchId: string)
 	if not self.matchConnections[matchId] then
 		self.matchConnections[matchId] = {}
 	end
+	local killCooldowns = {} -- {[Model(character)]: true} debounce per character
 
 	for _, part in ipairs(killParts) do
 		local conn = part.Touched:Connect(function(hit)
 			local humanoid = hit.Parent:FindFirstChild("Humanoid")
 			if humanoid then
-				local player = Players:GetPlayerFromCharacter(hit.Parent)
+				local character = hit.Parent
+				if killCooldowns[character] then return end
+				killCooldowns[character] = true
+				task.delay(0.5, function() killCooldowns[character] = nil end)
+
+				local player = Players:GetPlayerFromCharacter(character)
 				-- Check if this player belongs to this match
 				if player and self.playerStates[player] == "Playing" and self.playerMatchIds[player] == matchId then
 					self:respawnPlayer(player)

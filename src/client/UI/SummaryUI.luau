@@ -1012,9 +1012,6 @@ function SummaryUI:setupGamePassUpsell(upsellData: {doubleCoin: number?, extraSl
 	if upsellData.doubleXP then
 		table.insert(entries, {text = "\u{1F4AB} 2\u{00D7} XP!", id = upsellData.doubleXP, color = Color3.fromRGB(120, 80, 220)})
 	end
-	if upsellData.extraSlot then
-		table.insert(entries, {text = "\u{1F392} 3rd Slot!", id = upsellData.extraSlot, color = Theme.ACCENT_CYAN})
-	end
 
 	if #entries == 0 then return end
 

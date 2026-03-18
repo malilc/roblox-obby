@@ -611,27 +611,38 @@ function StageTemplates.createStage6(startPosition: Vector3): Model
 	itemPickups.Name = "ItemPickups"
 	itemPickups.Parent = stage
 
-	-- Rising lava floor (kill part that moves upward)
-	local lavaFloor = createPart({
-		Name = "LavaFloor",
-		Size = Vector3.new(STAGE_LENGTH + 20, 2, 30),
-		Position = startPosition + Vector3.new(STAGE_LENGTH / 2, -15, 0),
-		Color = Color3.fromRGB(255, 60, 0),
-		Material = Enum.Material.SmoothPlastic,
-	})
-	lavaFloor:SetAttribute("IsKillPart", true)
-	lavaFloor:SetAttribute("IsMoving", true)
-	lavaFloor:SetAttribute("MoveAxis", "Y")
-	lavaFloor:SetAttribute("MoveDistance", 35)
-	lavaFloor:SetAttribute("MoveSpeed", 1.5)
-	lavaFloor.Parent = obstacles
+	-- Rising lava floors (2 แถว ซ้าย-ขวา เว้นช่องกลางให้เดินได้)
+	-- Gap ตรงกลาง 6 studs (Z = -3 ถึง +3) แคบพอให้ท้าทาย
+	local lavaXSize = STAGE_LENGTH - 10
+	local lavaXOffset = STAGE_LENGTH / 2 + 10
+	local lavaZWidth = 12 -- แต่ละแถวกว้าง 12 studs
 
-	-- Lava glow effect
-	local lavaLight = Instance.new("PointLight")
-	lavaLight.Color = Color3.fromRGB(255, 100, 0)
-	lavaLight.Brightness = 3
-	lavaLight.Range = 25
-	lavaLight.Parent = lavaFloor
+	for _, side in ipairs({-1, 1}) do
+		local lavaStrip = createPart({
+			Name = "LavaFloor",
+			Size = Vector3.new(lavaXSize, 2, lavaZWidth),
+			Position = startPosition + Vector3.new(lavaXOffset, -15, side * 9),
+			Color = Color3.fromRGB(255, 60, 0),
+			Material = Enum.Material.SmoothPlastic,
+		})
+		lavaStrip:SetAttribute("IsKillPart", true)
+		lavaStrip:SetAttribute("IsMoving", true)
+		lavaStrip:SetAttribute("MoveAxis", "Y")
+		lavaStrip:SetAttribute("MoveDistance", 35)
+		lavaStrip:SetAttribute("MoveSpeed", 1.5)
+		-- แถวขวา (side=1) เคลื่อนที่สลับเฟสกับแถวซ้าย
+		if side == 1 then
+			lavaStrip:SetAttribute("MovePhase", math.pi)
+		end
+		lavaStrip.Parent = obstacles
+
+		-- Lava glow effect
+		local lavaLight = Instance.new("PointLight")
+		lavaLight.Color = Color3.fromRGB(255, 100, 0)
+		lavaLight.Brightness = 3
+		lavaLight.Range = 25
+		lavaLight.Parent = lavaStrip
+	end
 
 	-- Platforms zigzagging upward (10 platforms)
 	local platformCount = 10
@@ -648,10 +659,10 @@ function StageTemplates.createStage6(startPosition: Vector3): Model
 			Color = Color3.fromRGB(180, 80, 30),
 		})
 
-		-- บางแพลตฟอร์ม disappear (เร็วกว่า Stage 4)
+		-- บางแพลตฟอร์ม disappear
 		if i % 3 == 0 then
 			platform:SetAttribute("IsDisappearing", true)
-			platform:SetAttribute("DisappearDelay", 1.0)
+			platform:SetAttribute("DisappearDelay", 3.0)
 			platform:SetAttribute("ReappearDelay", 2.5)
 			platform.Color = Color3.fromRGB(255, 140, 50) -- สีต่างจากปกติ
 		end
