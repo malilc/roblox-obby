@@ -162,7 +162,7 @@ local Config = {
 			name = "2x XP",
 			description = "Earn double mastery XP! Level up your class twice as fast.",
 			icon = "\u{1F4AB}",
-			gamePassId = 0, -- TODO: set actual Roblox Game Pass ID
+			gamePassId = 1753504703,
 			robuxPrice = 149,
 			layoutOrder = 4,
 		},
