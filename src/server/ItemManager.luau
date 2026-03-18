@@ -7,6 +7,7 @@ local SoundService = game:GetService("SoundService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
+local GamePassLogic = require(ReplicatedStorage.Shared.GamePassLogic)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
 -- Helper: create a Sound with SFX SoundGroup assigned
@@ -362,12 +363,9 @@ end
 
 -- Get max item slots for player (2 default, 3 with ExtraSlot gamepass)
 function ItemManager:getMaxSlots(player: Player): number
-	if self.gameManager and self.gameManager.shopManager then
-		if self.gameManager.shopManager:hasGamePass(player, "ExtraSlot") then
-			return 3
-		end
-	end
-	return 2
+	local passes = self.gameManager and self.gameManager.shopManager
+		and self.gameManager.shopManager.playerGamePasses[player]
+	return GamePassLogic.getMaxItemSlots(passes)
 end
 
 -- Initialize player items

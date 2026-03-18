@@ -6,6 +6,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
+local GamePassLogic = require(ReplicatedStorage.Shared.GamePassLogic)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local ShopManager = {}
@@ -64,12 +65,13 @@ end
 -- Rate limiting
 function ShopManager:isRateLimited(player: Player): boolean
 	local now = os.clock()
-	local lastTime = self.lastRequestTime[player]
-	if lastTime and (now - lastTime) < Config.Shop.RequestCooldown then
-		return true
+	local limited = GamePassLogic.isRateLimited(
+		self.lastRequestTime[player], now, Config.Shop.RequestCooldown
+	)
+	if not limited then
+		self.lastRequestTime[player] = now
 	end
-	self.lastRequestTime[player] = now
-	return false
+	return limited
 end
 
 -- Send error to client
@@ -247,21 +249,21 @@ end
 function ShopManager:setupGamePassListeners()
 	-- Listen for native Roblox game pass purchase completion
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, wasPurchased)
-		if not wasPurchased then return end
-
-		-- Find which pass was purchased
-		for id, passDef in pairs(Config.GamePasses) do
-			if passDef.gamePassId == passId then
+		if wasPurchased then
+			-- New purchase: set owned immediately
+			local id = GamePassLogic.getPassIdByGamePassId(passId)
+			if id then
 				if not self.playerGamePasses[player] then
 					self.playerGamePasses[player] = {}
 				end
 				self.playerGamePasses[player][id] = true
 				self:saveGamePassesToProfile(player)
-				self:sendGamePassUpdate(player)
 				Logger.info("ShopManager", player.Name, "purchased game pass:", id)
-				break
 			end
 		end
+		-- Always re-check + sync (catches "already own" case too)
+		self:checkAllGamePasses(player)
+		self:sendGamePassUpdate(player)
 	end)
 end
 
@@ -269,30 +271,39 @@ function ShopManager:checkAllGamePasses(player: Player)
 	if not self.playerGamePasses[player] then
 		self.playerGamePasses[player] = {}
 	end
-	local passes = self.playerGamePasses[player]
 
-	-- Load saved passes from DataStore profile (has priority — includes test toggles)
+	-- Load saved passes from DataStore profile
 	self:loadGamePassesFromProfile(player)
 
-	-- Merge real ownership from Roblox API
-	-- Only set true if saved state is nil (not explicitly set)
-	-- saved true = owned, saved false = explicitly disabled, nil = use API
+	-- Query Roblox API for real ownership
+	local apiResults = self:queryRobloxAPI(player)
+
+	-- Resolve final ownership using pure logic
+	self.playerGamePasses[player] = GamePassLogic.resolveOwnership({
+		savedPasses = self.playerGamePasses[player],
+		apiResults = apiResults,
+		debugEnabled = Config.Debug and Config.Debug.Enabled and Config.Debug.ItemTesting,
+	})
+end
+
+-- Query Roblox API for game pass ownership (side-effectful, isolated from logic)
+function ShopManager:queryRobloxAPI(player: Player): {[string]: boolean}
+	local results = {}
 	for id, passDef in pairs(Config.GamePasses) do
-		if passDef.gamePassId ~= 0 and passes[id] == nil then
+		if passDef.gamePassId ~= 0 then
 			local success, hasPass = pcall(function()
 				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passDef.gamePassId)
 			end)
 			if success and hasPass then
-				passes[id] = true
+				results[id] = true
 			end
 		end
 	end
+	return results
 end
 
 function ShopManager:hasGamePass(player: Player, passId: string): boolean
-	local passes = self.playerGamePasses[player]
-	if not passes then return false end
-	return passes[passId] == true
+	return GamePassLogic.hasGamePass(self.playerGamePasses[player], passId)
 end
 
 function ShopManager:sendGamePassUpdate(player: Player)
@@ -362,7 +373,7 @@ end
 
 function ShopManager:toggleTestGamePass(player: Player, passId: string, enabled: boolean)
 	-- Validate passId exists in Config
-	if not Config.GamePasses[passId] then
+	if not GamePassLogic.isValidPassId(passId) then
 		Logger.warn("ShopManager", "Invalid test gamepass:", passId)
 		return
 	end

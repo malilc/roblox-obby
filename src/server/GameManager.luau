@@ -17,6 +17,7 @@ local ShopManager = require(script.Parent.ShopManager)
 local FeedbackManager = require(script.Parent.FeedbackManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
+local GamePassLogic = require(ReplicatedStorage.Shared.GamePassLogic)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local GameManager = {}
@@ -473,29 +474,13 @@ function GameManager:checkPlayerPosition(player: Player)
 end
 
 function GameManager:getCoinMultiplier(player: Player): number
-	local multiplier = 1
-	if self.shopManager then
-		if self.shopManager:hasGamePass(player, "DoubleCoin") then
-			multiplier = multiplier + 1 -- +1.0 = ×2
-		end
-		if self.shopManager:hasGamePass(player, "VIP") then
-			multiplier = multiplier + 0.5 -- +0.5 = ×1.5
-		end
-	end
-	return multiplier
+	local passes = self.shopManager and self.shopManager.playerGamePasses[player]
+	return GamePassLogic.getCoinMultiplier(passes)
 end
 
 function GameManager:getXPMultiplier(player: Player): number
-	local multiplier = 1
-	if self.shopManager then
-		if self.shopManager:hasGamePass(player, "DoubleXP") then
-			multiplier = multiplier + 1 -- +1.0 = ×2
-		end
-		if self.shopManager:hasGamePass(player, "VIP") then
-			multiplier = multiplier + 0.5 -- +0.5 = ×1.5
-		end
-	end
-	return multiplier
+	local passes = self.shopManager and self.shopManager.playerGamePasses[player]
+	return GamePassLogic.getXPMultiplier(passes)
 end
 
 function GameManager:addMasteryXP(player: Player, amount: number, reason: string)
