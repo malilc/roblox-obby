@@ -10,6 +10,8 @@ local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local LocalPlayer = Players.LocalPlayer
 
+local IS_MOBILE = UserInputService.TouchEnabled
+
 local ItemUI = {}
 ItemUI.__index = ItemUI
 
@@ -290,6 +292,11 @@ function ItemUI:createSlot(slotIndex: number, parent: Frame)
 	keybindHint.TextSize = 10
 	keybindHint.Font = Enum.Font.GothamMedium
 	keybindHint.Parent = slotFrame
+
+	-- Hide keybind hints on mobile (touch devices use MobileInputUI buttons instead)
+	if IS_MOBILE then
+		keybindHint.Visible = false
+	end
 end
 
 function ItemUI:createStatusIcon(name: string, emoji: string, color: Color3): Frame
