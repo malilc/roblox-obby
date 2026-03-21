@@ -193,7 +193,7 @@ function CurrencyUI:createUI()
 		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
 		if isMobile then
 			currUIScale.Scale = 0.5
-			currencyFrame.Position = UDim2.new(0, 0, 1, -8)
+			currencyFrame.Position = UDim2.new(0, 0, 1, -32)
 		else
 			currUIScale.Scale = 1
 			currencyFrame.Position = UDim2.new(0, 10, 1, -52)

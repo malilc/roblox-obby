@@ -317,9 +317,9 @@ function ScoreUI:createUI()
 		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
 		if isMobile then
 			gemUIScale.Scale = 0.5
-			gemFrame.Position = UDim2.new(0, 0, 1, -30)
+			gemFrame.Position = UDim2.new(0, 0, 1, -55)
 			stageUIScale.Scale = 0.5
-			stageFrame.Position = UDim2.new(0, 0, 1, -46)
+			stageFrame.Position = UDim2.new(0, 0, 1, -70)
 		else
 			gemUIScale.Scale = 1
 			gemFrame.Position = UDim2.new(0, 10, 1, -100)
