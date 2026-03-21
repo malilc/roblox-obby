@@ -44,6 +44,7 @@ function MobileInputUI:createUI()
 	itemButtonContainer.Size = UDim2.new(0, 160, 0, 70)
 	itemButtonContainer.Position = UDim2.new(0.5, -80, 1, -80)
 	itemButtonContainer.BackgroundTransparency = 1
+	itemButtonContainer.ZIndex = 1
 	itemButtonContainer.Parent = self.parent
 
 	self.itemButtonContainer = itemButtonContainer

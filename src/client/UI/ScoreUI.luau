@@ -51,8 +51,8 @@ function ScoreUI:createUI()
 	local gemFrame = UIFactory.createPanel(self.parent, {
 		name = "GemFrame",
 		size = UDim2.new(0, 130, 0, 44),
-		size = if IS_MOBILE then UDim2.new(0, 90, 0, 32) else UDim2.new(0, 130, 0, 44),
-		position = if IS_MOBILE then UDim2.new(0, 10, 1, -140) else UDim2.new(0, 10, 1, -100),
+		size = if IS_MOBILE then UDim2.new(0, 90, 0, 28) else UDim2.new(0, 130, 0, 44),
+		position = if IS_MOBILE then UDim2.new(0, 10, 1, -62) else UDim2.new(0, 10, 1, -100),
 		bgColor = Theme.HUD_GEM_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",
@@ -148,8 +148,8 @@ function ScoreUI:createUI()
 	local stageFrame = Instance.new("Frame")
 	stageFrame.Name = "StageFrame"
 	stageFrame.Size = UDim2.new(0, 160, 0, 28)
-	stageFrame.Size = if IS_MOBILE then UDim2.new(0, 110, 0, 22) else UDim2.new(0, 160, 0, 28)
-	stageFrame.Position = if IS_MOBILE then UDim2.new(0, 10, 1, -175) else UDim2.new(0, 10, 1, -132)
+	stageFrame.Size = if IS_MOBILE then UDim2.new(0, 90, 0, 18) else UDim2.new(0, 160, 0, 28)
+	stageFrame.Position = if IS_MOBILE then UDim2.new(0, 10, 1, -82) else UDim2.new(0, 10, 1, -132)
 	stageFrame.BackgroundColor3 = Theme.BG_OVERLAY
 	stageFrame.BackgroundTransparency = 0.3
 	stageFrame.BorderSizePixel = 0

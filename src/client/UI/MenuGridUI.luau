@@ -90,25 +90,25 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 		})
 		btn.AutoButtonColor = false
 
-		-- Icon label (top area, centered)
+		-- Icon label (upper area, slightly lower)
 		UIFactory.createLabel(btn, {
 			name = "Icon",
-			size = UDim2.new(1, 0, 0.6, 0),
-			position = UDim2.new(0, 0, 0, 0),
+			size = UDim2.new(1, 0, 0.55, 0),
+			position = UDim2.new(0, 0, 0, 4),
 			text = def.icon,
-			textSize = if IS_MOBILE then 20 else 26,
+			textSize = if IS_MOBILE then 18 else 24,
 			bgTransparency = 1,
 			textYAlignment = Enum.TextYAlignment.Center,
 		})
 
-		-- Name label (bottom, clipped inside button)
+		-- Name label (lower area, inside button bounds)
 		UIFactory.createLabel(btn, {
 			name = "Label",
-			size = UDim2.new(1, -4, 0, 12),
-			position = UDim2.new(0, 2, 1, -13),
+			size = UDim2.new(1, -4, 0, 14),
+			position = UDim2.new(0, 2, 1, -16),
 			text = def.label,
 			textColor = Theme.TEXT_PRIMARY,
-			textSize = if IS_MOBILE then 8 else 11,
+			textSize = if IS_MOBILE then 9 else 11,
 			font = Enum.Font.GothamBold,
 			bgTransparency = 1,
 			textYAlignment = Enum.TextYAlignment.Center,
