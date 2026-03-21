@@ -1,6 +1,7 @@
 -- CurrencyUI: แสดงเงินในเกม (Colorful Youth Style - Gold Gradient)
 
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -11,6 +12,9 @@ local LocalPlayer = Players.LocalPlayer
 
 local CurrencyUI = {}
 CurrencyUI.__index = CurrencyUI
+
+-- Platform detection for mobile repositioning
+local IS_MOBILE = UserInputService.TouchEnabled
 
 -- Helper: create drop shadow under a pill
 local function createDropShadow(pill: Frame)
@@ -46,7 +50,7 @@ function CurrencyUI:createUI()
 	local currencyFrame = UIFactory.createPanel(self.parent, {
 		name = "CurrencyFrame",
 		size = UDim2.new(0, 140, 0, 44),
-		position = UDim2.new(0, 10, 1, -52),
+		position = if IS_MOBILE then UDim2.new(0, 10, 0, 94) else UDim2.new(0, 10, 1, -52),
 		bgColor = Theme.HUD_CURRENCY_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",

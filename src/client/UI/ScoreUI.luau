@@ -1,6 +1,7 @@
 -- ScoreUI: HUD displays for Gems, Stage Progress, and Match Timer
 
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -11,6 +12,9 @@ local LocalPlayer = Players.LocalPlayer
 
 local ScoreUI = {}
 ScoreUI.__index = ScoreUI
+
+-- Platform detection for mobile repositioning
+local IS_MOBILE = UserInputService.TouchEnabled
 
 -- Helper: create drop shadow under a pill
 local function createDropShadow(pill: Frame)
@@ -47,7 +51,7 @@ function ScoreUI:createUI()
 	local gemFrame = UIFactory.createPanel(self.parent, {
 		name = "GemFrame",
 		size = UDim2.new(0, 130, 0, 44),
-		position = UDim2.new(0, 10, 1, -100),
+		position = if IS_MOBILE then UDim2.new(0, 10, 0, 10) else UDim2.new(0, 10, 1, -100),
 		bgColor = Theme.HUD_GEM_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",
@@ -143,7 +147,7 @@ function ScoreUI:createUI()
 	local stageFrame = Instance.new("Frame")
 	stageFrame.Name = "StageFrame"
 	stageFrame.Size = UDim2.new(0, 160, 0, 28)
-	stageFrame.Position = UDim2.new(0, 10, 1, -132)
+	stageFrame.Position = if IS_MOBILE then UDim2.new(0, 10, 0, 60) else UDim2.new(0, 10, 1, -132)
 	stageFrame.BackgroundColor3 = Theme.BG_OVERLAY
 	stageFrame.BackgroundTransparency = 0.3
 	stageFrame.BorderSizePixel = 0
