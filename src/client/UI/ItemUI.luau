@@ -46,7 +46,7 @@ function ItemUI:createUI()
 	local container = Instance.new("Frame")
 	container.Name = "ItemContainer"
 	container.Size = UDim2.new(0, 160, 0, 95)
-	container.Position = UDim2.new(0.5, -80, 1, -50)
+	container.Position = UDim2.new(0.5, -80, 1, -100)
 	container.BackgroundTransparency = 1
 	container.Parent = self.parent
 	self.container = container
@@ -233,6 +233,11 @@ function ItemUI:createSlot(slotIndex: number, parent: Frame)
 	local labelCorner = Instance.new("UICorner")
 	labelCorner.CornerRadius = Theme.CORNER_SM
 	labelCorner.Parent = slotLabel
+
+	-- Hide slot number label on mobile (touch devices don't need keybind numbers)
+	if IS_MOBILE then
+		slotLabel.Visible = false
+	end
 
 	-- Item icon
 	local iconImage = Instance.new("ImageLabel")
@@ -555,10 +560,10 @@ function ItemUI:updateItems(data: {[string]: any})
 		end
 		if maxSlots >= 3 then
 			self.container.Size = UDim2.new(0, 240, 0, 95)
-			self.container.Position = UDim2.new(0.5, -120, 1, -50)
+			self.container.Position = UDim2.new(0.5, -120, 1, -100)
 		else
 			self.container.Size = UDim2.new(0, 160, 0, 95)
-			self.container.Position = UDim2.new(0.5, -80, 1, -50)
+			self.container.Position = UDim2.new(0.5, -80, 1, -100)
 		end
 	end
 
