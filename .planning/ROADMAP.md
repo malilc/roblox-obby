@@ -101,11 +101,10 @@ Plans:
   1. Rankings panel is fully visible on mobile without covering item slots or the jump button
   2. Coins/Gems bar is fully visible on mobile without covering the movement joystick
   3. All HUD elements on desktop remain in their original positions with no visual change from pre-v1.1
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01: Rankings panel mobile optimization (top-3 limit, UIScale, overlap-free positioning) + full HUD verification
 
 ## Progress
 
@@ -118,4 +117,4 @@ Phases 1-3 shipped. Current: 4 -> 5
 | 2. Large Modal Scaling | v1.0 | 2/2 | Complete | shipped |
 | 3. Medium Modals + Polish | v1.0 | 2/2 | Complete | shipped |
 | 4. HUD Element Fixes | v1.1 | 0/2 | Not started | - |
-| 5. HUD Overlap Resolution | v1.1 | 0/? | Not started | - |
+| 5. HUD Overlap Resolution | v1.1 | 0/1 | Not started | - |
