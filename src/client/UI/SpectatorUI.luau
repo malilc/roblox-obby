@@ -6,7 +6,6 @@ local TweenService = game:GetService("TweenService")
 
 local SpectatorCamera = require(script.Parent.Parent.SpectatorCamera)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -34,6 +33,7 @@ function SpectatorUI.new(parent: ScreenGui)
 	self.activePlayers = {} :: {Player}
 	self.selectedPlayerIndex = 1
 	self.rankingEntries = {}
+	self.isMobile = false
 
 	self:createUI()
 	self:setupRemotes()
@@ -52,7 +52,6 @@ function SpectatorUI:createUI()
 	promptContainer.ZIndex = 8
 	promptContainer.Parent = self.parent
 	self.promptContainer = promptContainer
-	ResponsiveScale.applyToFrame(self.promptContainer, PROMPT_W, PROMPT_H)
 
 	local spectateBtn = Instance.new("TextButton")
 	spectateBtn.Name = "SpectateButton"
@@ -183,7 +182,6 @@ function SpectatorUI:createUI()
 	rankingsPanel.ZIndex = 9
 	rankingsPanel.Parent = hud
 	self.rankingsPanel = rankingsPanel
-	ResponsiveScale.applyToFrame(self.rankingsPanel, RANKINGS_W, RANKINGS_H)
 
 	local rankCorner = Instance.new("UICorner")
 	rankCorner.CornerRadius = Theme.CORNER_MD
@@ -312,7 +310,43 @@ function SpectatorUI:createUI()
 	leaveBtn.BackgroundColor3 = Theme.BG_SURFACE
 	leaveBtn.TextColor3 = Theme.DANGER
 
-	ResponsiveScale.applyToFrame(controlBar, CONTROL_W, CONTROL_H)
+	-- Mobile layout: viewport-based UIScale for HUD elements (not modal-style ResponsiveScale)
+	-- Same proven pattern from Phase 4 (ScoreUI, CurrencyUI)
+	local camera = workspace.CurrentCamera
+
+	local rankUIScale = Instance.new("UIScale")
+	rankUIScale.Scale = 1
+	rankUIScale.Parent = self.rankingsPanel
+
+	local promptUIScale = Instance.new("UIScale")
+	promptUIScale.Scale = 1
+	promptUIScale.Parent = self.promptContainer
+
+	local controlUIScale = Instance.new("UIScale")
+	controlUIScale.Scale = 1
+	controlUIScale.Parent = controlBar
+
+	local function updateMobileLayout()
+		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
+		self.isMobile = isMobile
+		if isMobile then
+			-- Rankings: scale down + reposition to top-left away from item buttons and jump button
+			rankUIScale.Scale = 0.55
+			self.rankingsPanel.Position = UDim2.new(0, 6, 0, 50)
+			-- Prompt: scale down for mobile
+			promptUIScale.Scale = 0.7
+			-- Control bar: scale down for mobile
+			controlUIScale.Scale = 0.7
+		else
+			-- Desktop: original sizes and positions
+			rankUIScale.Scale = 1.0
+			self.rankingsPanel.Position = UDim2.new(0, 10, 0, 60)
+			promptUIScale.Scale = 1.0
+			controlUIScale.Scale = 1.0
+		end
+	end
+	updateMobileLayout()
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateMobileLayout)
 end
 
 function SpectatorUI:createControlButton(parent: Frame, name: string, label: string, order: number, callback: () -> ()): TextButton
@@ -490,8 +524,10 @@ function SpectatorUI:updateRankings(data: {[string]: any})
 	end
 	self.rankingEntries = {}
 
-	-- Create ranking entries
-	for i, ranking in ipairs(self.latestRankings) do
+	-- Create ranking entries (limit to top 3 on mobile per D-01)
+	local maxEntries = if self.isMobile then 3 else #self.latestRankings
+	for i = 1, math.min(#self.latestRankings, maxEntries) do
+		local ranking = self.latestRankings[i]
 		local entry = Instance.new("TextLabel")
 		entry.Name = "Rank_" .. i
 		entry.Size = UDim2.new(1, 0, 0, 22)
