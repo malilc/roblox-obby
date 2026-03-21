@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: unknown
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-03-21T10:50:53.918Z"
+milestone: v1.1
+milestone_name: Mobile HUD Fix
+status: defining_requirements
+stopped_at: null
+last_updated: "2026-03-21T13:00:00.000Z"
 progress:
-  total_phases: 3
+  total_phases: 0
   completed_phases: 0
-  total_plans: 2
-  completed_plans: 1
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,13 +18,15 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-21)
 
-**Core value:** Every modal must be fully visible and usable on both desktop and mobile phone screens
-**Current focus:** Phase 01 — scaling-infrastructure-small-modals
+**Core value:** Every UI element must be fully visible, usable, and non-overlapping on both desktop and mobile phone screens
+**Current focus:** Defining requirements for v1.1
 
 ## Current Position
 
-Phase: 01 (scaling-infrastructure-small-modals) — EXECUTING
-Plan: 2 of 2
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-21 — Milestone v1.1 started
 
 ## Performance Metrics
 
@@ -34,31 +36,15 @@ Plan: 2 of 2
 - Average duration: -
 - Total execution time: 0 hours
 
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| - | - | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: -
-- Trend: -
-
-*Updated after each plan completion*
-| Phase 01 P01 | 2min | 1 tasks | 2 files |
-
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Roadmap]: Coarse granularity -- 3 phases. Infrastructure + small modals first, then large modals (highest risk), then medium + touch + polish.
-- [Roadmap]: Small modals bundled with infrastructure to validate the system on low-risk targets before tackling complex large modals.
-- [Phase 01]: calculateScale uses pure function with injectable parameters for Roblox service isolation in tests
-- [Phase 01]: Tab indentation matches codebase practice over CLAUDE.md spec
+- [v1.0]: UIScale-based scaling proven on 13 modals
+- [v1.0]: ResponsiveScale module in src/shared/ — reusable for HUD if needed
+- [v1.0]: 40px padding, 0.5 min scale floor
+- [v1.0]: compensateStrokes for UIStroke under UIScale
+- [v1.1]: HUD elements were out of scope in v1.0, now in scope
 
 ### Pending Todos
 
@@ -66,12 +52,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- UIStroke thickness bug: Must be addressed in Phase 2. Research confirms disproportionate rendering under UIScale.
-- ScrollingFrame CanvasSize bug: AutomaticCanvasSize + UIScale is broken. Manual canvas calculation needed in Phase 2.
-- DailyBonusUI dynamic creation: UIScale must be applied inside showCalendar(), not constructor. Phase 2 concern.
+- Item slot duplication appears mobile-only — may be platform-specific rendering issue
+- Rankings panel positioning conflicts with Roblox default touch controls
 
 ## Session Continuity
 
-Last session: 2026-03-21T10:50:53.916Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-03-21
+Stopped at: Milestone v1.1 started
 Resume file: None
