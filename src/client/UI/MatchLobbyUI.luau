@@ -864,8 +864,15 @@ function MatchLobbyUI:updateRankingsList(rankings, yourRank: number)
 		end
 	end
 
-	-- Show top 8 rankings
-	local showCount = math.min(#rankings, 8)
+	-- Show top 3 on mobile, top 8 on desktop
+	local camera = workspace.CurrentCamera
+	local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
+	local maxEntries = if isMobile then 3 else 8
+	local showCount = math.min(#rankings, maxEntries)
+
+	-- Resize panel to fit content (header 35 + entries * 36 + padding 10)
+	local contentH = 35 + showCount * 36 + 10
+	self.rankFrame.Size = UDim2.new(0, 190, 0, contentH)
 
 	for i = 1, showCount do
 		local rankData = rankings[i]
