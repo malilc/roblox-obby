@@ -59,6 +59,8 @@ function MainUI.new()
 	screenGui.Name = "ObbyGameUI"
 	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = false
+	-- Safe area: CoreUISafeInsets prevents modal clipping behind notch/Dynamic Island (TOUCH-03)
+	screenGui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	screenGui.Parent = playerGui
 	self.screenGui = screenGui
 

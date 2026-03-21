@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
 
 local COLORS = {
 	GOLD        = Theme.PRIMARY,
@@ -21,6 +22,9 @@ local COLORS = {
 
 local DailyBonusUI = {}
 DailyBonusUI.__index = DailyBonusUI
+
+local PANEL_W = 780
+local PANEL_H = 580
 
 function DailyBonusUI.new(parent: ScreenGui, callbacks: {hideHudButton: boolean?}?)
 	local self = setmetatable({}, DailyBonusUI)
@@ -541,6 +545,10 @@ function DailyBonusUI:showCalendar(data)
 	btnLabel.Font = Enum.Font.GothamBlack
 	btnLabel.ZIndex = actionBtn.ZIndex + 1
 	btnLabel.Parent = actionBtn
+
+	-- Responsive scaling (Phase 2) — applied per-show per D-07
+	local uiScale = ResponsiveScale.applyToFrame(panel, PANEL_W, PANEL_H)
+	ResponsiveScale.compensateStrokes(panel, uiScale.Scale)
 
 	-- === ANIMATE IN (fade only, same as other Group 1 panels) ===
 	-- overlay removed — no dark background (matches other panels)

@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -38,6 +39,9 @@ local COLORS = {
 	INDICATOR_HOVER = Theme.BG_ELEVATED,
 	TOAST_BG = Theme.BG_SURFACE,
 }
+
+local PANEL_W = 780
+local PANEL_H = 580
 
 -- ── Utility functions (unchanged) ──
 
@@ -391,8 +395,8 @@ function ClassSelectionUI:createUI()
 	classListFrame.ScrollBarThickness = 4
 	classListFrame.ScrollBarImageColor3 = Theme.TEXT_MUTED
 	classListFrame.ScrollBarImageTransparency = 0.5
-	classListFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- auto-sized by UIListLayout
-	classListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	classListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	classListFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
 	classListFrame.Parent = container
 	Theme.applyCorner(classListFrame, "sm")
 
@@ -410,6 +414,10 @@ function ClassSelectionUI:createUI()
 	for _, classId in ipairs(self:getOrderedClassIds()) do
 		self:createClassListItem(classListFrame, classId)
 	end
+
+	-- Manual CanvasSize (AutomaticCanvasSize broken under UIScale per D-04)
+	local classCount = #self:getOrderedClassIds()
+	classListFrame.CanvasSize = UDim2.new(0, 0, 0, classCount * (72 + 4) + 8)
 
 	-- ── Right: Detail Panel ──
 	self:createDetailPanel(container)
@@ -473,6 +481,10 @@ function ClassSelectionUI:createUI()
 	if not (self.callbacks and self.callbacks.hideIndicator) then
 		self:createCurrentClassIndicator()
 	end
+
+	-- Responsive scaling (Phase 2)
+	local uiScale = ResponsiveScale.applyToFrame(self.container, PANEL_W, PANEL_H)
+	ResponsiveScale.compensateStrokes(self.container, uiScale.Scale)
 end
 
 -- ── Class List Item (left sidebar) ──

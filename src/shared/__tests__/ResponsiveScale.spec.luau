@@ -63,4 +63,58 @@ describe("ResponsiveScale", function()
 
 	end)
 
+	describe("compensateStrokes", function()
+
+		-- Helper: create a frame with UIStroke children for testing
+		local function createTestFrame(strokeThicknesses: {number}): (Frame, {UIStroke})
+			local frame = Instance.new("Frame")
+			local strokes = {}
+			for _, thickness in ipairs(strokeThicknesses) do
+				local stroke = Instance.new("UIStroke")
+				stroke.Thickness = thickness
+				stroke.Parent = frame
+				table.insert(strokes, stroke)
+			end
+			return frame, strokes
+		end
+
+		-- Test 1: scale 0.7 reduces a 2.5-thickness stroke to 1.75
+		it("should reduce stroke thickness proportionally with scale 0.7", function()
+			local frame, strokes = createTestFrame({ 2.5 })
+			ResponsiveScale.compensateStrokes(frame, 0.7)
+			expect(strokes[1].Thickness).toBeCloseTo(1.75, 2)
+			frame:Destroy()
+		end)
+
+		-- Test 2: scale 1.0 leaves thickness unchanged
+		it("should leave thickness unchanged at scale 1.0", function()
+			local frame, strokes = createTestFrame({ 2.5, 4.0, 1.5 })
+			ResponsiveScale.compensateStrokes(frame, 1.0)
+			expect(strokes[1].Thickness).toBeCloseTo(2.5, 2)
+			expect(strokes[2].Thickness).toBeCloseTo(4.0, 2)
+			expect(strokes[3].Thickness).toBeCloseTo(1.5, 2)
+			frame:Destroy()
+		end)
+
+		-- Test 3: scale 0.5 (floor) reduces a 4.0-thickness stroke to 2.0
+		it("should reduce stroke thickness at scale floor 0.5", function()
+			local frame, strokes = createTestFrame({ 4.0 })
+			ResponsiveScale.compensateStrokes(frame, 0.5)
+			expect(strokes[1].Thickness).toBeCloseTo(2.0, 2)
+			frame:Destroy()
+		end)
+
+		-- Test 4: calling compensateStrokes twice on same frame does not double-compensate
+		it("should not double-compensate when called twice on same frame", function()
+			local frame, strokes = createTestFrame({ 2.5 })
+			ResponsiveScale.compensateStrokes(frame, 0.7)
+			expect(strokes[1].Thickness).toBeCloseTo(1.75, 2)
+			-- Call again with same scale — should use original thickness, not modified
+			ResponsiveScale.compensateStrokes(frame, 0.7)
+			expect(strokes[1].Thickness).toBeCloseTo(1.75, 2)
+			frame:Destroy()
+		end)
+
+	end)
+
 end)

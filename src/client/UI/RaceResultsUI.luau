@@ -5,6 +5,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+
+local PANEL_W = 450
+local PANEL_H = 500
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -168,8 +172,8 @@ function RaceResultsUI:createUI()
 	-- Close button
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Name = "CloseButton"
-	closeBtn.Size = UDim2.new(0, 180, 0, 45)
-	closeBtn.Position = UDim2.new(0.5, 0, 1, -55)
+	closeBtn.Size = UDim2.new(0, 180, 0, 60)
+	closeBtn.Position = UDim2.new(0.5, 0, 1, -70)
 	closeBtn.AnchorPoint = Vector2.new(0.5, 0)
 	closeBtn.BackgroundColor3 = Theme.SUCCESS
 	closeBtn.BorderSizePixel = 0
@@ -202,6 +206,11 @@ function RaceResultsUI:createUI()
 	closeBtn.MouseButton1Click:Connect(function()
 		self:hide()
 	end)
+
+	-- Responsive scaling (Phase 3)
+	local uiScale = ResponsiveScale.applyToFrame(container, PANEL_W, PANEL_H)
+	ResponsiveScale.compensateStrokes(container, uiScale.Scale)
+	self.uiScale = uiScale
 end
 
 function RaceResultsUI:setupRemotes()
@@ -386,17 +395,20 @@ function RaceResultsUI:createResultEntry(index: number, result: {
 end
 
 function RaceResultsUI:playWinnerCelebration()
-	-- Flash golden border
+	-- Flash golden border (scale-aware stroke thickness)
 	task.spawn(function()
 		local stroke = self.container:FindFirstChildOfClass("UIStroke")
 		if stroke then
+			local uiScaleObj = self.container:FindFirstChildOfClass("UIScale")
+			local scale = if uiScaleObj then uiScaleObj.Scale else 1
+			local baseThickness = Theme.STROKE_MED * scale
 			for i = 1, 5 do
 				TweenService:Create(stroke, TweenInfo.new(0.2), {
-					Thickness = Theme.STROKE_BOLD * 1.5
+					Thickness = baseThickness * 2.5
 				}):Play()
 				task.wait(0.2)
 				TweenService:Create(stroke, TweenInfo.new(0.2), {
-					Thickness = Theme.STROKE_BOLD
+					Thickness = baseThickness
 				}):Play()
 				task.wait(0.2)
 			end
@@ -415,14 +427,14 @@ function RaceResultsUI:show()
 	}):Play()
 
 	self.container.Visible = true
+	self.container.Position = UDim2.new(0.5, 0, 0.5, 0)
+	self.container.BackgroundTransparency = 0.05
 
-	-- Animate in
-	self.container.Position = UDim2.new(0.5, 0, 0.5, 50)
-	self.container.BackgroundTransparency = 1
-
-	TweenService:Create(self.container, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		BackgroundTransparency = 0.05
+	-- Scale-in animation (POLISH-01)
+	local targetScale = self.uiScale.Scale
+	self.uiScale.Scale = targetScale * 0.8
+	TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Scale = targetScale
 	}):Play()
 end
 
