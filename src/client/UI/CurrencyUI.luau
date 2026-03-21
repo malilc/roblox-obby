@@ -183,13 +183,20 @@ function CurrencyUI:createUI()
 	-- Start shine animation loop
 	self:startShineAnimation()
 
-	-- Deferred mobile layout (TouchEnabled is false at script load, true after first frame)
-	task.defer(function()
-		if UserInputService.TouchEnabled then
+	-- Mobile layout using viewport size (TouchEnabled unreliable at load time)
+	local camera = workspace.CurrentCamera
+	local function applyMobileLayout()
+		local isMobile = camera.ViewportSize.Y < 500
+		if isMobile then
 			currencyFrame.Size = UDim2.new(0, 70, 0, 22)
 			currencyFrame.Position = UDim2.new(0, 0, 1, -26)
+		else
+			currencyFrame.Size = UDim2.new(0, 140, 0, 44)
+			currencyFrame.Position = UDim2.new(0, 10, 1, -52)
 		end
-	end)
+	end
+	applyMobileLayout()
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyMobileLayout)
 end
 
 -- Shine animation loop (continuous, no gap)
