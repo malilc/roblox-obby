@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -66,6 +67,9 @@ local COLORS = {
 	STROKE_CARD_LOCKED = Theme.CARD_SHADOW,    -- soft gray (NOT BG_OVERLAY which is black)
 	TAB_UNDERLINE = Theme.ACCENT_CYAN,
 }
+
+local PANEL_W = 780
+local PANEL_H = 580
 
 local RARITY_EMOJI = {Common = "\u{26AA}", Uncommon = "\u{1F7E2}", Rare = "\u{1F535}", Epic = "\u{1F7E3}", Legendary = "\u{2B50}"}
 
@@ -567,7 +571,9 @@ function TitleCollectionUI:createUI()
 	self.emptyLabel = emptyLabel
 
 	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		self.listFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
+		local uiScaleObj = self.container:FindFirstChildOfClass("UIScale")
+		local scaleFactor = uiScaleObj and uiScaleObj.Scale or 1
+		self.listFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y / scaleFactor + 12)
 	end)
 
 	-- ===== CONNECTIONS =====
@@ -611,6 +617,10 @@ function TitleCollectionUI:createUI()
 			end
 		end
 	end)
+
+	-- Responsive scaling (Phase 2)
+	local uiScale = ResponsiveScale.applyToFrame(self.container, PANEL_W, PANEL_H)
+	ResponsiveScale.compensateStrokes(self.container, uiScale.Scale)
 end
 
 -- ===== TAB MANAGEMENT =====

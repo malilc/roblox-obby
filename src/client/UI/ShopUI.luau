@@ -10,6 +10,7 @@ local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 local RemoteRegistry = require(ReplicatedStorage.Shared.RemoteRegistry)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
 
 local ShopUI = {}
 ShopUI.__index = ShopUI
@@ -36,6 +37,9 @@ local PRICE_BTN_COLORS = {
 	Rare     = Color3.fromRGB(60, 130, 230),
 	Epic     = Color3.fromRGB(170, 70, 210),
 }
+
+local PANEL_W = 780
+local PANEL_H = 580
 
 function ShopUI.new(parent: ScreenGui, callbacks: {onShow: (() -> ())?}?)
 	local self = setmetatable({}, ShopUI)
@@ -175,6 +179,10 @@ function ShopUI:createUI()
 	statusLabel.TextTransparency = 1
 	statusLabel.Parent = mainFrame
 	self.statusLabel = statusLabel
+
+	-- Responsive scaling (Phase 2)
+	local uiScale = ResponsiveScale.applyToFrame(self.mainFrame, PANEL_W, PANEL_H)
+	ResponsiveScale.compensateStrokes(self.mainFrame, uiScale.Scale)
 
 	-- Default tab
 	self:switchTab("Items")
@@ -523,10 +531,11 @@ function ShopUI:createItemsContent(parent: Frame)
 		self:createItemCard(content, itemDef, layoutOrder)
 	end
 
-	-- Update canvas size
-	grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		content.CanvasSize = UDim2.new(0, 0, 0, grid.AbsoluteContentSize.Y + 15)
-	end)
+	-- Manual CanvasSize (AbsoluteContentSize broken under UIScale per D-04)
+	local itemCount = countItems()
+	local cols = 3
+	local rows = math.ceil(itemCount / cols)
+	content.CanvasSize = UDim2.new(0, 0, 0, rows * (270 + 14) + 5)
 end
 
 function ShopUI:createItemCard(parent: ScrollingFrame, itemDef: any, layoutOrder: number)
@@ -1138,11 +1147,11 @@ function ShopUI:createGamePassContent(parent: Frame)
 		end
 	end
 
-	-- Update canvas size
-	gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		content.CanvasSize = UDim2.new(0, 0, 0, 68 + gridLayout.AbsoluteContentSize.Y + 20)
-	end)
-	content.CanvasSize = UDim2.new(0, 0, 0, 430)
+	-- Manual CanvasSize (AbsoluteContentSize broken under UIScale per D-04)
+	local passCount = countGamePasses()
+	local passCols = 3
+	local passRows = math.ceil(passCount / passCols)
+	content.CanvasSize = UDim2.new(0, 0, 0, 68 + passRows * (310 + 14) + 20)
 end
 
 function ShopUI:createGamePassCard(parent: Frame, passDef: any)
@@ -1456,10 +1465,12 @@ function ShopUI:playGachaReveal(classId: string, isNew: boolean, gemsRefunded: n
 	local GAP = 10
 	local CELL_W = SMALL_W + GAP
 
-	-- Container height for vertical centering
-	local containerH = card.AbsoluteSize.Y
+	-- Container height for vertical centering (compensate UIScale)
+	local uiScaleObj = self.mainFrame:FindFirstChildOfClass("UIScale")
+	local scaleFactor = uiScaleObj and uiScaleObj.Scale or 1
+	local containerH = card.AbsoluteSize.Y / scaleFactor
 	if containerH < 50 then containerH = 230 end
-	local containerW = card.AbsoluteSize.X
+	local containerW = card.AbsoluteSize.X / scaleFactor
 	if containerW < 100 then containerW = 550 end
 	local stripY = math.floor((containerH - SMALL_H) / 2)
 
@@ -1486,10 +1497,10 @@ function ShopUI:playGachaReveal(classId: string, isNew: boolean, gemsRefunded: n
 		slide.Parent = strip
 		Theme.applyCorner(slide, "md")
 
-		-- Colored stroke
+		-- Colored stroke (compensate for UIScale)
 		local slideStroke = Instance.new("UIStroke")
 		slideStroke.Color = def.color
-		slideStroke.Thickness = 2
+		slideStroke.Thickness = 2 * scaleFactor
 		slideStroke.Transparency = 0.3
 		slideStroke.Parent = slide
 

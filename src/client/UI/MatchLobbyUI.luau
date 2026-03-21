@@ -6,6 +6,10 @@ local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+
+local PANEL_W = 400
+local PANEL_H = 500
 
 local MatchLobbyUI = {}
 MatchLobbyUI.__index = MatchLobbyUI
@@ -121,8 +125,8 @@ function MatchLobbyUI:createUI()
 	-- Close button
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Name = "CloseButton"
-	closeBtn.Size = UDim2.new(0, 40, 0, 40)
-	closeBtn.Position = UDim2.new(1, -50, 0.5, 0)
+	closeBtn.Size = UDim2.new(0, 56, 0, 56)
+	closeBtn.Position = UDim2.new(1, -62, 0.5, 0)
 	closeBtn.AnchorPoint = Vector2.new(0, 0.5)
 	closeBtn.BackgroundColor3 = Theme.DANGER
 	closeBtn.BorderSizePixel = 0
@@ -222,7 +226,7 @@ function MatchLobbyUI:createUI()
 	-- Buttons container
 	local buttonsFrame = Instance.new("Frame")
 	buttonsFrame.Name = "Buttons"
-	buttonsFrame.Size = UDim2.new(1, -40, 0, 50)
+	buttonsFrame.Size = UDim2.new(1, -40, 0, 56)
 	buttonsFrame.Position = UDim2.new(0, 20, 0, 430)
 	buttonsFrame.BackgroundTransparency = 1
 	buttonsFrame.Parent = container
@@ -310,6 +314,11 @@ function MatchLobbyUI:createUI()
 	leaveStroke.Thickness = Theme.STROKE_THIN
 	leaveStroke.Transparency = 0.3
 	leaveStroke.Parent = leaveBtn
+
+	-- Responsive scaling (Phase 3)
+	local uiScale = ResponsiveScale.applyToFrame(container, PANEL_W, PANEL_H)
+	ResponsiveScale.compensateStrokes(container, uiScale.Scale)
+	self.uiScale = uiScale
 
 	-- Setup button events
 	self:setupButtonEvents()
@@ -937,28 +946,30 @@ end
 function MatchLobbyUI:show()
 	self.isVisible = true
 	self.container.Visible = true
+	self.container.Position = UDim2.new(0.5, 0, 0.5, 0)
+	self.container.BackgroundTransparency = 0.1
 
-	-- Animate in
-	self.container.Position = UDim2.new(0.5, 0, 0.5, 50)
-	self.container.BackgroundTransparency = 1
-
-	TweenService:Create(self.container, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		BackgroundTransparency = 0.1
+	-- Scale-in animation (POLISH-01)
+	local targetScale = self.uiScale.Scale
+	self.uiScale.Scale = targetScale * 0.8
+	TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Scale = targetScale
 	}):Play()
 end
 
 function MatchLobbyUI:hide()
 	self.isVisible = false
 
-	-- Animate out
-	TweenService:Create(self.container, TweenInfo.new(0.2), {
-		Position = UDim2.new(0.5, 0, 0.5, 50),
-		BackgroundTransparency = 1
-	}):Play()
+	-- Scale-out animation (POLISH-01)
+	local currentScale = self.uiScale.Scale
+	local hideTween = TweenService:Create(self.uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+		Scale = currentScale * 0.8
+	})
+	hideTween:Play()
 
-	task.delay(0.2, function()
+	hideTween.Completed:Connect(function()
 		self.container.Visible = false
+		self.uiScale.Scale = currentScale
 	end)
 end
 

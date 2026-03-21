@@ -6,6 +6,10 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+
+local PANEL_W = 580
+local PANEL_H = 480
 
 local StageSelectionUI = {}
 StageSelectionUI.__index = StageSelectionUI
@@ -62,7 +66,7 @@ function StageSelectionUI:createUI()
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "StageSelectionFrame"
 	mainFrame.Size = UDim2.new(0, 580, 0, 480)
-	mainFrame.Position = UDim2.new(0.5, -290, 0.5, -240)
+	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	mainFrame.BackgroundColor3 = Theme.BG_BASE
 	mainFrame.BackgroundTransparency = 0.15
@@ -404,7 +408,7 @@ function StageSelectionUI:createUI()
 	-- Clear Button (modern design)
 	local clearButton = Instance.new("TextButton")
 	clearButton.Name = "ClearButton"
-	clearButton.Size = UDim2.new(0, 110, 0, 35)
+	clearButton.Size = UDim2.new(0, 110, 0, 48)
 	clearButton.Position = UDim2.new(1, -130, 0, 355)
 	clearButton.BackgroundColor3 = Theme.BG_ELEVATED
 	clearButton.BorderSizePixel = 0
@@ -431,7 +435,7 @@ function StageSelectionUI:createUI()
 	-- Random Button (modern gradient design)
 	local randomButton = Instance.new("TextButton")
 	randomButton.Name = "RandomButton"
-	randomButton.Size = UDim2.new(0, 170, 0, 50)
+	randomButton.Size = UDim2.new(0, 170, 0, 56)
 	randomButton.Position = UDim2.new(0, 20, 0, 410)
 	randomButton.BackgroundColor3 = Color3.fromRGB(255, 95, 85)
 	randomButton.BackgroundTransparency = 0
@@ -460,7 +464,7 @@ function StageSelectionUI:createUI()
 	-- Start Button (modern gradient design)
 	local startButton = Instance.new("TextButton")
 	startButton.Name = "StartButton"
-	startButton.Size = UDim2.new(0, 170, 0, 50)
+	startButton.Size = UDim2.new(0, 170, 0, 56)
 	startButton.Position = UDim2.new(1, -190, 0, 410)
 	startButton.BackgroundColor3 = Color3.fromRGB(55, 195, 95)
 	startButton.BackgroundTransparency = 0
@@ -561,7 +565,7 @@ function StageSelectionUI:createUI()
 	-- Available Rooms Banner (shows when rooms exist)
 	local roomsBanner = Instance.new("Frame")
 	roomsBanner.Name = "RoomsBanner"
-	roomsBanner.Size = UDim2.new(1, 0, 0, 40)
+	roomsBanner.Size = UDim2.new(1, 0, 0, 50)
 	roomsBanner.Position = UDim2.new(0, 0, 0, -45)
 	roomsBanner.BackgroundColor3 = Theme.ACCENT_CYAN
 	roomsBanner.BackgroundTransparency = 0.15
@@ -595,7 +599,7 @@ function StageSelectionUI:createUI()
 
 	local joinBtn = Instance.new("TextButton")
 	joinBtn.Name = "JoinRoomBtn"
-	joinBtn.Size = UDim2.new(0, 90, 0, 28)
+	joinBtn.Size = UDim2.new(0, 100, 0, 48)
 	joinBtn.Position = UDim2.new(1, -100, 0.5, 0)
 	joinBtn.AnchorPoint = Vector2.new(0, 0.5)
 	joinBtn.BackgroundColor3 = Theme.SUCCESS
@@ -618,6 +622,11 @@ function StageSelectionUI:createUI()
 			self:hide()
 		end
 	end)
+
+	-- Responsive scaling (Phase 3)
+	local uiScale = ResponsiveScale.applyToFrame(self.mainFrame, PANEL_W, PANEL_H)
+	ResponsiveScale.compensateStrokes(self.mainFrame, uiScale.Scale)
+	self.uiScale = uiScale
 
 	-- Initialize default tab
 	self:switchTab("Easy")
@@ -702,6 +711,15 @@ function StageSelectionUI:show()
 		BackgroundTransparency = 0.15
 	})
 	fadeIn:Play()
+
+	-- Scale-in animation (POLISH-01)
+	if self.uiScale then
+		local targetScale = self.uiScale.Scale
+		self.uiScale.Scale = targetScale * 0.8
+		TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Scale = targetScale
+		}):Play()
+	end
 end
 
 function StageSelectionUI:hide()

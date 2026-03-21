@@ -8,6 +8,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+
+local PANEL_W = 400
+local PANEL_H = 520
 
 local SummaryUI = {}
 SummaryUI.__index = SummaryUI
@@ -48,7 +52,7 @@ function SummaryUI:createUI()
 	-- Main Frame (centered popup)
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "SummaryFrame"
-	mainFrame.Size = UDim2.new(0, 400, 0, 600)
+	mainFrame.Size = UDim2.new(0, PANEL_W, 0, PANEL_H)
 	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	mainFrame.BackgroundColor3 = Theme.BG_BASE
@@ -169,16 +173,32 @@ function SummaryUI:createUI()
 	headerDivider.ZIndex = 52
 	headerDivider.Parent = headerFrame
 
+	-- ==================== SCROLLABLE CONTENT AREA ====================
+	local contentScroll = Instance.new("ScrollingFrame")
+	contentScroll.Name = "ContentScroll"
+	contentScroll.Size = UDim2.new(1, 0, 1, -185) -- header(100) + footer(85)
+	contentScroll.Position = UDim2.new(0, 0, 0, 100)
+	contentScroll.BackgroundTransparency = 1
+	contentScroll.BorderSizePixel = 0
+	contentScroll.ScrollBarThickness = 4
+	contentScroll.ScrollBarImageColor3 = Theme.TEXT_MUTED
+	contentScroll.ScrollBarImageTransparency = 0.5
+	contentScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
+	contentScroll.CanvasSize = UDim2.new(0, 0, 0, 415) -- stages(60)+gap(10)+stats(110)+gap(10)+currency(215)+pad(10)
+	contentScroll.ZIndex = 51
+	contentScroll.Parent = mainFrame
+	self.contentScroll = contentScroll
+
 	-- ==================== STAGES SECTION ====================
 	local stagesContainer = Instance.new("Frame")
 	stagesContainer.Name = "StagesContainer"
 	stagesContainer.Size = UDim2.new(1, -40, 0, 60)
-	stagesContainer.Position = UDim2.new(0, 20, 0, 108)
+	stagesContainer.Position = UDim2.new(0, 20, 0, 8)
 	stagesContainer.BackgroundColor3 = Theme.BG_SURFACE
 	stagesContainer.BackgroundTransparency = 0.15
 	stagesContainer.BorderSizePixel = 0
 	stagesContainer.ZIndex = 51
-	stagesContainer.Parent = mainFrame
+	stagesContainer.Parent = contentScroll
 	self.stagesContainer = stagesContainer
 
 	local stagesCorner = Instance.new("UICorner")
@@ -226,12 +246,12 @@ function SummaryUI:createUI()
 	local statsContainer = Instance.new("Frame")
 	statsContainer.Name = "StatsContainer"
 	statsContainer.Size = UDim2.new(1, -40, 0, 110)
-	statsContainer.Position = UDim2.new(0, 20, 0, 178)
+	statsContainer.Position = UDim2.new(0, 20, 0, 78)
 	statsContainer.BackgroundColor3 = Theme.BG_SURFACE
 	statsContainer.BackgroundTransparency = 0.15
 	statsContainer.BorderSizePixel = 0
 	statsContainer.ZIndex = 51
-	statsContainer.Parent = mainFrame
+	statsContainer.Parent = contentScroll
 	self.statsContainer = statsContainer
 
 	local statsCorner = Instance.new("UICorner")
@@ -308,12 +328,12 @@ function SummaryUI:createUI()
 	local currencyContainer = Instance.new("Frame")
 	currencyContainer.Name = "CurrencyContainer"
 	currencyContainer.Size = UDim2.new(1, -40, 0, 215)
-	currencyContainer.Position = UDim2.new(0, 20, 0, 298)
+	currencyContainer.Position = UDim2.new(0, 20, 0, 198)
 	currencyContainer.BackgroundColor3 = Theme.BG_SURFACE
 	currencyContainer.BackgroundTransparency = 0.15
 	currencyContainer.BorderSizePixel = 0
 	currencyContainer.ZIndex = 51
-	currencyContainer.Parent = mainFrame
+	currencyContainer.Parent = contentScroll
 	self.currencyContainer = currencyContainer
 
 	local currencyCorner = Instance.new("UICorner")
@@ -411,18 +431,28 @@ function SummaryUI:createUI()
 	totalValue.Parent = totalHighlight
 	self.totalValueLabel = totalValue
 
-	-- ==================== OK BUTTON ====================
-	-- Use TextButton(transparent) + Frame(gradient bg) + TextLabel so gradient doesn't tint text
+	-- ==================== FOOTER (OK + UPSELL) ====================
+	local footerFrame = Instance.new("Frame")
+	footerFrame.Name = "FooterFrame"
+	footerFrame.Size = UDim2.new(1, -20, 0, 75)
+	footerFrame.Position = UDim2.new(0, 10, 1, -80)
+	footerFrame.BackgroundTransparency = 1
+	footerFrame.BorderSizePixel = 0
+	footerFrame.ZIndex = 51
+	footerFrame.Parent = mainFrame
+	self.footerFrame = footerFrame
+
+	-- OK button (right side of footer)
 	local okButton = Instance.new("TextButton")
 	okButton.Name = "OKButton"
-	okButton.Size = UDim2.new(0, 180, 0, 44)
-	okButton.Position = UDim2.new(0.5, 0, 0, 545)
-	okButton.AnchorPoint = Vector2.new(0.5, 0)
+	okButton.Size = UDim2.new(0, 160, 0, 60)
+	okButton.Position = UDim2.new(1, 0, 0, 0)
+	okButton.AnchorPoint = Vector2.new(1, 0)
 	okButton.BackgroundTransparency = 1
 	okButton.BorderSizePixel = 0
 	okButton.Text = ""
 	okButton.ZIndex = 51
-	okButton.Parent = mainFrame
+	okButton.Parent = footerFrame
 	self.okButton = okButton
 
 	local okBg = Instance.new("Frame")
@@ -457,7 +487,7 @@ function SummaryUI:createUI()
 	okLabel.BackgroundTransparency = 1
 	okLabel.Text = "\u{2705} OK"
 	okLabel.TextColor3 = Theme.TEXT_ON_ACCENT
-	okLabel.TextSize = 18
+	okLabel.TextSize = 20
 	okLabel.Font = Enum.Font.GothamBold
 	okLabel.ZIndex = 52
 	okLabel.Parent = okButton
@@ -470,15 +500,20 @@ function SummaryUI:createUI()
 	-- Hover effects
 	okButton.MouseEnter:Connect(function()
 		TweenService:Create(okButton, TweenInfo.new(0.2), {
-			Size = UDim2.new(0, 195, 0, 48)
+			Size = UDim2.new(0, 170, 0, 64)
 		}):Play()
 	end)
 
 	okButton.MouseLeave:Connect(function()
 		TweenService:Create(okButton, TweenInfo.new(0.2), {
-			Size = UDim2.new(0, 180, 0, 44)
+			Size = UDim2.new(0, 160, 0, 60)
 		}):Play()
 	end)
+
+	-- Responsive scaling (Phase 3)
+	local uiScale = ResponsiveScale.applyToFrame(mainFrame, PANEL_W, PANEL_H)
+	ResponsiveScale.compensateStrokes(mainFrame, uiScale.Scale)
+	self.uiScale = uiScale
 end
 
 function SummaryUI:createSmallRow(config: {name: string, icon: string, key: string, color: Color3, isTime: boolean?}, index: number, parent: Frame, startY: number): Frame
@@ -712,20 +747,16 @@ function SummaryUI:show(data: {gemsEarned: number, timeSpent: number, coinsColle
 	-- Show top30 indicator
 	self.top30Label.Visible = data.isTop30 == true
 
-	-- Determine panel height based on whether upsell buttons are shown
-	local hasUpsell = data.gamePassUpsell and (data.gamePassUpsell.doubleCoin or data.gamePassUpsell.extraSlot or data.gamePassUpsell.vip or data.gamePassUpsell.doubleXP)
-	local panelHeight = if hasUpsell then 660 else 600
-	self.okButton.Position = UDim2.new(0.5, 0, 0, panelHeight - 55)
-
-	-- Reset and show frame
-	self.mainFrame.Size = UDim2.new(0, 0, 0, 0)
+	-- Fixed panel size — content scrolls if needed
+	self.mainFrame.Size = UDim2.new(0, PANEL_W, 0, PANEL_H)
 	self.mainFrame.Visible = true
 
-	-- Scale in animation
-	local scaleIn = TweenService:Create(self.mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-		Size = UDim2.new(0, 400, 0, panelHeight)
-	})
-	scaleIn:Play()
+	-- Scale-in animation via UIScale (POLISH-01)
+	local targetScale = self.uiScale.Scale
+	self.uiScale.Scale = targetScale * 0.8
+	TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Scale = targetScale
+	}):Play()
 
 	-- Animate border glow
 	task.spawn(function()
@@ -1021,23 +1052,23 @@ function SummaryUI:setupGamePassUpsell(upsellData: {doubleCoin: number?, extraSl
 		table.insert(showEntries, entries[i])
 	end
 
-	-- Container for upsell buttons
+	-- Container for upsell buttons (left side of footer)
 	local container = Instance.new("Frame")
 	container.Name = "GamePassUpsell"
-	container.Size = UDim2.new(1, -40, 0, 50)
-	container.Position = UDim2.new(0, 20, 0, 520)
+	container.Size = UDim2.new(0.55, -10, 0, 60)
+	container.Position = UDim2.new(0, 0, 0, 0)
 	container.BackgroundTransparency = 1
 	container.ZIndex = 51
-	container.Parent = self.mainFrame
+	container.Parent = self.footerFrame
 	self.upsellContainer = container
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.Padding = UDim.new(0, 8)
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.Padding = UDim.new(0, 6)
 	layout.Parent = container
 
-	local buttonWidth = if #showEntries >= 2 then 170 else 240
+	local buttonWidth = if #showEntries >= 2 then 95 else 160
 
 	for _, entry in ipairs(showEntries) do
 		self:createUpsellButton(container, entry.text, entry.id, buttonWidth, entry.color)
@@ -1047,7 +1078,7 @@ end
 function SummaryUI:createUpsellButton(parent: Frame, text: string, gamePassId: number, width: number, color: Color3)
 	local btn = Instance.new("TextButton")
 	btn.Name = "UpsellBtn"
-	btn.Size = UDim2.new(0, width, 0, 40)
+	btn.Size = UDim2.new(0, width, 0, 60)
 	btn.BackgroundColor3 = color
 	btn.BackgroundTransparency = 0.1
 	btn.BorderSizePixel = 0
@@ -1079,7 +1110,7 @@ function SummaryUI:createUpsellButton(parent: Frame, text: string, gamePassId: n
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = Theme.TEXT_ON_ACCENT
-	label.TextSize = 14
+	label.TextSize = 15
 	label.Font = Enum.Font.GothamBold
 	label.ZIndex = 53
 	label.Parent = btn
@@ -1108,14 +1139,18 @@ function SummaryUI:hide()
 	if not self.isVisible then return end
 	self.isVisible = false
 
-	-- Scale out animation
-	local scaleOut = TweenService:Create(self.mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-		Size = UDim2.new(0, 0, 0, 0)
+	-- Scale-out animation via UIScale
+	local currentScale = self.uiScale.Scale
+	local hideScale = currentScale * 0.8
+	local hideTween = TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+		Scale = hideScale
 	})
-	scaleOut:Play()
+	hideTween:Play()
 
-	scaleOut.Completed:Connect(function()
+	hideTween.Completed:Connect(function()
 		self.mainFrame.Visible = false
+		-- Restore scale for next show
+		self.uiScale.Scale = currentScale
 	end)
 end
 

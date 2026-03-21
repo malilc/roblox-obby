@@ -6,11 +6,20 @@ local TweenService = game:GetService("TweenService")
 
 local SpectatorCamera = require(script.Parent.Parent.SpectatorCamera)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
 
 local LocalPlayer = Players.LocalPlayer
 
 local SpectatorUI = {}
 SpectatorUI.__index = SpectatorUI
+
+-- Design dimensions for responsive scaling (per D-10)
+local PROMPT_W = 280
+local PROMPT_H = 50
+local RANKINGS_W = 200
+local RANKINGS_H = 300
+local CONTROL_W = 400
+local CONTROL_H = 44
 
 function SpectatorUI.new(parent: ScreenGui)
 	local self = setmetatable({}, SpectatorUI)
@@ -43,6 +52,7 @@ function SpectatorUI:createUI()
 	promptContainer.ZIndex = 8
 	promptContainer.Parent = self.parent
 	self.promptContainer = promptContainer
+	ResponsiveScale.applyToFrame(self.promptContainer, PROMPT_W, PROMPT_H)
 
 	local spectateBtn = Instance.new("TextButton")
 	spectateBtn.Name = "SpectateButton"
@@ -173,6 +183,7 @@ function SpectatorUI:createUI()
 	rankingsPanel.ZIndex = 9
 	rankingsPanel.Parent = hud
 	self.rankingsPanel = rankingsPanel
+	ResponsiveScale.applyToFrame(self.rankingsPanel, RANKINGS_W, RANKINGS_H)
 
 	local rankCorner = Instance.new("UICorner")
 	rankCorner.CornerRadius = Theme.CORNER_MD
@@ -300,6 +311,8 @@ function SpectatorUI:createUI()
 	end)
 	leaveBtn.BackgroundColor3 = Theme.BG_SURFACE
 	leaveBtn.TextColor3 = Theme.DANGER
+
+	ResponsiveScale.applyToFrame(controlBar, CONTROL_W, CONTROL_H)
 end
 
 function SpectatorUI:createControlButton(parent: Frame, name: string, label: string, order: number, callback: () -> ()): TextButton

@@ -17,6 +17,9 @@ local PADDING = 80           -- 40px each side per D-04, D-06
 -- Tracked UIScale instances for viewport change updates
 local trackedScales: {{ uiScale: UIScale, designWidth: number, designHeight: number }} = {}
 
+-- Tracked UIStroke instances for stroke compensation on viewport change
+local trackedStrokes: {{ frame: GuiObject, strokes: {{ stroke: UIStroke, originalThickness: number }} }} = {}
+
 -- Pure function: testable without Roblox runtime services
 -- All inputs as parameters for unit test isolation
 function ResponsiveScale.calculateScale(
@@ -59,6 +62,48 @@ function ResponsiveScale.applyToFrame(
 	return uiScale
 end
 
+-- Discover and compensate all UIStrokes in a frame hierarchy
+-- Stores original thicknesses so viewport change recalculation uses originals (no drift)
+-- Idempotent: if frame already tracked, updates strokes list without duplicates
+function ResponsiveScale.compensateStrokes(frame: GuiObject, scale: number)
+	-- Check if this frame is already tracked
+	local existingEntry = nil
+	for _, entry in ipairs(trackedStrokes) do
+		if entry.frame == frame then
+			existingEntry = entry
+			break
+		end
+	end
+
+	if existingEntry then
+		-- Already tracked — recalculate from stored originals, do not re-read Thickness
+		for _, strokeEntry in ipairs(existingEntry.strokes) do
+			if strokeEntry.stroke.Parent then
+				strokeEntry.stroke.Thickness = strokeEntry.originalThickness * scale
+			end
+		end
+		return
+	end
+
+	-- First time — discover UIStrokes and store originals
+	local strokeEntries = {}
+	for _, desc in ipairs(frame:GetDescendants()) do
+		if desc:IsA("UIStroke") then
+			table.insert(strokeEntries, {
+				stroke = desc,
+				originalThickness = desc.Thickness,
+			})
+			desc.Thickness = desc.Thickness * scale
+		end
+	end
+	if #strokeEntries > 0 then
+		table.insert(trackedStrokes, {
+			frame = frame,
+			strokes = strokeEntries,
+		})
+	end
+end
+
 -- Recalculate all tracked UIScale instances
 -- Reverse iteration for safe removal of orphaned entries
 function ResponsiveScale._updateAll()
@@ -71,6 +116,24 @@ function ResponsiveScale._updateAll()
 			)
 		else
 			table.remove(trackedScales, i)
+		end
+	end
+
+	-- Recalculate stroke compensations from stored originals
+	for i = #trackedStrokes, 1, -1 do
+		local entry = trackedStrokes[i]
+		if entry.frame.Parent then
+			-- Find the UIScale on this frame to get current scale
+			local uiScale = entry.frame:FindFirstChildOfClass("UIScale")
+			if uiScale then
+				for _, strokeEntry in ipairs(entry.strokes) do
+					if strokeEntry.stroke.Parent then
+						strokeEntry.stroke.Thickness = strokeEntry.originalThickness * uiScale.Scale
+					end
+				end
+			end
+		else
+			table.remove(trackedStrokes, i)
 		end
 	end
 end
