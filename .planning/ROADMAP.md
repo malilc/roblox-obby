@@ -27,11 +27,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. SettingsUI, FeedbackUI, SpectatorUI, and LeaderboardUI shrink to fit on a 414px-wide phone viewport in Studio device emulator
   3. The same 4 modals display at their original fixed size on a desktop-sized viewport (no visual change)
   4. Resizing the viewport (e.g., toggling device emulator) causes modals to recalculate and rescale without a reload
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Build ResponsiveScale module with TDD (calculateScale pure function + UIScale management)
+- [ ] 01-02-PLAN.md -- Integrate scaling into 4 small modals + UIFactory.createModal + visual verification
 
 ### Phase 2: Large Modal Scaling
 **Goal**: The 5 most broken modals (Shop, ClassSelection, TitleCollection, Tutorial, DailyBonus) are fully visible and usable on mobile
@@ -72,6 +72,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaling Infrastructure + Small Modals | 0/TBD | Not started | - |
+| 1. Scaling Infrastructure + Small Modals | 0/2 | Not started | - |
 | 2. Large Modal Scaling | 0/TBD | Not started | - |
 | 3. Medium Modals + Touch + Polish | 0/TBD | Not started | - |
