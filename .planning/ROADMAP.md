@@ -87,11 +87,11 @@ Plans:
   2. Each menu grid button can be tapped on mobile without accidentally hitting adjacent buttons
   3. Item slots appear exactly once on mobile (no duplicate slots visible)
   4. Item bar sits flush against the bottom edge of the screen on both desktop and mobile
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01: Scale menu grid on mobile, reposition item bar to bottom edge, move Coins/Gems bars to top-left on mobile
+- [ ] 04-02: Fix item slot duplication by hiding keybind hints on mobile + visual verification checkpoint
 
 ### Phase 5: HUD Overlap Resolution
 **Goal**: All HUD elements coexist without overlapping each other or Roblox touch controls on every screen size
@@ -117,5 +117,5 @@ Phases 1-3 shipped. Current: 4 -> 5
 | 1. Scaling Infrastructure | v1.0 | 2/2 | Complete | shipped |
 | 2. Large Modal Scaling | v1.0 | 2/2 | Complete | shipped |
 | 3. Medium Modals + Polish | v1.0 | 2/2 | Complete | shipped |
-| 4. HUD Element Fixes | v1.1 | 0/? | Not started | - |
+| 4. HUD Element Fixes | v1.1 | 0/2 | Not started | - |
 | 5. HUD Overlap Resolution | v1.1 | 0/? | Not started | - |
