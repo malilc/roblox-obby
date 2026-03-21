@@ -46,13 +46,11 @@ function CurrencyUI.new(parent: ScreenGui)
 end
 
 function CurrencyUI:createUI()
-	local IS_MOBILE = UserInputService.TouchEnabled
-
 	-- === CURRENCY DISPLAY - Gold→Amber Gradient ===
 	local currencyFrame = UIFactory.createPanel(self.parent, {
 		name = "CurrencyFrame",
-		size = if IS_MOBILE then UDim2.new(0, 70, 0, 22) else UDim2.new(0, 140, 0, 44),
-		position = if IS_MOBILE then UDim2.new(0, 0, 1, -26) else UDim2.new(0, 10, 1, -52),
+		size = UDim2.new(0, 140, 0, 44),
+		position = UDim2.new(0, 10, 1, -52),
 		bgColor = Theme.HUD_CURRENCY_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",
@@ -184,6 +182,14 @@ function CurrencyUI:createUI()
 
 	-- Start shine animation loop
 	self:startShineAnimation()
+
+	-- Deferred mobile layout (TouchEnabled is false at script load, true after first frame)
+	task.defer(function()
+		if UserInputService.TouchEnabled then
+			currencyFrame.Size = UDim2.new(0, 70, 0, 22)
+			currencyFrame.Position = UDim2.new(0, 0, 1, -26)
+		end
+	end)
 end
 
 -- Shine animation loop (continuous, no gap)

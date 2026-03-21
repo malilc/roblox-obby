@@ -46,13 +46,11 @@ function ScoreUI.new(parent: ScreenGui)
 end
 
 function ScoreUI:createUI()
-	local IS_MOBILE = UserInputService.TouchEnabled
-
 	-- === GEM FRAME (top-left corner) - Purple Gradient ===
 	local gemFrame = UIFactory.createPanel(self.parent, {
 		name = "GemFrame",
-		size = if IS_MOBILE then UDim2.new(0, 70, 0, 22) else UDim2.new(0, 130, 0, 44),
-		position = if IS_MOBILE then UDim2.new(0, 0, 1, -50) else UDim2.new(0, 10, 1, -100),
+		size = UDim2.new(0, 130, 0, 44),
+		position = UDim2.new(0, 10, 1, -100),
 		bgColor = Theme.HUD_GEM_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",
@@ -147,8 +145,8 @@ function ScoreUI:createUI()
 	-- === STAGE PROGRESS (below CurrencyUI area) ===
 	local stageFrame = Instance.new("Frame")
 	stageFrame.Name = "StageFrame"
-	stageFrame.Size = if IS_MOBILE then UDim2.new(0, 70, 0, 16) else UDim2.new(0, 160, 0, 28)
-	stageFrame.Position = if IS_MOBILE then UDim2.new(0, 0, 1, -66) else UDim2.new(0, 10, 1, -132)
+	stageFrame.Size = UDim2.new(0, 160, 0, 28)
+	stageFrame.Position = UDim2.new(0, 10, 1, -132)
 	stageFrame.BackgroundColor3 = Theme.BG_OVERLAY
 	stageFrame.BackgroundTransparency = 0.3
 	stageFrame.BorderSizePixel = 0
@@ -304,6 +302,16 @@ function ScoreUI:createUI()
 	timerTextStroke.Thickness = 1.5
 	timerTextStroke.Transparency = 0.3
 	timerTextStroke.Parent = timerLabel
+
+	-- Deferred mobile layout (TouchEnabled is false at script load, true after first frame)
+	task.defer(function()
+		if UserInputService.TouchEnabled then
+			gemFrame.Size = UDim2.new(0, 70, 0, 22)
+			gemFrame.Position = UDim2.new(0, 0, 1, -50)
+			stageFrame.Size = UDim2.new(0, 70, 0, 16)
+			stageFrame.Position = UDim2.new(0, 0, 1, -66)
+		end
+	end)
 end
 
 function ScoreUI:updateGems(data: {gems: number, wins: number?})
