@@ -303,24 +303,32 @@ function ScoreUI:createUI()
 	timerTextStroke.Transparency = 0.3
 	timerTextStroke.Parent = timerLabel
 
-	-- Mobile layout using viewport size (TouchEnabled unreliable at load time)
+	-- Mobile layout: scale down gems/stage using UIScale + reposition
+	-- (UIScale approach is reliable — changing Size directly doesn't stick)
 	local camera = workspace.CurrentCamera
-	local function applyMobileLayout()
-		local isMobile = camera.ViewportSize.Y < 500
+	local gemUIScale = Instance.new("UIScale")
+	gemUIScale.Scale = 1
+	gemUIScale.Parent = gemFrame
+	local stageUIScale = Instance.new("UIScale")
+	stageUIScale.Scale = 1
+	stageUIScale.Parent = stageFrame
+
+	local function updateHUDLayout()
+		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
 		if isMobile then
-			gemFrame.Size = UDim2.new(0, 70, 0, 22)
-			gemFrame.Position = UDim2.new(0, 0, 1, -50)
-			stageFrame.Size = UDim2.new(0, 70, 0, 16)
-			stageFrame.Position = UDim2.new(0, 0, 1, -66)
+			gemUIScale.Scale = 0.5
+			gemFrame.Position = UDim2.new(0, 0, 1, -30)
+			stageUIScale.Scale = 0.5
+			stageFrame.Position = UDim2.new(0, 0, 1, -46)
 		else
-			gemFrame.Size = UDim2.new(0, 130, 0, 44)
+			gemUIScale.Scale = 1
 			gemFrame.Position = UDim2.new(0, 10, 1, -100)
-			stageFrame.Size = UDim2.new(0, 160, 0, 28)
+			stageUIScale.Scale = 1
 			stageFrame.Position = UDim2.new(0, 10, 1, -132)
 		end
 	end
-	applyMobileLayout()
-	camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyMobileLayout)
+	updateHUDLayout()
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateHUDLayout)
 end
 
 function ScoreUI:updateGems(data: {gems: number, wins: number?})

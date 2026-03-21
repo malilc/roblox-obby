@@ -183,20 +183,24 @@ function CurrencyUI:createUI()
 	-- Start shine animation loop
 	self:startShineAnimation()
 
-	-- Mobile layout using viewport size (TouchEnabled unreliable at load time)
+	-- Mobile layout: scale down currency using UIScale + reposition
 	local camera = workspace.CurrentCamera
-	local function applyMobileLayout()
-		local isMobile = camera.ViewportSize.Y < 500
+	local currUIScale = Instance.new("UIScale")
+	currUIScale.Scale = 1
+	currUIScale.Parent = currencyFrame
+
+	local function updateCurrLayout()
+		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
 		if isMobile then
-			currencyFrame.Size = UDim2.new(0, 70, 0, 22)
-			currencyFrame.Position = UDim2.new(0, 0, 1, -26)
+			currUIScale.Scale = 0.5
+			currencyFrame.Position = UDim2.new(0, 0, 1, -8)
 		else
-			currencyFrame.Size = UDim2.new(0, 140, 0, 44)
+			currUIScale.Scale = 1
 			currencyFrame.Position = UDim2.new(0, 10, 1, -52)
 		end
 	end
-	applyMobileLayout()
-	camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyMobileLayout)
+	updateCurrLayout()
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateCurrLayout)
 end
 
 -- Shine animation loop (continuous, no gap)
