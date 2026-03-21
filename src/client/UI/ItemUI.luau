@@ -10,7 +10,7 @@ local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
 local LocalPlayer = Players.LocalPlayer
 
-local IS_MOBILE = UserInputService.TouchEnabled
+-- IS_MOBILE evaluated inside createUI() to avoid Device Emulator race condition
 
 local ItemUI = {}
 ItemUI.__index = ItemUI
@@ -42,6 +42,8 @@ function ItemUI.new(parent: ScreenGui)
 end
 
 function ItemUI:createUI()
+	local IS_MOBILE = UserInputService.TouchEnabled
+
 	-- Main item container (กลางล่าง) - starts with 2 slots, expands to 3 with ExtraSlot
 	local container = Instance.new("Frame")
 	container.Name = "ItemContainer"

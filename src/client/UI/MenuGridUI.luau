@@ -10,8 +10,7 @@ local UIFactory = require(script.Parent.UIFactory)
 local MenuGridUI = {}
 MenuGridUI.__index = MenuGridUI
 
--- Platform detection (must be before usage)
-local IS_MOBILE = UserInputService.TouchEnabled
+-- IS_MOBILE evaluated inside .new() to avoid Device Emulator race condition
 
 -- Desktop layout constants (base design size)
 local BUTTON_W = 74
@@ -39,6 +38,8 @@ local BUTTONS = {
 }
 
 function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
+	local IS_MOBILE = UserInputService.TouchEnabled
+
 	local self = setmetatable({}, MenuGridUI)
 	self.buttons = {}
 	self.callbacks = callbacks or {}
@@ -169,9 +170,10 @@ end
 
 function MenuGridUI:show()
 	if self.panel then
+		local isMobile = UserInputService.TouchEnabled
 		local scale = self.menuScale and self.menuScale.Scale or 1
 		local scaledH = PANEL_H * scale
-		local showPos = if IS_MOBILE
+		local showPos = if isMobile
 			then UDim2.new(0, 4, 0.38, -math.floor(scaledH / 2))
 			else UDim2.new(0, PANEL_X, 0.5, -math.floor(PANEL_H / 2))
 		TweenService:Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {

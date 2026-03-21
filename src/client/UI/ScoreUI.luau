@@ -13,8 +13,7 @@ local LocalPlayer = Players.LocalPlayer
 local ScoreUI = {}
 ScoreUI.__index = ScoreUI
 
--- Platform detection for mobile repositioning
-local IS_MOBILE = UserInputService.TouchEnabled
+-- IS_MOBILE evaluated inside createUI() to avoid Device Emulator race condition
 
 -- Helper: create drop shadow under a pill
 local function createDropShadow(pill: Frame)
@@ -47,6 +46,8 @@ function ScoreUI.new(parent: ScreenGui)
 end
 
 function ScoreUI:createUI()
+	local IS_MOBILE = UserInputService.TouchEnabled
+
 	-- === GEM FRAME (top-left corner) - Purple Gradient ===
 	local gemFrame = UIFactory.createPanel(self.parent, {
 		name = "GemFrame",

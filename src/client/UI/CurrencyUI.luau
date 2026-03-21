@@ -14,7 +14,7 @@ local CurrencyUI = {}
 CurrencyUI.__index = CurrencyUI
 
 -- Platform detection for mobile repositioning
-local IS_MOBILE = UserInputService.TouchEnabled
+-- IS_MOBILE evaluated inside createUI() to avoid Device Emulator race condition
 
 -- Helper: create drop shadow under a pill
 local function createDropShadow(pill: Frame)
@@ -46,6 +46,8 @@ function CurrencyUI.new(parent: ScreenGui)
 end
 
 function CurrencyUI:createUI()
+	local IS_MOBILE = UserInputService.TouchEnabled
+
 	-- === CURRENCY DISPLAY - Gold→Amber Gradient ===
 	local currencyFrame = UIFactory.createPanel(self.parent, {
 		name = "CurrencyFrame",
