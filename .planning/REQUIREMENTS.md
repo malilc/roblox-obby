@@ -12,7 +12,7 @@
 
 ### Item Slots
 
-- [ ] **ITEM-01**: Item slots render only once on mobile (fix duplication bug — desktop is fine)
+- [ ] **ITEM-01**: Item slots render only once on mobile (fix duplication bug -- desktop is fine)
 - [ ] **ITEM-02**: Item bar positioned at bottom edge of screen (not floating)
 
 ### HUD Overlap
@@ -41,19 +41,19 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MENU-01 | TBD | Pending |
-| MENU-02 | TBD | Pending |
-| ITEM-01 | TBD | Pending |
-| ITEM-02 | TBD | Pending |
-| HUD-01 | TBD | Pending |
-| HUD-02 | TBD | Pending |
-| HUD-03 | TBD | Pending |
+| MENU-01 | Phase 4 | Pending |
+| MENU-02 | Phase 4 | Pending |
+| ITEM-01 | Phase 4 | Pending |
+| ITEM-02 | Phase 4 | Pending |
+| HUD-01 | Phase 5 | Pending |
+| HUD-02 | Phase 5 | Pending |
+| HUD-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 7 total
-- Mapped to phases: 0
-- Unmapped: 7
+- Mapped to phases: 7
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 after initial definition*
+*Last updated: 2026-03-21 after roadmap creation*
