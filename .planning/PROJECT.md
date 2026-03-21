@@ -2,86 +2,59 @@
 
 ## What This Is
 
-A viewport-aware UI system for the Roblox obby game. v1.0 scaled all 13 modals for mobile. v1.1 fixes HUD element overlaps and sizing issues on mobile screens — menu grid, item slots, rankings, and currency displays.
+A viewport-aware UI system for the Roblox obby game. All 13 modals and all HUD elements scale properly on mobile phone screens. Modals use UIScale-based shrinking, HUD elements use viewport-based UIScale with responsive positioning.
 
 ## Core Value
 
 Every UI element must be fully visible, usable, and non-overlapping on both desktop and mobile phone screens.
 
-## Current Milestone: v1.1 Mobile HUD Fix
+## Current State
 
-**Goal:** Fix HUD element overlaps and sizing issues on mobile screens
-
-**Target fixes:**
-- Menu grid (left side) too large on mobile
-- Item slots duplicated on mobile (not on desktop)
-- Item bar not anchored to bottom edge
-- Rankings panel overlapping item slots and jump button
-- Coins/Gems bar overlapping walk/movement controls
+**Shipped:** v1.1 Mobile HUD Fix (2026-03-21)
+- v1.0: 13 modals scaled for mobile (ResponsiveScale module)
+- v1.1: HUD elements fixed for mobile (menu grid, item slots, rankings, coins/gems)
 
 ## Requirements
 
 ### Validated
 
 - [x] All 13 modals scale properly on mobile — v1.0
-- [x] Scaling preserves existing layout — v1.0
 - [x] Desktop experience unchanged — v1.0
-- [x] Touch targets stay usable at scaled sizes — v1.0
+- [x] Touch targets usable at scaled sizes — v1.0
+- [x] Menu grid scales down on mobile — v1.1
+- [x] Item slots no duplication on mobile — v1.1
+- [x] Rankings panel no overlap — v1.1
+- [x] Coins/Gems no overlap with joystick — v1.1
+- [x] Desktop HUD unchanged — v1.1
 
 ### Active
 
-- [ ] Menu grid scales down on mobile screens
-- [ ] Item slots render only once on mobile (fix duplication)
-- [ ] Item bar anchored to bottom edge of screen
-- [ ] Rankings panel doesn't overlap other HUD elements
-- [ ] Coins/Gems bar doesn't overlap movement controls
+None — all requirements validated.
 
 ### Out of Scope
 
-- Content reflow or mobile-specific layouts — scale down approach
-- Tablet-specific tweaks — viewport formula handles naturally
-- New UI features or visual redesign — purely fixing overlaps
-- Leaderboard billboard sizing (3D world objects, not HUD)
+- Content reflow or mobile-specific layouts
+- Tablet-specific tweaks
+- New UI features or visual redesign
+- Leaderboard billboard sizing (3D world objects)
+- Touch control customization (Roblox default)
 
 ## Context
 
-- Roblox obby game with HUD elements managed by MainUI.luau and init.client.luau
-- ResponsiveScale module available (from v1.0) for viewport-aware sizing
-- HUD elements use fixed pixel positioning — works on desktop but overlaps on mobile
-- Item slot duplication is mobile-only — likely a platform-specific rendering or creation issue
-- Movement controls are Roblox default touch controls (joystick, jump button)
-
-## Constraints
-
-- **Tech stack**: Roblox Luau, all UI created via code
-- **Approach**: Fix overlaps by repositioning/resizing — minimal layout changes
-- **Compatibility**: Must work on both desktop and mobile without breaking existing HUD
+- ResponsiveScale.luau for modals (UIScale + viewport listener)
+- HUD elements use direct UIScale with ViewportSize.Y < 500 mobile detection
+- TouchEnabled unreliable at module load time — use viewport-based detection
+- UIScale approach proven across all UI elements
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Scale down (not reflow) | Proven approach from v1.0 | ✓ Good |
-| UIScale-based shrinking | Works for modals, may extend to HUD | ✓ Good |
-| SummaryUI scrollable layout | Design too tall for mobile | ✓ Good |
-| Tab indentation | Matches codebase practice | ✓ Good |
-
-## Evolution
-
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition:**
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone:**
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
+| UIScale-based shrinking | Proven on modals, extended to HUD | ✓ Good |
+| ViewportSize for mobile detection | TouchEnabled false at load time | ✓ Good |
+| Rankings top-3 on mobile | Saves space, reduces overlap | ✓ Good |
+| Hide ItemUI on mobile | MobileInputUI provides touch buttons | ✓ Good |
+| UIScale instances (not Size changes) | Size property changes unreliable | ✓ Good |
 
 ---
-*Last updated: 2026-03-21 after v1.1 milestone started — Mobile HUD Fix*
+*Last updated: 2026-03-21 after v1.1 milestone — Mobile HUD Fix shipped*
