@@ -50,7 +50,8 @@ function CurrencyUI:createUI()
 	local currencyFrame = UIFactory.createPanel(self.parent, {
 		name = "CurrencyFrame",
 		size = UDim2.new(0, 140, 0, 44),
-		position = if IS_MOBILE then UDim2.new(0, 130, 0, 94) else UDim2.new(0, 10, 1, -52),
+		size = if IS_MOBILE then UDim2.new(0, 100, 0, 32) else UDim2.new(0, 140, 0, 44),
+		position = if IS_MOBILE then UDim2.new(0, 10, 1, -105) else UDim2.new(0, 10, 1, -52),
 		bgColor = Theme.HUD_CURRENCY_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",

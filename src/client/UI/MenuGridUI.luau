@@ -27,8 +27,8 @@ local IS_MOBILE = UserInputService.TouchEnabled
 local MOBILE_SCALE = 0.65
 local M_BUTTON_W = if IS_MOBILE then math.floor(BUTTON_W * MOBILE_SCALE) else BUTTON_W  -- 48 on mobile
 local M_BUTTON_H = if IS_MOBILE then math.floor(BUTTON_H * MOBILE_SCALE) else BUTTON_H  -- 44 on mobile
-local M_GAP = if IS_MOBILE then 4 else GAP
-local M_PAD = if IS_MOBILE then 6 else PAD
+local M_GAP = if IS_MOBILE then 3 else GAP
+local M_PAD = if IS_MOBILE then 4 else PAD
 local M_PANEL_W = M_PAD * 2 + COLS * M_BUTTON_W + M_GAP  -- ~114 on mobile vs 172 on desktop
 local M_PANEL_H = M_PAD * 2 + 4 * M_BUTTON_H + M_GAP * 3 -- ~200 on mobile vs 306 on desktop
 local M_PANEL_Y_OFFSET = -math.floor(M_PANEL_H / 2)
@@ -101,17 +101,19 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 			textYAlignment = Enum.TextYAlignment.Center,
 		})
 
-		-- Name label (bottom edge)
+		-- Name label (bottom, clipped inside button)
 		UIFactory.createLabel(btn, {
 			name = "Label",
-			size = UDim2.new(1, 0, 0, 14),
-			position = UDim2.new(0, 0, 1, -15),
+			size = UDim2.new(1, -4, 0, 12),
+			position = UDim2.new(0, 2, 1, -13),
 			text = def.label,
 			textColor = Theme.TEXT_PRIMARY,
-			textSize = if IS_MOBILE then 9 else 11,
+			textSize = if IS_MOBILE then 8 else 11,
 			font = Enum.Font.GothamBold,
 			bgTransparency = 1,
-			textYAlignment = Enum.TextYAlignment.Bottom,
+			textYAlignment = Enum.TextYAlignment.Center,
+			textTruncate = Enum.TextTruncate.AtEnd,
+			clipDescendants = true,
 		})
 
 		self.buttons[def.id] = btn

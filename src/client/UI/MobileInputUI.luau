@@ -38,11 +38,11 @@ function MobileInputUI.new(parent: ScreenGui, dependencies: {
 end
 
 function MobileInputUI:createUI()
-	-- === Item Buttons (ขวาล่าง, เหนือ ItemUI container) ===
+	-- === Item Buttons (กลางล่าง) ===
 	local itemButtonContainer = Instance.new("Frame")
 	itemButtonContainer.Name = "MobileItemButtons"
 	itemButtonContainer.Size = UDim2.new(0, 160, 0, 70)
-	itemButtonContainer.Position = UDim2.new(1, -170, 1, -210)
+	itemButtonContainer.Position = UDim2.new(0.5, -80, 1, -80)
 	itemButtonContainer.BackgroundTransparency = 1
 	itemButtonContainer.Parent = self.parent
 
