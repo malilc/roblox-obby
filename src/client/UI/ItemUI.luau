@@ -51,6 +51,11 @@ function ItemUI:createUI()
 	container.Parent = self.parent
 	self.container = container
 
+	-- Hide item container on mobile (MobileInputUI provides touch buttons instead)
+	if IS_MOBILE then
+		container.Visible = false
+	end
+
 	-- สร้าง 3 item slots (horizontal layout), slot 3 hidden by default
 	for slotIndex = 1, 3 do
 		self:createSlot(slotIndex, container)
