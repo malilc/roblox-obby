@@ -44,13 +44,13 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 	self.callbacks = callbacks or {}
 
 	-- Container panel (always built at desktop size, scaled on mobile via UIScale)
-	local mobilePos = UDim2.new(0, 4, 1, -PANEL_H - 10) -- bottom-left on mobile
 	local desktopPos = UDim2.new(0, PANEL_X, 0.5, -math.floor(PANEL_H / 2)) -- center-left on desktop
+	-- Mobile: position calculated after UIScale is applied (see below)
 
 	local panel = UIFactory.createPanel(parent, {
 		name = "MenuGridPanel",
 		size = UDim2.new(0, PANEL_W, 0, PANEL_H),
-		position = if IS_MOBILE then mobilePos else desktopPos,
+		position = desktopPos,
 		bgColor = Theme.BG_OVERLAY,
 		bgTransparency = 0.25,
 		cornerSize = "lg",
@@ -60,31 +60,19 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 	})
 	self.panel = panel
 
-	-- Responsive scaling on mobile: shrink to fit viewport
+	-- Responsive scaling on mobile: shrink and position center-left (above coins/gems)
 	if IS_MOBILE then
 		local camera = workspace.CurrentCamera
-		local viewportH = camera.ViewportSize.Y
-		-- Scale so panel fits in ~55% of viewport height
-		local targetH = viewportH * 0.55
-		local scale = math.min(1.0, targetH / PANEL_H)
-		scale = math.max(0.45, scale) -- floor
+		local MOBILE_SCALE = 0.45
 
 		local uiScale = Instance.new("UIScale")
-		uiScale.Scale = scale
+		uiScale.Scale = MOBILE_SCALE
 		uiScale.Parent = panel
 		self.menuScale = uiScale
 
-		-- Update position to account for scaled size
-		panel.Position = UDim2.new(0, 4, 1, -math.floor(PANEL_H * scale) - 6)
-
-		-- Listen for viewport changes
-		camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-			local newH = camera.ViewportSize.Y
-			local newScale = math.min(1.0, (newH * 0.55) / PANEL_H)
-			newScale = math.max(0.45, newScale)
-			uiScale.Scale = newScale
-			panel.Position = UDim2.new(0, 4, 1, -math.floor(PANEL_H * newScale) - 6)
-		end)
+		-- Center-left position, slightly above center to leave room for coins at bottom
+		local scaledH = PANEL_H * MOBILE_SCALE
+		panel.Position = UDim2.new(0, 4, 0.38, -math.floor(scaledH / 2))
 	end
 
 	-- Build grid buttons (always at desktop size — UIScale handles shrinking)
@@ -182,8 +170,9 @@ end
 function MenuGridUI:show()
 	if self.panel then
 		local scale = self.menuScale and self.menuScale.Scale or 1
+		local scaledH = PANEL_H * scale
 		local showPos = if IS_MOBILE
-			then UDim2.new(0, 4, 1, -math.floor(PANEL_H * scale) - 6)
+			then UDim2.new(0, 4, 0.38, -math.floor(scaledH / 2))
 			else UDim2.new(0, PANEL_X, 0.5, -math.floor(PANEL_H / 2))
 		TweenService:Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = showPos,
