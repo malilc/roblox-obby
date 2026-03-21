@@ -55,7 +55,7 @@ local Config = {
 
 	-- Stage Settings
 	Stages = {
-		TotalCount = 7,        -- จำนวนด่านทั้งหมดใน pool
+		TotalCount = 14,       -- จำนวนด่านทั้งหมดใน pool
 		SelectionCount = 5,    -- จำนวนด่านที่เลือกต่อรอบ (แก้ได้เพื่อ test)
 		StageLength = 100,     -- ความยาวแต่ละด่าน (studs)
 		StartOffset = Vector3.new(-150, 0, 250), -- ตำแหน่งเริ่มต้นของด่านแรก
@@ -162,7 +162,7 @@ local Config = {
 			name = "2x XP",
 			description = "Earn double mastery XP! Level up your class twice as fast.",
 			icon = "\u{1F4AB}",
-			gamePassId = 0, -- TODO: set actual Roblox Game Pass ID
+			gamePassId = 1753504703,
 			robuxPrice = 149,
 			layoutOrder = 4,
 		},
@@ -304,12 +304,10 @@ local Config = {
 		LeaderstatsLoadDelay = 1,       -- วินาทีรอ leaderstats โหลด
 	},
 
-	-- Map Physics Settings
+	-- Map Settings
 	Map = {
 		StageGapStuds = 10,             -- ระยะห่างระหว่าง stage (studs)
-		FinishLineRadius = 20,          -- ระยะตรวจจับ finish line (studs)
-		PlatformServoForce = 1000000,   -- แรง servo ของ moving platform
-		PlatformServoSpeed = 50,        -- ความเร็ว servo ของ moving platform
+		FinishLineRadius = 8,           -- ระยะตรวจจับ finish line (studs)
 	},
 
 	-- Feedback System (Discord Webhook)

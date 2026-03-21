@@ -1,11 +1,13 @@
 -- ItemManager: จัดการระบบ Items (racing game style)
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
+local GamePassLogic = require(ReplicatedStorage.Shared.GamePassLogic)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
 -- Helper: create a Sound with SFX SoundGroup assigned
@@ -361,12 +363,9 @@ end
 
 -- Get max item slots for player (2 default, 3 with ExtraSlot gamepass)
 function ItemManager:getMaxSlots(player: Player): number
-	if self.gameManager and self.gameManager.shopManager then
-		if self.gameManager.shopManager:hasGamePass(player, "ExtraSlot") then
-			return 3
-		end
-	end
-	return 2
+	local passes = self.gameManager and self.gameManager.shopManager
+		and self.gameManager.shopManager.playerGamePasses[player]
+	return GamePassLogic.getMaxItemSlots(passes)
 end
 
 -- Initialize player items
@@ -697,7 +696,7 @@ function ItemManager:useMissile(player: Player, rootPart: Part, itemDef): boolea
 	-- Fire sound
 	local fireSound = createSFXSound()
 	fireSound.SoundId = "rbxassetid://287390459"
-	fireSound.Volume = 0.3
+	fireSound.Volume = 0.1
 	fireSound.Parent = rootPart
 	fireSound:Play()
 	task.delay(2, function()
@@ -837,20 +836,39 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	local behindDir = -rootPart.CFrame.LookVector
 	local dropPos = rootPart.Position + behindDir * 3 + Vector3.new(0, 0, 0)
 	
+	-- Raycast ลงจากจุดวางเพื่อหาพื้น (ตรวจจับ moving platform ทันที)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { rootPart.Parent } -- exclude character
+	local groundRay = workspace:Raycast(dropPos, Vector3.new(0, -50, 0), rayParams)
+
+	local landingOnMovingPlatform = groundRay and groundRay.Instance:GetAttribute("IsMoving")
+	local landingPos = groundRay and (groundRay.Position + Vector3.new(0, 1, 0)) or dropPos
+
 	-- Create banana with mesh
 	local banana = Instance.new("Part")
 	banana.Name = "Banana"
 	banana.Size = Vector3.new(3, 2, 3) -- Larger hitbox for better detection (including jumping)
-	banana.Position = dropPos
-	banana.Anchored = false -- Let it fall with gravity
-	banana.CanCollide = true -- Collide with ground
 	banana.Material = Enum.Material.SmoothPlastic
 	banana.Color = Color3.fromRGB(255, 230, 50) -- Bright yellow
 	banana.Transparency = 0 -- Visible so mesh renders
 	banana:SetAttribute("Owner", player.UserId)
 	banana:SetAttribute("ExpireTime", os.clock() + (itemDef.duration or 30))
+
+	if landingOnMovingPlatform then
+		-- วางบน moving platform ทันที (anchored, ไม่ต้องรอ gravity)
+		banana.Position = landingPos
+		banana.Anchored = true
+		banana.CanCollide = false
+	else
+		-- พื้นปกติ → ตกด้วย gravity แล้ว anchor ทีหลัง
+		banana.Position = dropPos
+		banana.Anchored = false
+		banana.CanCollide = true
+	end
+
 	banana.Parent = workspace
-	
+
 	-- Use actual banana mesh
 	local mesh = Instance.new("SpecialMesh")
 	mesh.MeshType = Enum.MeshType.FileMesh
@@ -858,14 +876,41 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	mesh.Scale = Vector3.new(0.05, 0.05, 0.05)
 	mesh.Offset = Vector3.new(0, 0.5, 0) -- Raise mesh up to align with ground
 	mesh.Parent = banana
-	
-	-- Anchor after landing (wait for it to settle)
-	task.delay(1.5, function()
-		if banana and banana.Parent then
-			banana.Anchored = true
-			banana.CanCollide = false -- No collision with players after anchored
-		end
-	end)
+
+	if landingOnMovingPlatform then
+		-- ติดตาม moving platform ทุกเฟรม
+		local platform = groundRay.Instance
+		local offset = landingPos - platform.Position
+
+		-- ตั้ง attributes เพื่อให้ client คำนวณตำแหน่งเองได้ (smooth)
+		banana:SetAttribute("_PlatformOrigPos", platform:GetAttribute("OriginalPosition"))
+		banana:SetAttribute("_PlatformAxis", platform:GetAttribute("MoveAxis") or "X")
+		banana:SetAttribute("_PlatformMoveDistance", platform:GetAttribute("MoveDistance") or 10)
+		banana:SetAttribute("_PlatformMoveSpeed", platform:GetAttribute("MoveSpeed") or 3)
+		banana:SetAttribute("_PlatformOffset", offset)
+
+		-- Server ยังต้อง move กล้วยด้วย (สำหรับ Touched detection)
+		local connection
+		connection = RunService.Heartbeat:Connect(function()
+			if not banana or not banana.Parent then
+				connection:Disconnect()
+				return
+			end
+			if not platform or not platform.Parent then
+				connection:Disconnect()
+				return
+			end
+			banana.Position = platform.Position + offset
+		end)
+	else
+		-- Anchor after landing (wait for it to settle on normal ground)
+		task.delay(1.5, function()
+			if banana and banana.Parent then
+				banana.Anchored = true
+				banana.CanCollide = false
+			end
+		end)
+	end
 	
 	-- Sparkle effect to make it visible
 	local sparkle = Instance.new("ParticleEmitter")
@@ -896,7 +941,7 @@ function ItemManager:useBanana(player: Player, rootPart: Part, itemDef): boolean
 	-- Drop sound
 	local dropSound = createSFXSound()
 	dropSound.SoundId = "rbxassetid://70557734865364" -- Banana drop sound
-	dropSound.Volume = 0.4
+	dropSound.Volume = 0.21
 	dropSound.Parent = banana
 	dropSound:Play()
 	
@@ -1027,7 +1072,7 @@ function ItemManager:applySlip(player: Player, itemDef)
 	-- Slip sound (play immediately)
 	local slipSound = createSFXSound()
 	slipSound.SoundId = "rbxassetid://129432532096499" -- Banana slip sound
-	slipSound.Volume = 0.8
+	slipSound.Volume = 0.42
 	slipSound.PlayOnRemove = false
 	slipSound.Parent = humanoidRootPart
 	slipSound:Play()
@@ -1158,7 +1203,7 @@ function ItemManager:useShield(player: Player, itemDef): boolean
 		if humanoidRootPart then
 			local activateSound = createSFXSound()
 			activateSound.SoundId = "rbxassetid://105300932320033" -- Shield activate
-			activateSound.Volume = 0.5
+			activateSound.Volume = 0.26
 			activateSound.Parent = humanoidRootPart
 			activateSound:Play()
 			task.delay(2, function()
@@ -1342,7 +1387,7 @@ function ItemManager:removeShieldVisual(player: Player)
 			-- Shield break sound
 			local breakSound = createSFXSound()
 			breakSound.SoundId = "rbxassetid://122218831341898" -- Shield break
-			breakSound.Volume = 0.6
+			breakSound.Volume = 0.32
 			breakSound.Parent = humanoidRootPart
 			breakSound:Play()
 			task.delay(2, function()
@@ -1446,7 +1491,7 @@ function ItemManager:useSpeedBoost(player: Player, itemDef): boolean
 	if humanoidRootPart then
 		local boostSound = createSFXSound()
 		boostSound.SoundId = "rbxassetid://105300932320033" -- Speed boost activate
-		boostSound.Volume = 0.7
+		boostSound.Volume = 0.37
 		boostSound.Parent = humanoidRootPart
 		boostSound:Play()
 		task.delay(3, function()
@@ -1714,7 +1759,7 @@ function ItemManager:useSwap(player: Player, itemDef): boolean
 	-- Teleport charge-up sound
 	local chargeSound = createSFXSound()
 	chargeSound.SoundId = "rbxassetid://93826112721753" -- Swap teleport
-	chargeSound.Volume = 0.6
+	chargeSound.Volume = 0.32
 	chargeSound.PlaybackSpeed = 0.8
 	chargeSound.Parent = myHRP
 	chargeSound:Play()
@@ -1750,7 +1795,7 @@ function ItemManager:useLightning(player: Player, itemDef): boolean
 	-- Thunder sound (global)
 	local thunderSound = createSFXSound()
 	thunderSound.SoundId = "rbxassetid://1093102664"
-	thunderSound.Volume = 0.8
+	thunderSound.Volume = 0.42
 	thunderSound.PlaybackSpeed = 1.2
 	thunderSound.RollOffMode = Enum.RollOffMode.Linear
 	thunderSound.RollOffMaxDistance = 1000
@@ -1874,7 +1919,7 @@ function ItemManager:applyLightningSlow(player: Player, itemDef)
 		-- Zap sound on hit
 		local zapSound = createSFXSound()
 		zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
-		zapSound.Volume = 0.4
+		zapSound.Volume = 0.21
 		zapSound.PlaybackSpeed = 1.5
 		zapSound.Parent = humanoidRootPart
 		zapSound:Play()
@@ -1919,7 +1964,7 @@ function ItemManager:applyDummyStun(dummy: Model, duration: number)
 	-- Zap sound
 	local zapSound = createSFXSound()
 	zapSound.SoundId = "rbxassetid://8952019380" -- Lightning zap
-	zapSound.Volume = 0.4
+	zapSound.Volume = 0.21
 	zapSound.Parent = humanoidRootPart
 	zapSound:Play()
 	
@@ -1958,7 +2003,7 @@ function ItemManager:applyDummySlip(dummy: Model, itemDef)
 	-- Slip sound
 	local slipSound = createSFXSound()
 	slipSound.SoundId = "rbxassetid://129432532096499"
-	slipSound.Volume = 0.8
+	slipSound.Volume = 0.42
 	slipSound.Parent = humanoidRootPart
 	slipSound:Play()
 	task.delay(3, function()
@@ -2426,7 +2471,7 @@ function ItemManager:createExplosionEffect(position: Vector3)
 	-- Explosion sound
 	local explosionSound = createSFXSound()
 	explosionSound.SoundId = "rbxassetid://287390954"
-	explosionSound.Volume = 0.7
+	explosionSound.Volume = 0.3
 	explosionSound.Parent = effectPart
 	explosionSound:Play()
 	

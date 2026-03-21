@@ -155,6 +155,9 @@
         "ShopUpdate": {
           "$className": "RemoteEvent"
         },
+        "ItemEffect": {
+          "$className": "RemoteEvent"
+        },
         "GamePassUpdate": {
           "$className": "RemoteEvent"
         },

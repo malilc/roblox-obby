@@ -2,6 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 local StageTemplates = require(script.Parent.StageTemplates)
 
@@ -15,12 +16,21 @@ MapManager.__index = MapManager
 -- Seed random เพื่อให้สุ่มได้จริง
 math.randomseed(os.time() + os.clock() * 1000)
 
+export type MovingPartData = {
+	part: Part,
+	originalPosition: Vector3,
+	originalCFrame: CFrame,
+}
+
 export type MatchMapData = {
 	stages: {Model},
 	stageOrder: {number},
-	movingParts: {Part},
+	movingParts: {MovingPartData},
 	spinningParts: {Part},
 	disappearingParts: {{part: Part, touched: boolean, lastTouchTime: number}},
+	autoCyclingParts: {{part: Part, thread: thread?}},
+	pendulumParts: {{ball: Part, rope: Part?, pivotCFrame: CFrame, ropeLength: number, maxAngle: number, speed: number, phaseOffset: number}},
+	punchingParts: {{part: Part, originalCFrame: CFrame, direction: Vector3, distance: number, speed: number, phase: number}},
 	animationConnection: RBXScriptConnection?,
 	folder: Folder,
 }
@@ -37,6 +47,9 @@ function MapManager.new()
 		movingParts = {},
 		spinningParts = {},
 		disappearingParts = {},
+		autoCyclingParts = {},
+		pendulumParts = {},
+		punchingParts = {},
 		animationConnection = nil,
 		folder = self.stagesFolder,
 	} :: MatchMapData
@@ -177,11 +190,15 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 	for _, descendant in ipairs(stage:GetDescendants()) do
 		if descendant:IsA("BasePart") then
 			if descendant:GetAttribute("IsMoving") then
-				table.insert(mapData.movingParts, descendant)
-				-- เก็บตำแหน่งเริ่มต้น
+				-- Store original position as attribute for client-side prediction
 				descendant:SetAttribute("OriginalPosition", descendant.Position)
-				-- Setup moving platform ให้ unanchored + constraint
-				self:_setupMovingPlatformConstraint(descendant)
+				table.insert(mapData.movingParts, {
+					part = descendant,
+					originalPosition = descendant.Position,
+					originalCFrame = descendant.CFrame,
+				})
+				-- Keep platform anchored for stable CFrame-based movement
+				descendant.Anchored = true
 			end
 
 			if descendant:GetAttribute("IsSpinning") then
@@ -197,64 +214,189 @@ function MapManager:_registerAnimatedPartsInternal(stage: Model, mapData: MatchM
 				-- Setup touch detection
 				self:_setupDisappearingPlatform(descendant, mapData)
 			end
+
+			if descendant:GetAttribute("IsPunching") then
+				table.insert(mapData.punchingParts, {
+					part = descendant,
+					originalCFrame = descendant.CFrame,
+					direction = descendant:GetAttribute("PunchDirection") or Vector3.new(0, 0, -1),
+					distance = descendant:GetAttribute("PunchDistance") or 8,
+					speed = descendant:GetAttribute("PunchSpeed") or 0.8,
+					phase = descendant:GetAttribute("PunchPhase") or 0,
+				})
+			end
+
+			if descendant:GetAttribute("IsAutoCycling") then
+				local data = { part = descendant, thread = nil }
+				table.insert(mapData.autoCyclingParts, data)
+				-- Start auto cycle loop
+				self:_setupAutoCyclingPlatform(data)
+			end
+
+			-- Generic push-on-touch for any part with PushForce attribute
+			if descendant:GetAttribute("PushForce") and not descendant:GetAttribute("IsPendulum") then
+				local pushStrength = descendant:GetAttribute("PushForce")
+				local pushUp = descendant:GetAttribute("PushUpForce") or 800
+				local pushCooldowns = {}
+				descendant.Touched:Connect(function(hit)
+					local character = hit.Parent
+					local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+					local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+					if humanoid and rootPart and humanoid.Health > 0 then
+						if pushCooldowns[character] then return end
+						pushCooldowns[character] = true
+						task.delay(0.8, function() pushCooldowns[character] = nil end)
+
+						local dir = (rootPart.Position - descendant.Position)
+						dir = Vector3.new(dir.X, 0, dir.Z)
+						if dir.Magnitude > 0.1 then dir = dir.Unit else dir = Vector3.new(0, 0, 1) end
+
+						local attachment = Instance.new("Attachment")
+						attachment.Parent = rootPart
+						local force = Instance.new("VectorForce")
+						force.Attachment0 = attachment
+						force.Force = dir * pushStrength + Vector3.new(0, pushUp, 0)
+						force.RelativeTo = Enum.ActuatorRelativeTo.World
+						force.ApplyAtCenterOfMass = true
+						force.Parent = rootPart
+						task.delay(0.15, function() force:Destroy() attachment:Destroy() end)
+
+						-- Fire hit effect to client (screen shake + red flash)
+						local player = Players:GetPlayerFromCharacter(character)
+						if player then
+							local itemEffectRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("ItemEffect")
+							if itemEffectRemote then
+								itemEffectRemote:FireClient(player, "HitEffect", {})
+							end
+						end
+
+						-- Stun: temporarily freeze player movement (ป้องกัน stun ซ้อน)
+						local stunDuration = descendant:GetAttribute("StunDuration")
+						if stunDuration and stunDuration > 0 then
+							-- ถ้า stun อยู่แล้ว ไม่ save WalkSpeed=0 ทับ ใช้ค่าเดิมที่เก็บไว้
+							if not character:GetAttribute("IsPunchStunned") then
+								character:SetAttribute("PreStunWalkSpeed", humanoid.WalkSpeed)
+								character:SetAttribute("PreStunJumpPower", humanoid.JumpPower)
+							end
+							character:SetAttribute("IsPunchStunned", true)
+							humanoid.WalkSpeed = 0
+							humanoid.JumpPower = 0
+
+							-- Version counter ป้องกัน stun timer เก่ายิงทับ timer ใหม่
+							local stunVersion = (character:GetAttribute("StunVersion") or 0) + 1
+							character:SetAttribute("StunVersion", stunVersion)
+
+							-- Stun visual (💫 above head)
+							local existingStun = rootPart:FindFirstChild("PunchStunVisual")
+							if existingStun then existingStun:Destroy() end
+
+							local stunVisual = Instance.new("BillboardGui")
+							stunVisual.Name = "PunchStunVisual"
+							stunVisual.Size = UDim2.new(0, 50, 0, 50)
+							stunVisual.StudsOffset = Vector3.new(0, 3, 0)
+							stunVisual.AlwaysOnTop = true
+							stunVisual.Parent = rootPart
+
+							local stars = Instance.new("TextLabel")
+							stars.Size = UDim2.new(1, 0, 1, 0)
+							stars.BackgroundTransparency = 1
+							stars.Text = "💫"
+							stars.TextSize = 30
+							stars.Parent = stunVisual
+
+							task.delay(stunDuration, function()
+								if humanoid and humanoid.Parent
+									and character:GetAttribute("IsPunchStunned")
+									and character:GetAttribute("StunVersion") == stunVersion then
+									local baseWalk = character:GetAttribute("PreStunWalkSpeed") or character:GetAttribute("BaseWalkSpeed") or 16
+									local baseJump = character:GetAttribute("PreStunJumpPower") or character:GetAttribute("BaseJumpPower") or 50
+									humanoid.WalkSpeed = baseWalk
+									humanoid.JumpPower = baseJump
+									character:SetAttribute("IsPunchStunned", false)
+									character:SetAttribute("PreStunWalkSpeed", nil)
+									character:SetAttribute("PreStunJumpPower", nil)
+								end
+								if stunVisual and stunVisual.Parent then
+									stunVisual:Destroy()
+								end
+							end)
+						end
+					end
+				end)
+			end
+
+			if descendant:GetAttribute("IsPendulum") then
+				local ropeLength = descendant:GetAttribute("PendulumRopeLength") or 15
+				local maxAngleDeg = descendant:GetAttribute("PendulumMaxAngle") or 45
+				local speed = descendant:GetAttribute("PendulumSpeed") or 2.5
+				local phaseOffset = descendant:GetAttribute("PendulumPhaseOffset") or 0
+				local pivotCFrame = CFrame.new(descendant.Position + Vector3.new(0, ropeLength, 0))
+
+				-- Find linked rope part
+				local ropePart = nil
+				local ropeName = descendant:GetAttribute("PendulumRopeName")
+				if ropeName and descendant.Parent then
+					ropePart = descendant.Parent:FindFirstChild(ropeName)
+				end
+
+				table.insert(mapData.pendulumParts, {
+					ball = descendant,
+					rope = ropePart,
+					pivotCFrame = pivotCFrame,
+					ropeLength = ropeLength,
+					maxAngle = math.rad(maxAngleDeg),
+					speed = speed,
+					phaseOffset = phaseOffset,
+				})
+
+				-- Push player on touch
+				local pushStrength = descendant:GetAttribute("PendulumPushForce") or 4000
+				local pushCooldowns = {}
+				descendant.Touched:Connect(function(hit)
+					local character = hit.Parent
+					local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+					local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+					if humanoid and rootPart and humanoid.Health > 0 then
+						if pushCooldowns[character] then return end
+						pushCooldowns[character] = true
+						task.delay(0.8, function()
+							pushCooldowns[character] = nil
+						end)
+
+						-- Push direction: away from ball center + upward
+						local dir = (rootPart.Position - descendant.Position)
+						dir = Vector3.new(dir.X, 0, dir.Z)
+						if dir.Magnitude > 0.1 then
+							dir = dir.Unit
+						else
+							dir = Vector3.new(0, 0, 1)
+						end
+
+						-- Use VectorForce impulse for strong knockback
+						local attachment = Instance.new("Attachment")
+						attachment.Parent = rootPart
+
+						local force = Instance.new("VectorForce")
+						force.Attachment0 = attachment
+						force.Force = dir * pushStrength + Vector3.new(0, 1600, 0)
+						force.RelativeTo = Enum.ActuatorRelativeTo.World
+						force.ApplyAtCenterOfMass = true
+						force.Parent = rootPart
+
+						-- Remove after short impulse
+						task.delay(0.15, function()
+							force:Destroy()
+							attachment:Destroy()
+						end)
+					end
+				end)
+			end
 		end
 	end
 end
 
--- Internal: Setup moving platform ด้วย constraint (physics-based เพื่อไม่ลื่น)
-function MapManager:_setupMovingPlatformConstraint(part: Part)
-	local originalPos = part.Position
-	local axis = part:GetAttribute("MoveAxis") or "X"
-	local distance = part:GetAttribute("MoveDistance") or 10
-
-	-- Unanchor เพื่อให้ physics ทำงาน
-	part.Anchored = false
-
-	-- สร้าง Attachment บน Part
-	local attachment0 = Instance.new("Attachment")
-	attachment0.Name = "PlatformAttachment"
-	attachment0.Parent = part
-
-	-- สร้าง Attachment บน Workspace (จุดยึด)
-	local anchorPart = Instance.new("Part")
-	anchorPart.Name = "PlatformAnchor_" .. part.Name
-	anchorPart.Anchored = true
-	anchorPart.CanCollide = false
-	anchorPart.Transparency = 1
-	anchorPart.Size = Vector3.new(1, 1, 1)
-	anchorPart.Position = originalPos
-	anchorPart.Parent = part.Parent
-
-	local attachment1 = Instance.new("Attachment")
-	attachment1.Name = "AnchorAttachment"
-	attachment1.Parent = anchorPart
-
-	-- สร้าง PrismaticConstraint สำหรับเคลื่อนที่ตามแกน
-	local prismatic = Instance.new("PrismaticConstraint")
-	prismatic.Name = "MovementConstraint"
-	prismatic.Attachment0 = attachment0
-	prismatic.Attachment1 = attachment1
-	prismatic.ActuatorType = Enum.ActuatorType.Servo
-	prismatic.ServoMaxForce = Config.Map.PlatformServoForce
-	prismatic.Speed = Config.Map.PlatformServoSpeed
-	prismatic.LimitsEnabled = true
-	prismatic.LowerLimit = -distance
-	prismatic.UpperLimit = distance
-
-	-- ตั้งแกนการเคลื่อนที่
-	if axis == "X" then
-		attachment1.Axis = Vector3.new(1, 0, 0)
-	elseif axis == "Y" then
-		attachment1.Axis = Vector3.new(0, 1, 0)
-	else
-		attachment1.Axis = Vector3.new(0, 0, 1)
-	end
-
-	prismatic.Parent = part
-
-	-- เก็บ reference
-	part:SetAttribute("_HasConstraint", true)
-end
+-- Moving platform ใช้ CFrame-based movement (anchored) เพื่อป้องกันการเอียง
+-- Player carrying logic อยู่ใน _startAnimationsInternal
 
 -- Internal: Setup disappearing platform
 function MapManager:_setupDisappearingPlatform(part: Part, mapData: MatchMapData)
@@ -273,11 +415,15 @@ function MapManager:_setupDisappearingPlatform(part: Part, mapData: MatchMapData
 					task.spawn(function()
 						-- Blink warning
 						for _ = 1, 3 do
+							if not part.Parent then return end
 							part.Transparency = 0.5
 							task.wait(disappearDelay / 6)
+							if not part.Parent then return end
 							part.Transparency = 0
 							task.wait(disappearDelay / 6)
 						end
+
+						if not part.Parent then return end
 
 						-- Disappear
 						part.Transparency = 1
@@ -285,6 +431,7 @@ function MapManager:_setupDisappearingPlatform(part: Part, mapData: MatchMapData
 
 						-- Reappear
 						task.wait(reappearDelay)
+						if not part.Parent then return end
 						part.Transparency = 0
 						part.CanCollide = true
 						data.touched = false
@@ -293,6 +440,66 @@ function MapManager:_setupDisappearingPlatform(part: Part, mapData: MatchMapData
 					break
 				end
 			end
+		end
+	end)
+end
+
+-- Internal: Setup auto-cycling platform (timer-based, ไม่ต้องรอคนเหยียบ)
+-- กระพริบเตือนก่อนปิด แล้วสลับอัตโนมัติ
+-- OffTransparency: ถ้าตั้ง < 1 จะแสดงเงาจางๆ ตอนปิด (เห็นตำแหน่งที่จะปลอดภัยรอบถัดไป)
+function MapManager:_setupAutoCyclingPlatform(data: {part: Part, thread: thread?})
+	local part = data.part
+	local onTime = part:GetAttribute("CycleOnTime") or 3      -- เวลาที่เปิด (วินาที)
+	local offTime = part:GetAttribute("CycleOffTime") or 3     -- เวลาที่ปิด (วินาที)
+	local offset = part:GetAttribute("CycleOffset") or 0       -- delay ก่อนเริ่ม cycle
+	local blinkTime = part:GetAttribute("BlinkTime") or 1      -- เวลากระพริบเตือน
+	local offTransparency = part:GetAttribute("OffTransparency") or 1 -- 1=หายไปเลย, <1=เห็นเงาจาง
+
+	local originalColor = part.Color
+	-- สีจางสำหรับ ghostly mode (30% ของสีเดิม)
+	local dimColor = Color3.new(originalColor.R * 0.3, originalColor.G * 0.3, originalColor.B * 0.3)
+	local warningColor = Color3.fromRGB(255, 60, 60) -- แดงเตือน
+
+	data.thread = task.spawn(function()
+		-- StartsOff: เริ่มในสถานะปิด (สำหรับ checkerboard pattern)
+		if part:GetAttribute("StartsOff") then
+			part.Transparency = offTransparency
+			part.CanCollide = false
+			if offTransparency < 1 then
+				part.Color = dimColor
+			end
+		end
+
+		-- Offset เริ่มต้น (สำหรับ stagger เลนต่างกัน)
+		if offset > 0 then
+			task.wait(offset)
+		end
+
+		while part.Parent do
+			-- === ON phase: เลนเปิดอยู่ (สว่าง ชัดเจน) ===
+			part.Transparency = 0
+			part.CanCollide = true
+			part.Color = originalColor
+			task.wait(onTime - blinkTime)
+
+			-- === Blink warning: กระพริบก่อนปิด ===
+			local blinkCount = 6
+			for i = 1, blinkCount do
+				part.Transparency = 0.6
+				part.Color = warningColor
+				task.wait(blinkTime / (blinkCount * 2))
+				part.Transparency = 0
+				part.Color = originalColor
+				task.wait(blinkTime / (blinkCount * 2))
+			end
+
+			-- === OFF phase: เลนปิด (จางหรือหายไป) ===
+			part.Transparency = offTransparency
+			part.CanCollide = false
+			if offTransparency < 1 then
+				part.Color = dimColor
+			end
+			task.wait(offTime)
 		end
 	end)
 end
@@ -319,19 +526,32 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 	-- Animation loop
 	mapData.animationConnection = RunService.Heartbeat:Connect(function(dt)
 		local time = os.clock()
+		local syncTime = workspace:GetServerTimeNow() -- เวลา sync สำหรับ moving platforms
 
-		-- Moving platforms (ใช้ PrismaticConstraint)
-		for _, part in ipairs(mapData.movingParts) do
+		-- Moving platforms (CFrame-based, anchored — ไม่เอียง)
+		for _, data in ipairs(mapData.movingParts) do
+			local part = data.part
 			if part.Parent then
-				local prismatic = part:FindFirstChild("MovementConstraint")
-				if prismatic and prismatic:IsA("PrismaticConstraint") then
-					local distance = part:GetAttribute("MoveDistance") or 10
-					local speed = part:GetAttribute("MoveSpeed") or 3
+				local axis = part:GetAttribute("MoveAxis") or "X"
+				local distance = part:GetAttribute("MoveDistance") or 10
+				local speed = part:GetAttribute("MoveSpeed") or 3
+				local phase = part:GetAttribute("MovePhase") or 0
 
-					-- คำนวณตำแหน่งเป้าหมาย (oscillate)
-					local targetPosition = math.sin(time * speed) * distance
-					prismatic.TargetPosition = targetPosition
+				-- คำนวณ offset ตามแกน (ใช้ syncTime เพื่อให้ตรงกับ client)
+				local offset = math.sin(syncTime * speed + phase) * distance
+				local moveVector
+				if axis == "X" then
+					moveVector = Vector3.new(offset, 0, 0)
+				elseif axis == "Y" then
+					moveVector = Vector3.new(0, offset, 0)
+				else
+					moveVector = Vector3.new(0, 0, offset)
 				end
+
+				local newPos = data.originalPosition + moveVector
+
+				-- Move platform via CFrame (preserves orientation)
+				part.CFrame = data.originalCFrame - data.originalPosition + newPos
 			end
 		end
 
@@ -340,6 +560,50 @@ function MapManager:_startAnimationsInternal(mapData: MatchMapData)
 			if part.Parent then
 				local spinSpeed = part:GetAttribute("SpinSpeed") or 2
 				part.CFrame = part.CFrame * CFrame.Angles(0, dt * spinSpeed, 0)
+			end
+		end
+
+		-- Pendulum parts
+		for _, data in ipairs(mapData.pendulumParts) do
+			if data.ball.Parent then
+				local angle = data.maxAngle * math.sin(time * data.speed + data.phaseOffset)
+				local ballCF = data.pivotCFrame * CFrame.Angles(angle, 0, 0) * CFrame.new(0, -data.ropeLength, 0)
+				data.ball.CFrame = ballCF
+
+				-- Update rope visual
+				if data.rope and data.rope.Parent then
+					local pivotPos = data.pivotCFrame.Position
+					local ballPos = ballCF.Position
+					local mid = (pivotPos + ballPos) / 2
+					local dist = (pivotPos - ballPos).Magnitude
+					data.rope.Size = Vector3.new(0.5, dist, 0.5)
+					data.rope.CFrame = CFrame.lookAt(mid, ballPos) * CFrame.Angles(math.rad(90), 0, 0)
+				end
+			end
+		end
+
+		-- Punching parts (CFrame-based, anchored — for boxing gloves)
+		for _, data in ipairs(mapData.punchingParts) do
+			if data.part.Parent then
+				-- Punch cycle: 8% punch → 17% hold → 10% retract → 65% safe
+				local cycleTime = (time * data.speed + data.phase) % 1
+				local progress -- 0 = retracted, 1 = fully extended
+				if cycleTime < 0.08 then
+					-- Fast punch out (ease out)
+					local t = cycleTime / 0.08
+					progress = 1 - (1 - t) * (1 - t)
+				elseif cycleTime < 0.25 then
+					-- Hold extended (blocking)
+					progress = 1
+				elseif cycleTime < 0.35 then
+					-- Retract (ease in)
+					local t = (cycleTime - 0.25) / 0.10
+					progress = 1 - t * t
+				else
+					-- Safe window (65% of cycle)
+					progress = 0
+				end
+				data.part.CFrame = data.originalCFrame + data.direction * (progress * data.distance)
 			end
 		end
 
@@ -376,6 +640,16 @@ function MapManager:_clearMapInternal(mapData: MatchMapData, destroyFolder: bool
 	mapData.movingParts = {}
 	mapData.spinningParts = {}
 	mapData.disappearingParts = {}
+	mapData.pendulumParts = {}
+	mapData.punchingParts = {}
+
+	-- Cancel auto-cycling threads
+	for _, data in ipairs(mapData.autoCyclingParts) do
+		if data.thread then
+			task.cancel(data.thread)
+		end
+	end
+	mapData.autoCyclingParts = {}
 
 	if destroyFolder and mapData.folder then
 		mapData.folder:Destroy()
@@ -547,6 +821,9 @@ function MapManager:generateMapForMatch(matchId: string, stageOrder: {number}): 
 		movingParts = {},
 		spinningParts = {},
 		disappearingParts = {},
+		autoCyclingParts = {},
+		pendulumParts = {},
+		punchingParts = {},
 		animationConnection = nil,
 		folder = matchFolder,
 	}

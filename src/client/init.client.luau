@@ -39,6 +39,10 @@ if Config.Debug and Config.Debug.ItemTesting then
 end
 
 
+-- Initialize Moving Platform Carrier (smooth client-side platform riding)
+local MovingPlatformCarrier = require(script.MovingPlatformCarrier)
+local movingPlatformCarrier = MovingPlatformCarrier.new()
+
 -- Initialize Ultimate Skill Controller (handles Sprint, Double Jump, Iron Will)
 local UltimateSkillController = require(script.UltimateSkillController)
 local ultimateSkillController = UltimateSkillController.new()

@@ -17,6 +17,7 @@ local ShopManager = require(script.Parent.ShopManager)
 local FeedbackManager = require(script.Parent.FeedbackManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
+local GamePassLogic = require(ReplicatedStorage.Shared.GamePassLogic)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 
 local GameManager = {}
@@ -42,6 +43,7 @@ function GameManager.new()
 	self.playerStates = {} :: {[Player]: PlayerState}
 	self.playerCheckpoints = {} :: {[Player]: Vector3}
 	self.teleportingToLobby = {} :: {[Player]: boolean} -- Track teleporting players
+	self.respawnCooldowns = {} :: {[Player]: boolean} -- Prevent rapid respawn from kill parts
 	
 	-- Per-player match tracking (for instanced maps)
 	self.playerMatchIds = {} :: {[Player]: string} -- Player -> MatchId mapping
@@ -286,6 +288,7 @@ function GameManager:onPlayerRemoving(player: Player)
 	self.shopZoneManager:removePlayer(player)
 	self.shopManager:removePlayer(player)
 	self.teleportingToLobby[player] = nil
+	self.respawnCooldowns[player] = nil
 	self.soloWinsEnabled[player] = nil
 	self.playerRoundStats[player] = nil
 
@@ -471,29 +474,13 @@ function GameManager:checkPlayerPosition(player: Player)
 end
 
 function GameManager:getCoinMultiplier(player: Player): number
-	local multiplier = 1
-	if self.shopManager then
-		if self.shopManager:hasGamePass(player, "DoubleCoin") then
-			multiplier = multiplier + 1 -- +1.0 = ×2
-		end
-		if self.shopManager:hasGamePass(player, "VIP") then
-			multiplier = multiplier + 0.5 -- +0.5 = ×1.5
-		end
-	end
-	return multiplier
+	local passes = self.shopManager and self.shopManager.playerGamePasses[player]
+	return GamePassLogic.getCoinMultiplier(passes)
 end
 
 function GameManager:getXPMultiplier(player: Player): number
-	local multiplier = 1
-	if self.shopManager then
-		if self.shopManager:hasGamePass(player, "DoubleXP") then
-			multiplier = multiplier + 1 -- +1.0 = ×2
-		end
-		if self.shopManager:hasGamePass(player, "VIP") then
-			multiplier = multiplier + 0.5 -- +0.5 = ×1.5
-		end
-	end
-	return multiplier
+	local passes = self.shopManager and self.shopManager.playerGamePasses[player]
+	return GamePassLogic.getXPMultiplier(passes)
 end
 
 function GameManager:addMasteryXP(player: Player, amount: number, reason: string)
@@ -698,14 +685,8 @@ function GameManager:onPlayerFinished(player: Player)
 
 	-- Gamepass upsell (show purchase buttons for passes the player doesn't own)
 	local gamePassUpsell = {}
-	if not self.shopManager:hasGamePass(player, "DoubleCoin") and Config.GamePasses.DoubleCoin then
-		gamePassUpsell.doubleCoin = Config.GamePasses.DoubleCoin.gamePassId
-	end
 	if not self.shopManager:hasGamePass(player, "ExtraSlot") and Config.GamePasses.ExtraSlot then
 		gamePassUpsell.extraSlot = Config.GamePasses.ExtraSlot.gamePassId
-	end
-	if not self.shopManager:hasGamePass(player, "VIP") and Config.GamePasses.VIP then
-		gamePassUpsell.vip = Config.GamePasses.VIP.gamePassId
 	end
 	if not self.shopManager:hasGamePass(player, "DoubleXP") and Config.GamePasses.DoubleXP then
 		local passId = Config.GamePasses.DoubleXP.gamePassId
@@ -824,6 +805,11 @@ end
 
 -- Respawn player at checkpoint
 function GameManager:respawnPlayer(player: Player)
+	-- Respawn cooldown ป้องกันเรียกซ้ำรัวจาก kill parts (เช่น ลาวา Stage 6)
+	if self.respawnCooldowns[player] then return end
+	self.respawnCooldowns[player] = true
+	task.delay(0.5, function() self.respawnCooldowns[player] = nil end)
+
 	local character = player.Character
 	if not character then return end
 	
@@ -848,10 +834,24 @@ function GameManager:respawnPlayer(player: Player)
 		-- Reset velocity
 		humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
 		humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-		
+
+		-- Clear stun state ป้องกัน WalkSpeed=0 ค้าง
+		if character:GetAttribute("IsPunchStunned") then
+			character:SetAttribute("IsPunchStunned", false)
+			local baseWalk = character:GetAttribute("PreStunWalkSpeed") or character:GetAttribute("BaseWalkSpeed") or 16
+			local baseJump = character:GetAttribute("PreStunJumpPower") or character:GetAttribute("BaseJumpPower") or 50
+			humanoid.WalkSpeed = baseWalk
+			humanoid.JumpPower = baseJump
+			character:SetAttribute("PreStunWalkSpeed", nil)
+			character:SetAttribute("PreStunJumpPower", nil)
+			-- ลบ stun visual ถ้ามี
+			local stunVisual = humanoidRootPart:FindFirstChild("PunchStunVisual")
+			if stunVisual then stunVisual:Destroy() end
+		end
+
 		-- Teleport และหันหน้าไปทาง +X (ไปข้างหน้าในด่าน)
 		humanoidRootPart.CFrame = CFrame.lookAt(checkpoint, checkpoint + Vector3.new(1, 0, 0))
-		
+
 		Logger.debug("GameManager", "Respawned", player.Name, "at checkpoint")
 	end
 	
@@ -1104,12 +1104,18 @@ end
 -- Setup kill parts
 function GameManager:setupKillParts()
 	local killParts = self.mapManager:getAllKillParts()
-	
+	local killCooldowns = {} -- {[Model(character)]: true} debounce per character
+
 	for _, part in ipairs(killParts) do
 		local conn = part.Touched:Connect(function(hit)
 			local humanoid = hit.Parent:FindFirstChild("Humanoid")
 			if humanoid then
-				local player = Players:GetPlayerFromCharacter(hit.Parent)
+				local character = hit.Parent
+				if killCooldowns[character] then return end
+				killCooldowns[character] = true
+				task.delay(0.5, function() killCooldowns[character] = nil end)
+
+				local player = Players:GetPlayerFromCharacter(character)
 				if player and self.playerStates[player] == "Playing" then
 					self:respawnPlayer(player)
 				end
@@ -1188,12 +1194,18 @@ function GameManager:setupKillPartsForMatch(matchId: string)
 	if not self.matchConnections[matchId] then
 		self.matchConnections[matchId] = {}
 	end
+	local killCooldowns = {} -- {[Model(character)]: true} debounce per character
 
 	for _, part in ipairs(killParts) do
 		local conn = part.Touched:Connect(function(hit)
 			local humanoid = hit.Parent:FindFirstChild("Humanoid")
 			if humanoid then
-				local player = Players:GetPlayerFromCharacter(hit.Parent)
+				local character = hit.Parent
+				if killCooldowns[character] then return end
+				killCooldowns[character] = true
+				task.delay(0.5, function() killCooldowns[character] = nil end)
+
+				local player = Players:GetPlayerFromCharacter(character)
 				-- Check if this player belongs to this match
 				if player and self.playerStates[player] == "Playing" and self.playerMatchIds[player] == matchId then
 					self:respawnPlayer(player)

@@ -3,9 +3,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
+local Config = require(ReplicatedStorage.Shared.Config)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 
@@ -22,11 +24,14 @@ function ItemTestingUI.new()
 	self.toggleButton = nil
 	self.soloWinsEnabled = false
 	self.testGamePasses = {} -- {[passId] = boolean}
+	self.gamePassDebounce = {} -- {[passId] = boolean}
+	self.gamePassBtns = {} -- {[passId] = {btn, label}} for syncing state
 	self.masteryLevels = {}
 	self.classEntries = {}
 
 	self:createUI()
 	self:setupMasteryRemotes()
+	self:setupGamePassSync()
 
 	return self
 end
@@ -370,6 +375,25 @@ function ItemTestingUI:createItemButtons()
 	self:createGamePassToggle("VIP", "VIP (1.5x Coins+XP)", layoutOrder + 222)
 	self:createGamePassToggle("ExtraSlot", "3rd Item Slot", layoutOrder + 223)
 	self:createGamePassToggle("DoubleXP", "2x XP", layoutOrder + 224)
+
+	-- Test Purchase Prompt sub-section
+	local tpSeparator = Instance.new("TextLabel")
+	tpSeparator.Name = "TestPurchaseSeparator"
+	tpSeparator.Size = UDim2.new(1, 0, 0, 20)
+	tpSeparator.BackgroundTransparency = 1
+	tpSeparator.Text = "· Test Purchase Prompt ·"
+	tpSeparator.TextColor3 = Theme.TEXT_MUTED
+	tpSeparator.TextSize = 11
+	tpSeparator.Font = Enum.Font.Gotham
+	tpSeparator.LayoutOrder = layoutOrder + 230
+	tpSeparator.Parent = self.scrollFrame
+
+	for i, passId in ipairs(Config.GamePassOrder) do
+		local passDef = Config.GamePasses[passId]
+		if passDef then
+			self:createTestPurchaseButton(passDef, layoutOrder + 230 + i)
+		end
+	end
 
 	-- === Gems Section ===
 	local gemSeparator = Instance.new("TextLabel")
@@ -721,12 +745,35 @@ function ItemTestingUI:setTestGems(action: string, amount: number)
 	end
 end
 
+function ItemTestingUI:createTestPurchaseButton(passDef: any, order: number)
+	local btn = Instance.new("TextButton")
+	btn.Name = passDef.id .. "TestPurchaseBtn"
+	btn.Size = UDim2.new(1, 0, 0, 35)
+	btn.BackgroundColor3 = Theme.BG_ELEVATED
+	btn.Text = "\u{1F6D2} Buy " .. passDef.name .. " (R$ " .. passDef.robuxPrice .. ")"
+	btn.TextColor3 = Theme.TEXT_MUTED
+	btn.TextSize = 13
+	btn.Font = Enum.Font.Gotham
+	btn.LayoutOrder = order
+	btn.Parent = self.scrollFrame
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = Theme.CORNER_SM
+	corner.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		if passDef.gamePassId == 0 then return end
+		MarketplaceService:PromptGamePassPurchase(LocalPlayer, passDef.gamePassId)
+		self:playClickEffect(btn)
+	end)
+end
+
 function ItemTestingUI:createGamePassToggle(passId: string, label: string, order: number)
 	local btn = Instance.new("TextButton")
 	btn.Name = passId .. "ToggleBtn"
 	btn.Size = UDim2.new(1, 0, 0, 45)
-	btn.BackgroundColor3 = Theme.BG_ELEVATED
-	btn.Text = "🎫 " .. label .. ": OFF"
+	btn.BackgroundColor3 = Theme.BG_SURFACE
+	btn.Text = "\u{1F3AB} " .. label .. ": OFF"
 	btn.TextColor3 = Theme.TEXT_PRIMARY
 	btn.TextSize = 15
 	btn.Font = Enum.Font.GothamBold
@@ -737,21 +784,73 @@ function ItemTestingUI:createGamePassToggle(passId: string, label: string, order
 	corner.CornerRadius = Theme.CORNER_SM
 	corner.Parent = btn
 
+	-- เก็บ reference สำหรับ sync
+	self.gamePassBtns[passId] = { btn = btn, label = label }
+
 	btn.MouseButton1Click:Connect(function()
 		self:toggleTestGamePass(passId, btn, label)
-		self:playClickEffect(btn)
 	end)
 end
 
+function ItemTestingUI:setupGamePassSync()
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if not remotes then return end
+
+	local gamePassUpdateRemote = remotes:FindFirstChild("GamePassUpdate")
+	if gamePassUpdateRemote then
+		gamePassUpdateRemote.OnClientEvent:Connect(function(data)
+			if data.ownedPasses then
+				self:syncGamePassButtons(data.ownedPasses)
+			end
+		end)
+	end
+
+	-- Also sync from ShopUpdate stateSync
+	local shopUpdateRemote = remotes:FindFirstChild("ShopUpdate")
+	if shopUpdateRemote then
+		shopUpdateRemote.OnClientEvent:Connect(function(data)
+			if data.type == "stateSync" and data.ownedGamePasses then
+				self:syncGamePassButtons(data.ownedGamePasses)
+			end
+		end)
+	end
+end
+
+function ItemTestingUI:syncGamePassButtons(ownedPasses: {[string]: boolean})
+	for passId, owned in pairs(ownedPasses) do
+		self.testGamePasses[passId] = owned
+		local entry = self.gamePassBtns[passId]
+		if entry then
+			if owned then
+				entry.btn.Text = "\u{1F3AB} " .. entry.label .. ": ON"
+				entry.btn.BackgroundColor3 = Color3.fromRGB(200, 245, 210)
+				entry.btn.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
+			else
+				entry.btn.Text = "\u{1F3AB} " .. entry.label .. ": OFF"
+				entry.btn.BackgroundColor3 = Theme.BG_SURFACE
+				entry.btn.TextColor3 = Theme.TEXT_PRIMARY
+			end
+		end
+	end
+end
+
 function ItemTestingUI:toggleTestGamePass(passId: string, btn: TextButton, label: string)
+	if self.gamePassDebounce[passId] then return end
+	self.gamePassDebounce[passId] = true
+	task.delay(0.5, function()
+		self.gamePassDebounce[passId] = nil
+	end)
+
 	local enabled = not (self.testGamePasses[passId] or false)
 	self.testGamePasses[passId] = enabled
 
 	if enabled then
-		btn.Text = "🎫 " .. label .. ": ON"
+		btn.Text = "\u{1F3AB} " .. label .. ": ON"
+		btn.BackgroundColor3 = Color3.fromRGB(200, 245, 210)
 		btn.TextColor3 = Theme.darkenForText(Theme.SUCCESS, 0.55)
 	else
-		btn.Text = "🎫 " .. label .. ": OFF"
+		btn.Text = "\u{1F3AB} " .. label .. ": OFF"
+		btn.BackgroundColor3 = Theme.BG_SURFACE
 		btn.TextColor3 = Theme.TEXT_PRIMARY
 	end
 

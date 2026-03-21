@@ -237,6 +237,11 @@ function MatchManager:closeRoom(roomId: string)
 		self.gameManager:disconnectMatchConnections(roomId)
 	end
 
+	-- Clean up match map (ลบด่านเก่าออกจาก workspace)
+	if self.gameManager and self.gameManager.mapManager then
+		self.gameManager.mapManager:clearMapForMatch(roomId)
+	end
+
 	Logger.info("MatchManager", "Room closed:", roomId)
 
 	-- Broadcast updated room list to lobby players

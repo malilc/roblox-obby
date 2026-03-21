@@ -1296,13 +1296,39 @@ function ShopUI:createGamePassCard(parent: Frame, passDef: any)
 		cardStroke.Transparency = 0.3
 	end
 
-	-- Buy click → prompt native Roblox purchase
+	-- Buy click → prompt native Roblox purchase (or re-enable via test toggle if already owned on Roblox)
 	buyBtn.MouseButton1Click:Connect(function()
 		if self.ownedGamePasses[passDef.id] then return end
+
 		if passDef.gamePassId == 0 then
 			self:showStatusMessage("Game Pass not configured yet!", Theme.WARNING)
 			return
 		end
+
+		-- In testing mode: check real Roblox ownership first
+		-- If already owned on Roblox, re-enable via test toggle (avoid "already own" error)
+		-- If not owned, fall through to real Roblox purchase prompt
+		if Config.Debug and Config.Debug.Enabled and Config.Debug.ItemTesting then
+			local reallyOwned = false
+			local success, result = pcall(function()
+				return MarketplaceService:UserOwnsGamePassAsync(Players.LocalPlayer.UserId, passDef.gamePassId)
+			end)
+			if success and result then
+				reallyOwned = true
+			end
+
+			if reallyOwned then
+				local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+				if remotes then
+					local toggleRemote = remotes:FindFirstChild("ToggleTestGamePass")
+					if toggleRemote then
+						toggleRemote:FireServer({ passId = passDef.id, enabled = true })
+					end
+				end
+				return
+			end
+		end
+
 		local player = Players.LocalPlayer
 		MarketplaceService:PromptGamePassPurchase(player, passDef.gamePassId)
 	end)
@@ -1748,10 +1774,8 @@ function ShopUI:setupRemotes()
 
 	-- Listen for native Roblox purchase completion
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, wasPurchased)
-		if wasPurchased then
-			-- Ask server to verify and sync
-			self.checkGamePassRemote:FireServer()
-		end
+		-- Always re-check: catches both new purchases and "already own" cases
+		self.checkGamePassRemote:FireServer()
 	end)
 end
 
