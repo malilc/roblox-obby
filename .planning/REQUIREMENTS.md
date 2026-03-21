@@ -70,35 +70,35 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCALE-01 | Pending | Pending |
-| SCALE-02 | Pending | Pending |
-| SCALE-03 | Pending | Pending |
-| SCALE-04 | Pending | Pending |
-| SCALE-05 | Pending | Pending |
-| MODAL-01 | Pending | Pending |
-| MODAL-02 | Pending | Pending |
-| MODAL-03 | Pending | Pending |
-| MODAL-04 | Pending | Pending |
-| MODAL-05 | Pending | Pending |
-| MODAL-06 | Pending | Pending |
-| MODAL-07 | Pending | Pending |
-| MODAL-08 | Pending | Pending |
-| MODAL-09 | Pending | Pending |
-| MODAL-10 | Pending | Pending |
-| MODAL-11 | Pending | Pending |
-| MODAL-12 | Pending | Pending |
-| MODAL-13 | Pending | Pending |
-| TOUCH-01 | Pending | Pending |
-| TOUCH-02 | Pending | Pending |
-| TOUCH-03 | Pending | Pending |
-| POLISH-01 | Pending | Pending |
-| POLISH-02 | Pending | Pending |
+| SCALE-01 | Phase 1 | Pending |
+| SCALE-02 | Phase 1 | Pending |
+| SCALE-03 | Phase 1 | Pending |
+| SCALE-04 | Phase 1 | Pending |
+| SCALE-05 | Phase 1 | Pending |
+| MODAL-01 | Phase 2 | Pending |
+| MODAL-02 | Phase 2 | Pending |
+| MODAL-03 | Phase 2 | Pending |
+| MODAL-04 | Phase 2 | Pending |
+| MODAL-05 | Phase 2 | Pending |
+| MODAL-06 | Phase 3 | Pending |
+| MODAL-07 | Phase 3 | Pending |
+| MODAL-08 | Phase 3 | Pending |
+| MODAL-09 | Phase 3 | Pending |
+| MODAL-10 | Phase 1 | Pending |
+| MODAL-11 | Phase 1 | Pending |
+| MODAL-12 | Phase 1 | Pending |
+| MODAL-13 | Phase 1 | Pending |
+| TOUCH-01 | Phase 3 | Pending |
+| TOUCH-02 | Phase 3 | Pending |
+| TOUCH-03 | Phase 3 | Pending |
+| POLISH-01 | Phase 3 | Pending |
+| POLISH-02 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23 ⚠️
+- Mapped to phases: 23
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 after initial definition*
+*Last updated: 2026-03-21 after roadmap creation*
