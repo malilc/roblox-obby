@@ -63,7 +63,7 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 	-- Responsive scaling on mobile: shrink and position center-left (above coins/gems)
 	if IS_MOBILE then
 		local camera = workspace.CurrentCamera
-		local MOBILE_SCALE = 0.45
+		local MOBILE_SCALE = 0.55
 
 		local uiScale = Instance.new("UIScale")
 		uiScale.Scale = MOBILE_SCALE

@@ -52,7 +52,7 @@ function ScoreUI:createUI()
 		name = "GemFrame",
 		size = UDim2.new(0, 130, 0, 44),
 		size = if IS_MOBILE then UDim2.new(0, 70, 0, 22) else UDim2.new(0, 130, 0, 44),
-		position = if IS_MOBILE then UDim2.new(0, 0, 1, -48) else UDim2.new(0, 10, 1, -100),
+		position = if IS_MOBILE then UDim2.new(0, 0, 1, -50) else UDim2.new(0, 10, 1, -100),
 		bgColor = Theme.HUD_GEM_START,
 		bgTransparency = 0.15,
 		cornerSize = "lg",
