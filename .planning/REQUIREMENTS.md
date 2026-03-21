@@ -7,11 +7,11 @@
 
 ### Scaling Infrastructure
 
-- [ ] **SCALE-01**: Centralized ResponsiveScale module computes scale factor from viewport size and modal design size
-- [ ] **SCALE-02**: Scale formula: `math.min(1.0, (viewportW - padding) / designW, (viewportH - padding) / designH)`
-- [ ] **SCALE-03**: Viewport change listener recalculates scale on Camera.ViewportSize change
-- [ ] **SCALE-04**: Minimum scale floor (0.5) prevents modals from shrinking below usability threshold
-- [ ] **SCALE-05**: Desktop screens show modals at full design size (scale clamped to 1.0)
+- [x] **SCALE-01**: Centralized ResponsiveScale module computes scale factor from viewport size and modal design size
+- [x] **SCALE-02**: Scale formula: `math.min(1.0, (viewportW - padding) / designW, (viewportH - padding) / designH)`
+- [x] **SCALE-03**: Viewport change listener recalculates scale on Camera.ViewportSize change
+- [x] **SCALE-04**: Minimum scale floor (0.5) prevents modals from shrinking below usability threshold
+- [x] **SCALE-05**: Desktop screens show modals at full design size (scale clamped to 1.0)
 
 ### Large Modal Scaling (780x580)
 
@@ -70,11 +70,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCALE-01 | Phase 1 | Pending |
-| SCALE-02 | Phase 1 | Pending |
-| SCALE-03 | Phase 1 | Pending |
-| SCALE-04 | Phase 1 | Pending |
-| SCALE-05 | Phase 1 | Pending |
+| SCALE-01 | Phase 1 | Complete |
+| SCALE-02 | Phase 1 | Complete |
+| SCALE-03 | Phase 1 | Complete |
+| SCALE-04 | Phase 1 | Complete |
+| SCALE-05 | Phase 1 | Complete |
 | MODAL-01 | Phase 2 | Pending |
 | MODAL-02 | Phase 2 | Pending |
 | MODAL-03 | Phase 2 | Pending |
