@@ -509,6 +509,26 @@ function MatchLobbyUI:createRaceRankingUI()
 	rankHeaderCorner.CornerRadius = Theme.CORNER_SM
 	rankHeaderCorner.Parent = rankHeader
 
+	-- Mobile scaling for race rankings
+	local camera = workspace.CurrentCamera
+	local rankUIScale = Instance.new("UIScale")
+	rankUIScale.Scale = 1
+	rankUIScale.Parent = rankFrame
+
+	local function updateRankLayout()
+		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
+		if isMobile then
+			rankUIScale.Scale = 0.5
+			rankFrame.Position = UDim2.new(1, -6, 0, 50)
+		else
+			rankUIScale.Scale = 1
+			rankFrame.Position = UDim2.new(1, -10, 0, 70)
+		end
+	end
+	updateRankLayout()
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateRankLayout)
+	self.rankUIScale = rankUIScale
+
 	-- Rankings list
 	local rankList = Instance.new("Frame")
 	rankList.Name = "List"
