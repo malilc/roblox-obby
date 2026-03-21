@@ -1,6 +1,7 @@
 -- MenuGridUI: 2x3 menu button grid (top-left HUD)
 
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
@@ -20,6 +21,17 @@ local PANEL_H = PAD * 2 + 4 * BUTTON_H + GAP * 3        -- 306
 local PANEL_X = 10
 local PANEL_Y_SCALE = 0.5
 local PANEL_Y_OFFSET = -math.floor(PANEL_H / 2) -- vertically centered
+
+-- Mobile-aware dimensions (0.65x scale keeps buttons >= 44px tap target)
+local IS_MOBILE = UserInputService.TouchEnabled
+local MOBILE_SCALE = 0.65
+local M_BUTTON_W = if IS_MOBILE then math.floor(BUTTON_W * MOBILE_SCALE) else BUTTON_W  -- 48 on mobile
+local M_BUTTON_H = if IS_MOBILE then math.floor(BUTTON_H * MOBILE_SCALE) else BUTTON_H  -- 44 on mobile
+local M_GAP = if IS_MOBILE then 4 else GAP
+local M_PAD = if IS_MOBILE then 6 else PAD
+local M_PANEL_W = M_PAD * 2 + COLS * M_BUTTON_W + M_GAP  -- ~114 on mobile vs 172 on desktop
+local M_PANEL_H = M_PAD * 2 + 4 * M_BUTTON_H + M_GAP * 3 -- ~200 on mobile vs 306 on desktop
+local M_PANEL_Y_OFFSET = -math.floor(M_PANEL_H / 2)
 
 -- Button definitions
 local BUTTONS = {
@@ -41,8 +53,8 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 	-- Container panel
 	local panel = UIFactory.createPanel(parent, {
 		name = "MenuGridPanel",
-		size = UDim2.new(0, PANEL_W, 0, PANEL_H),
-		position = UDim2.new(0, PANEL_X, PANEL_Y_SCALE, PANEL_Y_OFFSET),
+		size = UDim2.new(0, M_PANEL_W, 0, M_PANEL_H),
+		position = UDim2.new(0, PANEL_X, PANEL_Y_SCALE, M_PANEL_Y_OFFSET),
 		bgColor = Theme.BG_OVERLAY,
 		bgTransparency = 0.25,
 		cornerSize = "lg",
@@ -56,13 +68,13 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 	for i, def in ipairs(BUTTONS) do
 		local col = (i - 1) % COLS
 		local row = math.floor((i - 1) / COLS)
-		local x = PAD + col * (BUTTON_W + GAP)
-		local y = PAD + row * (BUTTON_H + GAP)
+		local x = M_PAD + col * (M_BUTTON_W + M_GAP)
+		local y = M_PAD + row * (M_BUTTON_H + M_GAP)
 
 		local callbackKey = "on" .. def.id
 		local btn = UIFactory.createButton(panel, {
 			name = def.id .. "Btn",
-			size = UDim2.new(0, BUTTON_W, 0, BUTTON_H),
+			size = UDim2.new(0, M_BUTTON_W, 0, M_BUTTON_H),
 			position = UDim2.new(0, x, 0, y),
 			bgColor = Theme.BG_SURFACE,
 			cornerSize = "md",
@@ -84,7 +96,7 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 			size = UDim2.new(1, 0, 0, 34),
 			position = UDim2.new(0, 0, 0, 6),
 			text = def.icon,
-			textSize = 24,
+			textSize = if IS_MOBILE then 18 else 24,
 			bgTransparency = 1,
 			textYAlignment = Enum.TextYAlignment.Center,
 		})
@@ -96,7 +108,7 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 			position = UDim2.new(0, 0, 1, -22),
 			text = def.label,
 			textColor = Theme.TEXT_PRIMARY,
-			textSize = 12,
+			textSize = if IS_MOBILE then 10 else 12,
 			font = Enum.Font.GothamBold,
 			bgTransparency = 1,
 			textYAlignment = Enum.TextYAlignment.Center,
@@ -136,7 +148,7 @@ end
 function MenuGridUI:hide()
 	if self.panel then
 		TweenService:Create(self.panel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.new(0, -PANEL_W - 10, PANEL_Y_SCALE, PANEL_Y_OFFSET),
+			Position = UDim2.new(0, -M_PANEL_W - 10, PANEL_Y_SCALE, M_PANEL_Y_OFFSET),
 		}):Play()
 	end
 end
@@ -144,7 +156,7 @@ end
 function MenuGridUI:show()
 	if self.panel then
 		TweenService:Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0, PANEL_X, PANEL_Y_SCALE, PANEL_Y_OFFSET),
+			Position = UDim2.new(0, PANEL_X, PANEL_Y_SCALE, M_PANEL_Y_OFFSET),
 		}):Play()
 	end
 end
