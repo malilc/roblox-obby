@@ -29,17 +29,26 @@ created: 2026-03-21
 
 ## Spacing Scale
 
-Declared values from existing ThemeConfig.luau (source of truth):
+### Phase 1 Spacing (new value introduced)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| Modal viewport padding (D-04) | 40px per side (80px total) | Gap between screen edge and modal frame on mobile viewports |
+
+This is the only spacing value introduced by Phase 1. It lives in ResponsiveScale.luau as a scaling-specific constant, NOT in ThemeConfig. It is a multiple of 4 (40px).
+
+### Legacy Spacing Tokens (reference only — not modified by Phase 1)
 
 | Token | Value | Usage |
 |-------|-------|-------|
 | PAD_SM | 6px | Compact element spacing, inset padding |
 | PAD_MD | 10px | Default element spacing |
 | PAD_LG | 16px | Section padding, modal internal padding |
-| Modal padding (D-04) | 40px per side (80px total) | Viewport margin around scaled modals on mobile |
 
-Exceptions:
-- The 40px modal viewport padding (D-04) is a scaling-specific constant living in ResponsiveScale.luau, NOT in ThemeConfig. It is not a general spacing token — it is the gap between screen edge and modal frame on mobile viewports.
+**Legacy waiver:** PAD_SM (6px) and PAD_MD (10px) are pre-existing ThemeConfig values that are not multiples of 4. Phase 1 does not modify any spacing tokens — UIScale is a render transform that preserves all logical spacing as-is. These values are documented here for reference only and are candidates for alignment to the 4px grid in a future design token cleanup phase.
+
+### Exceptions
+
 - The 8px gap between toggle rows in SettingsUI is inline (ROW_H + 8). Not tokenized, acceptable for Phase 1.
 
 **Scaling contract:** UIScale does NOT change any spacing values. All existing PAD_SM/PAD_MD/PAD_LG values remain as-is in code. UIScale uniformly shrinks the rendered output including all padding.
@@ -55,11 +64,13 @@ Existing typography from the 4 in-scope modals (SettingsUI, FeedbackUI, Spectato
 | Modal title | 22px | GothamBlack (900) | Engine default (1.0) |
 | Body / input text | 16px | Gotham (400) / GothamBold (700) | Engine default (1.0) |
 | Label / secondary | 13px | GothamBold (700) / GothamMedium (500) | Engine default (1.0) |
-| Caption / meta | 11-12px | Gotham (400) / GothamMedium (500) | Engine default (1.0) |
+| Caption / meta | 12px | Gotham (400) / GothamMedium (500) | Engine default (1.0) |
+
+**Weight consolidation note:** The existing modals use 4 font weights (Gotham 400, GothamMedium 500, GothamBold 700, GothamBlack 900). Consolidating to fewer weights is out of scope for Phase 1, which is a scaling-only change. Weight rationalization may be addressed in a future design token cleanup phase.
 
 **Scaling contract:**
 - At scale 1.0 (desktop): All text sizes render at their declared pixel values. No change from current behavior.
-- At scale 0.835 (414px phone, 400px-wide control bar): 22px title becomes ~18px effective, 16px body becomes ~13px effective, 13px label becomes ~11px effective, 11px caption becomes ~9px effective.
+- At scale 0.835 (414px phone, 400px-wide control bar): 22px title becomes ~18px effective, 16px body becomes ~13px effective, 13px label becomes ~11px effective, 12px caption becomes ~10px effective.
 - At scale 0.5 (floor): 22px title becomes 11px effective, 16px body becomes 8px effective. This is the absolute minimum — below this, text becomes unreadable, which is why D-05 sets 0.5 as the floor.
 - Roblox TextLabel does not expose a line-height property. Line height is engine-controlled at ~1.0x font size.
 
@@ -87,6 +98,8 @@ All colors are defined in ThemeConfig.luau. Phase 1 does NOT introduce any new c
 
 Accent reserved for: SpectatorUI "SPECTATE" button + panel glow strokes (ACCENT_CYAN), toggle "on" state + submit button (SUCCESS). Never applied to backgrounds or passive elements.
 
+**Visual hierarchy note:** Visual hierarchy is inherited from existing modal designs; no new focal points introduced in Phase 1.
+
 **Scaling contract:** UIScale does not alter BackgroundColor3, TextColor3, UIStroke.Color, or UIGradient.Color values. All colors render identically at any scale factor.
 
 ---
@@ -113,6 +126,8 @@ Phase 1 does NOT introduce new UI copy. All text in the 4 small modals is pre-ex
 | LeaderboardUI | (stub — no UI copy) | LeaderboardUI |
 
 **No destructive actions in Phase 1 scope.** The "LEAVE" button in SpectatorUI exits spectator mode (non-destructive, no data loss). No confirmation dialog required.
+
+**Copy improvement note:** All labels above are pre-existing and carried forward as-is. Copy improvements (e.g., more descriptive CTA verbs, clearer error messages) are deferred to a future UX copy pass.
 
 ---
 
