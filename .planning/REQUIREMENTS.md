@@ -7,13 +7,13 @@
 
 ### Menu Grid
 
-- [ ] **MENU-01**: Menu grid (left side) scales down on mobile to not dominate the screen
-- [ ] **MENU-02**: Menu grid buttons remain tappable at reduced size (44px+ hit area)
+- [x] **MENU-01**: Menu grid (left side) scales down on mobile to not dominate the screen
+- [x] **MENU-02**: Menu grid buttons remain tappable at reduced size (44px+ hit area)
 
 ### Item Slots
 
 - [ ] **ITEM-01**: Item slots render only once on mobile (fix duplication bug -- desktop is fine)
-- [ ] **ITEM-02**: Item bar positioned at bottom edge of screen (not floating)
+- [x] **ITEM-02**: Item bar positioned at bottom edge of screen (not floating)
 
 ### HUD Overlap
 
@@ -41,10 +41,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MENU-01 | Phase 4 | Pending |
-| MENU-02 | Phase 4 | Pending |
+| MENU-01 | Phase 4 | Complete |
+| MENU-02 | Phase 4 | Complete |
 | ITEM-01 | Phase 4 | Pending |
-| ITEM-02 | Phase 4 | Pending |
+| ITEM-02 | Phase 4 | Complete |
 | HUD-01 | Phase 5 | Pending |
 | HUD-02 | Phase 5 | Pending |
 | HUD-03 | Phase 5 | Pending |

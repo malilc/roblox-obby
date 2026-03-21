@@ -90,7 +90,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Scale menu grid on mobile, reposition item bar to bottom edge, move Coins/Gems bars to top-left on mobile
+- [x] 04-01: Scale menu grid on mobile, reposition item bar to bottom edge, move Coins/Gems bars to top-left on mobile
 - [ ] 04-02: Fix item slot duplication by hiding keybind hints on mobile + visual verification checkpoint
 
 ### Phase 5: HUD Overlap Resolution
