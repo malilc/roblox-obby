@@ -68,6 +68,15 @@ function MobileInputUI:createUI()
 	self.itemEmoji2 = self:createEmojiLabel(self.itemButton2)
 	self.itemEmoji3 = self:createEmojiLabel(self.itemButton3)
 
+	-- Lower ZIndex so item buttons render BEHIND modal popups (modals use ZIndex 1+)
+	itemButtonContainer.ZIndex = 0
+	self.itemButton1.ZIndex = 0
+	self.itemButton2.ZIndex = 0
+	self.itemButton3.ZIndex = 0
+	self.itemEmoji1.ZIndex = 0
+	self.itemEmoji2.ZIndex = 0
+	self.itemEmoji3.ZIndex = 0
+
 	-- === Ultimate Buttons (ซ้ายล่าง) ===
 	local ultimateContainer = Instance.new("Frame")
 	ultimateContainer.Name = "MobileUltimateButtons"

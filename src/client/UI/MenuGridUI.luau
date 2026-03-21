@@ -19,7 +19,7 @@ local COLS = 2
 local PANEL_W = PAD * 2 + COLS * BUTTON_W + GAP         -- 172
 local PANEL_H = PAD * 2 + 4 * BUTTON_H + GAP * 3        -- 306
 local PANEL_X = 10
-local PANEL_Y_SCALE = 0.5
+local PANEL_Y_SCALE = if IS_MOBILE then 0.40 else 0.5
 local PANEL_Y_OFFSET = -math.floor(PANEL_H / 2) -- vertically centered
 
 -- Mobile-aware dimensions (0.65x scale keeps buttons >= 44px tap target)
