@@ -49,7 +49,6 @@ function CurrencyUI:createUI()
 	-- === CURRENCY DISPLAY - Gold→Amber Gradient ===
 	local currencyFrame = UIFactory.createPanel(self.parent, {
 		name = "CurrencyFrame",
-		size = UDim2.new(0, 140, 0, 44),
 		size = if IS_MOBILE then UDim2.new(0, 70, 0, 22) else UDim2.new(0, 140, 0, 44),
 		position = if IS_MOBILE then UDim2.new(0, 0, 1, -26) else UDim2.new(0, 10, 1, -52),
 		bgColor = Theme.HUD_CURRENCY_START,

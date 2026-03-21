@@ -50,7 +50,6 @@ function ScoreUI:createUI()
 	-- === GEM FRAME (top-left corner) - Purple Gradient ===
 	local gemFrame = UIFactory.createPanel(self.parent, {
 		name = "GemFrame",
-		size = UDim2.new(0, 130, 0, 44),
 		size = if IS_MOBILE then UDim2.new(0, 70, 0, 22) else UDim2.new(0, 130, 0, 44),
 		position = if IS_MOBILE then UDim2.new(0, 0, 1, -50) else UDim2.new(0, 10, 1, -100),
 		bgColor = Theme.HUD_GEM_START,
@@ -147,7 +146,6 @@ function ScoreUI:createUI()
 	-- === STAGE PROGRESS (below CurrencyUI area) ===
 	local stageFrame = Instance.new("Frame")
 	stageFrame.Name = "StageFrame"
-	stageFrame.Size = UDim2.new(0, 160, 0, 28)
 	stageFrame.Size = if IS_MOBILE then UDim2.new(0, 70, 0, 16) else UDim2.new(0, 160, 0, 28)
 	stageFrame.Position = if IS_MOBILE then UDim2.new(0, 0, 1, -66) else UDim2.new(0, 10, 1, -132)
 	stageFrame.BackgroundColor3 = Theme.BG_OVERLAY
