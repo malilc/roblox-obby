@@ -202,6 +202,16 @@ function MainUI:_syncGridButton(panelKey: string, active: boolean)
 	end
 end
 
+-- Hide/show overlay ScreenGuis (Testing, UpdateLog) to prevent them from covering modals
+function MainUI:_setOverlayButtonsVisible(visible: boolean)
+	local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+	if not playerGui then return end
+	local testingGui = playerGui:FindFirstChild("ItemTestingUI")
+	if testingGui then testingGui.Enabled = visible end
+	local updateLogGui = playerGui:FindFirstChild("UpdateLogBtnGui")
+	if updateLogGui then updateLogGui.Enabled = visible end
+end
+
 -- Hide all managed panels except the one specified
 function MainUI:_hideAllExcept(exceptKey: string)
 	for _, key in ipairs(MANAGED_PANELS) do
@@ -229,6 +239,7 @@ function MainUI:toggleMenuPanel(panelKey: string)
 
 	if panel.isVisible then
 		panel:hide()
+		self:_setOverlayButtonsVisible(true)
 	else
 		self:openMenuPanel(panelKey)
 	end
@@ -254,6 +265,9 @@ function MainUI:openMenuPanel(panelKey: string)
 	if not panel.isVisible then
 		panel:show()
 	end
+
+	-- Hide Testing/UpdateLog buttons so they don't cover the modal
+	self:_setOverlayButtonsVisible(false)
 end
 
 -- Close all managed panels (e.g. when race starts)
@@ -271,6 +285,8 @@ function MainUI:closeAllMenuPanels()
 	if self.menuGridUI then
 		self.menuGridUI:clearAllActive()
 	end
+	-- Restore Testing/UpdateLog buttons
+	self:_setOverlayButtonsVisible(true)
 end
 
 function MainUI:setupRemotes()
