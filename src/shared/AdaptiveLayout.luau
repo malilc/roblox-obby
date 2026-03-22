@@ -1,8 +1,9 @@
 --!strict
 -- CLIENT ONLY: requires Camera and GuiService (only require from client scripts)
 
--- AdaptiveLayout: pure calculation functions for viewport-aware UI scaling.
--- No runtime state, no Roblox services — safe to unit-test in isolation.
+-- AdaptiveLayout: viewport-aware UI scaling module.
+-- Pure calculation functions are safe to unit-test in isolation.
+-- Runtime layer (init, applyScale, registerHUD) requires a client environment.
 
 local AdaptiveLayout = {}
 
@@ -159,6 +160,311 @@ function AdaptiveLayout.calculateZonePositions(
     end
 
     return positions
+end
+
+-- ========== MODULE STATE ==========
+
+local camera: Camera? = nil
+local guiInsetY: number = 0
+local currentScale: number = 1.0
+local currentSafeArea = { width = 1920, height = 1080 }
+local currentViewport = { x = 1920, y = 1080 }
+local currentDeviceType: DeviceType = "Desktop"
+local initialized = false
+
+local trackedModals: {{ frame: Frame, designW: number, designH: number, uiScale: UIScale }} = {}
+local trackedHUD: {{ frame: Frame, zone: ZoneName, config: ZoneConfig, uiScale: UIScale }} = {}
+local changeCallbacks: {() -> ()} = {}
+
+-- ========== INTERNAL FUNCTIONS ==========
+
+local function _recalculate()
+    local cam = camera
+    if not cam then return end
+
+    local vp = cam.ViewportSize
+    currentViewport = { x = vp.X, y = vp.Y }
+    currentSafeArea = {
+        width  = vp.X,
+        height = vp.Y - guiInsetY,
+    }
+    currentScale       = AdaptiveLayout.calculateHUDScale(vp.X, vp.Y, guiInsetY)
+    currentDeviceType  = AdaptiveLayout.classifyDevice(vp.X, vp.Y, guiInsetY)
+end
+
+local function _cleanOrphans()
+    -- Remove modals whose frames have been destroyed
+    for i = #trackedModals, 1, -1 do
+        if trackedModals[i].frame.Parent == nil then
+            table.remove(trackedModals, i)
+        end
+    end
+    -- Remove HUD entries whose frames have been destroyed
+    for i = #trackedHUD, 1, -1 do
+        if trackedHUD[i].frame.Parent == nil then
+            table.remove(trackedHUD, i)
+        end
+    end
+end
+
+local function _compensateStrokesInternal(frame: Frame, scale: number)
+    -- Walk all UIStroke descendants, store original thickness on first call,
+    -- then set thickness = original * scale so strokes stay visually consistent.
+    for _, desc in ipairs(frame:GetDescendants()) do
+        if desc:IsA("UIStroke") then
+            local stroke = desc :: UIStroke
+            -- Store original thickness once via attribute
+            if stroke:GetAttribute("_originalThickness") == nil then
+                stroke:SetAttribute("_originalThickness", stroke.Thickness)
+            end
+            local original = stroke:GetAttribute("_originalThickness") :: number
+            stroke.Thickness = original * scale
+        end
+    end
+end
+
+local function _updateModalScales()
+    for _, entry in ipairs(trackedModals) do
+        if entry.frame.Parent ~= nil then
+            -- Use raw viewport (not safe area) — modal height margins handle inset separately
+            local scale = AdaptiveLayout.calculateModalScale(
+                currentViewport.x,
+                currentViewport.y,
+                guiInsetY,
+                entry.designW,
+                entry.designH
+            )
+            entry.uiScale.Scale = scale
+            _compensateStrokesInternal(entry.frame, scale)
+        end
+    end
+end
+
+local function _updateHUDPositions()
+    -- Group tracked HUD entries by zone name
+    local byZone: { [ZoneName]: {{ frame: Frame, zone: ZoneName, config: ZoneConfig, uiScale: UIScale }} } = {}
+    for _, entry in ipairs(trackedHUD) do
+        if entry.frame.Parent ~= nil then
+            if not byZone[entry.zone] then
+                byZone[entry.zone] = {}
+            end
+            table.insert(byZone[entry.zone], entry)
+        end
+    end
+
+    -- For each zone, build the elements array and calculate positions
+    for zoneName, entries in pairs(byZone) do
+        local calcElements: { { order: number, designWidth: number, designHeight: number, padding: number, visible: boolean } } = {}
+        for _, entry in ipairs(entries) do
+            local dw = entry.config.designWidth  or entry.frame.AbsoluteSize.X
+            local dh = entry.config.designHeight or entry.frame.AbsoluteSize.Y
+            table.insert(calcElements, {
+                order       = entry.config.order,
+                designWidth = dw,
+                designHeight= dh,
+                padding     = entry.config.padding or 8,
+                visible     = entry.frame.Visible,
+            })
+        end
+
+        local positions = AdaptiveLayout.calculateZonePositions(
+            zoneName,
+            calcElements,
+            currentScale,
+            currentSafeArea.width,
+            currentSafeArea.height
+        )
+
+        -- Sort entries the same way (by order) so index alignment is correct
+        table.sort(entries, function(a, b) return a.config.order < b.config.order end)
+
+        -- Apply positions — positions array only contains entries for visible elements,
+        -- so we must re-iterate and match by visible flag the same way calculateZonePositions does
+        local posIdx = 0
+        for _, entry in ipairs(entries) do
+            entry.uiScale.Scale = currentScale
+            if entry.frame.Visible then
+                posIdx = posIdx + 1
+                local pos = positions[posIdx]
+                if pos then
+                    entry.frame.AnchorPoint = Vector2.new(pos.anchorX, pos.anchorY)
+                    entry.frame.Position    = UDim2.new(pos.anchorX, pos.x, pos.anchorY, pos.y)
+                end
+            end
+        end
+    end
+end
+
+local function _updateAll()
+    _cleanOrphans()
+    _recalculate()
+    _updateModalScales()
+    _updateHUDPositions()
+    -- Notify all change listeners on separate threads to avoid re-entrancy issues
+    for _, cb in ipairs(changeCallbacks) do
+        task.spawn(cb)
+    end
+end
+
+-- ========== PUBLIC API ==========
+
+-- AdaptiveLayout.init
+-- Must be called once from a client script (e.g. MainUI) before using any
+-- runtime features. Grabs the Camera and GuiService inset, then listens for
+-- viewport changes so all registered elements stay up-to-date automatically.
+function AdaptiveLayout.init()
+    if initialized then return end
+    initialized = true
+
+    local GuiService = game:GetService("GuiService")
+    local inset = GuiService:GetGuiInset()
+    guiInsetY = inset.Y
+
+    -- Workspace.CurrentCamera may not exist yet on very early startup
+    local Workspace = game:GetService("Workspace")
+    camera = Workspace.CurrentCamera
+    if not camera then
+        Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+            camera = Workspace.CurrentCamera
+            _recalculate()
+        end)
+    end
+
+    _recalculate()
+
+    -- Listen for viewport size changes (window resize, device rotation)
+    if camera then
+        camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+            -- Yield one frame so AbsoluteSize values are settled before recalculating
+            task.wait()
+            _updateAll()
+        end)
+    end
+end
+
+-- AdaptiveLayout.getScale
+-- Returns the current HUD scale factor (updated whenever the viewport changes).
+function AdaptiveLayout.getScale(): number
+    return currentScale
+end
+
+-- AdaptiveLayout.getSafeArea
+-- Returns the usable screen dimensions with the GUI inset already subtracted.
+function AdaptiveLayout.getSafeArea(): { width: number, height: number }
+    return { width = currentSafeArea.width, height = currentSafeArea.height }
+end
+
+-- AdaptiveLayout.getDeviceType
+-- Returns the classified device type for the current viewport.
+function AdaptiveLayout.getDeviceType(): DeviceType
+    return currentDeviceType
+end
+
+-- AdaptiveLayout.onChanged
+-- Registers a callback that fires whenever the viewport changes or a layout
+-- update is triggered. Returns an unsubscribe function.
+function AdaptiveLayout.onChanged(callback: () -> ()): () -> ()
+    table.insert(changeCallbacks, callback)
+    return function()
+        for i, cb in ipairs(changeCallbacks) do
+            if cb == callback then
+                table.remove(changeCallbacks, i)
+                break
+            end
+        end
+    end
+end
+
+-- AdaptiveLayout.applyScale
+-- Attaches a UIScale to `frame` sized so the modal fits the current viewport.
+-- Tracks the frame for future viewport-change updates and compensates UIStrokes.
+function AdaptiveLayout.applyScale(frame: Frame, designW: number, designH: number)
+    -- Reuse an existing AdaptiveScale if one was already applied
+    local existing = frame:FindFirstChild("AdaptiveScale")
+    local uiScale: UIScale
+    if existing and existing:IsA("UIScale") then
+        uiScale = existing :: UIScale
+    else
+        uiScale = Instance.new("UIScale")
+        uiScale.Name   = "AdaptiveScale"
+        uiScale.Parent = frame
+    end
+
+    local scale = AdaptiveLayout.calculateModalScale(
+        currentViewport.x,
+        currentViewport.y,
+        guiInsetY,
+        designW,
+        designH
+    )
+    uiScale.Scale = scale
+
+    -- Track for future updates
+    table.insert(trackedModals, {
+        frame   = frame,
+        designW = designW,
+        designH = designH,
+        uiScale = uiScale,
+    })
+
+    _compensateStrokesInternal(frame, scale)
+end
+
+-- AdaptiveLayout.registerHUD
+-- Registers a HUD frame into a named zone for automatic stacking and scaling.
+-- Returns an unregister function that removes the frame from tracking.
+function AdaptiveLayout.registerHUD(frame: Frame, zone: ZoneName, config: ZoneConfig): () -> ()
+    -- Reuse an existing scale instance if present
+    local existing = frame:FindFirstChild("AdaptiveHUDScale")
+    local uiScale: UIScale
+    if existing and existing:IsA("UIScale") then
+        uiScale = existing :: UIScale
+    else
+        uiScale = Instance.new("UIScale")
+        uiScale.Name   = "AdaptiveHUDScale"
+        uiScale.Parent = frame
+    end
+
+    local entry = {
+        frame   = frame,
+        zone    = zone,
+        config  = config,
+        uiScale = uiScale,
+    }
+    table.insert(trackedHUD, entry)
+
+    -- When the element hides or shows, recalculate zone stacking
+    local visConn = frame:GetPropertyChangedSignal("Visible"):Connect(function()
+        _updateHUDPositions()
+    end)
+
+    -- Perform an immediate layout pass
+    _updateHUDPositions()
+
+    -- Return unregister function
+    return function()
+        visConn:Disconnect()
+        AdaptiveLayout.unregisterHUD(frame)
+    end
+end
+
+-- AdaptiveLayout.unregisterHUD
+-- Removes a frame from HUD tracking, destroys its UIScale, and re-runs layout.
+function AdaptiveLayout.unregisterHUD(frame: Frame)
+    for i, entry in ipairs(trackedHUD) do
+        if entry.frame == frame then
+            entry.uiScale:Destroy()
+            table.remove(trackedHUD, i)
+            break
+        end
+    end
+    _updateHUDPositions()
+end
+
+-- AdaptiveLayout.compensateStrokes
+-- Public wrapper: re-applies stroke-thickness compensation at the current scale.
+function AdaptiveLayout.compensateStrokes(frame: Frame)
+    _compensateStrokesInternal(frame, currentScale)
 end
 
 return AdaptiveLayout
