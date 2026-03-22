@@ -35,13 +35,18 @@
 
 ```lua
 ViewportSize = Camera.ViewportSize
-GuiInset = GuiService:GetGuiInset()  -- top bar (48px on mobile)
+GuiInset = GuiService:GetGuiInset()  -- Roblox top bar (health, backpack etc.)
 
 SafeArea = {
     width  = ViewportSize.X,
     height = ViewportSize.Y - GuiInset.Y,
 }
 ```
+
+**หมายเหตุ CoreUISafeInsets:** MainUI ตั้ง `ScreenGui.ScreenInsets = CoreUISafeInsets` ซึ่ง Roblox จะ
+ตัด notch/Dynamic Island/status bar ออกจาก coordinate space ให้แล้ว การลบ `GuiInset.Y` เพิ่มเติม
+คือเพื่อเว้นพื้นที่ Roblox top bar (health, backpack) ที่อยู่ **ภายใน** safe area ไม่ใช่ double-count
+ต้องทดสอบบน iPhone 14 Pro (Dynamic Island) เพื่อยืนยันว่า safe area ไม่เล็กเกินจริง
 
 ### Scale Formula
 
@@ -60,6 +65,14 @@ scale = math.clamp(
 - สูตรเดียวใช้ทั้ง modal + HUD
 - Continuous — ไม่มี hardcoded breakpoint
 - MIN_SCALE = 0.4 ป้องกันเล็กจนอ่านไม่ออก
+- **หมายเหตุ:** บน phone ส่วนใหญ่ scale จะชน MIN_SCALE (0.4) เพราะ width ratio ต่ำมาก
+  (เช่น iPhone SE: 375/1920 = 0.195 → clamp เป็น 0.4) — นี่คือ behavior ที่ตั้งใจ
+
+### Client-Only Module
+
+แม้ไฟล์อยู่ใน `src/shared/` (ตาม convention ของ ResponsiveScale เดิม) แต่ module นี้ใช้ client-only
+APIs (`workspace.CurrentCamera`, `GuiService`) — **ต้อง require จาก client scripts เท่านั้น**
+ใส่ comment ที่หัวไฟล์: `-- CLIENT ONLY: requires Camera and GuiService`
 
 ### Device Type (metadata hint, ไม่ใช่ breakpoint)
 
@@ -84,18 +97,39 @@ end)
 - `init()` เรียกครั้งเดียวจาก `MainUI.luau`
 - ทุก element register ผ่าน callback
 
-### Public API
+### Public API & Types
 
 ```lua
-AdaptiveLayout.init()                                  -- เรียกครั้งเดียว
-AdaptiveLayout.getScale() -> number                    -- scale ปัจจุบัน
+export type DeviceType = "Phone" | "Tablet" | "Desktop"
+
+export type ZoneName = "TopLeft" | "TopCenter" | "TopRight"
+    | "BottomLeft" | "BottomCenter" | "BottomRight"
+
+export type ZoneConfig = {
+    order: number,              -- ลำดับใน zone (1 = ชิดขอบสุด)
+    padding: number?,           -- ระยะห่าง (default 8)
+    direction: ("Up" | "Down")?, -- stack direction (default จาก zone)
+    designWidth: number?,       -- ขนาด design สำหรับคำนวณ stacking
+    designHeight: number?,      -- (ถ้าไม่ใส่ ใช้ frame.AbsoluteSize)
+}
+
+AdaptiveLayout.init()                                       -- เรียกครั้งเดียว
+AdaptiveLayout.getScale() -> number                         -- scale ปัจจุบัน
 AdaptiveLayout.getSafeArea() -> {width: number, height: number}
-AdaptiveLayout.getDeviceType() -> "Phone" | "Tablet" | "Desktop"
-AdaptiveLayout.onChanged(callback: () -> ())           -- register listener
-AdaptiveLayout.applyScale(frame, designW, designH)     -- สำหรับ modals
-AdaptiveLayout.registerHUD(frame, zone, config)        -- สำหรับ HUD
-AdaptiveLayout.compensateStrokes(frame)                -- UIStroke fix
+AdaptiveLayout.getDeviceType() -> DeviceType
+AdaptiveLayout.onChanged(callback: () -> ()) -> () -> ()    -- returns unsubscribe fn
+AdaptiveLayout.applyScale(frame, designW, designH)          -- สำหรับ modals
+AdaptiveLayout.registerHUD(frame, zone, config) -> () -> () -- returns unregister fn
+AdaptiveLayout.unregisterHUD(frame)                         -- explicit cleanup
+AdaptiveLayout.compensateStrokes(frame)                     -- UIStroke fix
 ```
+
+### Cleanup / Unregister
+
+- `registerHUD()` return ฟังก์ชัน unregister — เรียกเมื่อ element ถูก destroy
+- `unregisterHUD(frame)` สำหรับ explicit cleanup
+- ระบบตรวจ orphaned entries (frame.Parent == nil) อัตโนมัติทุกรอบ viewport change
+  และลบออกจาก zone — ป้องกัน stale references
 
 ---
 
@@ -114,13 +148,27 @@ AdaptiveLayout.compensateStrokes(frame)                -- UIStroke fix
 └──────────────────────────────────┘
 ```
 
+### Zone Anchoring & Position
+
+แต่ละ zone มี anchor point และ starting position ที่ชัดเจน:
+
+| Zone | AnchorPoint | Starting Position | Default Direction |
+|------|-------------|-------------------|-------------------|
+| TopLeft | (0, 0) | (0, padding, 0, padding) | Down |
+| TopCenter | (0.5, 0) | (0.5, 0, 0, padding) | Down |
+| TopRight | (1, 0) | (1, -padding, 0, padding) | Down |
+| BottomLeft | (0, 1) | (0, padding, 1, -padding) | Up |
+| BottomCenter | (0.5, 1) | (0.5, 0, 1, -padding) | Up |
+| BottomRight | (1, 1) | (1, -padding, 1, -padding) | Up |
+
 ### Zone Registration
 
 ```lua
-AdaptiveLayout.registerHUD(gemsFrame, "TopLeft", {
-    order = 1,           -- ลำดับใน zone (1 = ชิดขอบสุด)
-    padding = 8,         -- ระยะห่างระหว่าง elements
-    direction = "Down",  -- stack direction
+AdaptiveLayout.registerHUD(gemsFrame, "BottomLeft", {
+    order = 1,              -- ลำดับใน zone (1 = ชิดขอบสุด)
+    padding = 8,            -- ระยะห่างระหว่าง elements
+    designWidth = 130,      -- ใช้คำนวณ stacking (ไม่พึ่ง AbsoluteSize)
+    designHeight = 44,
 })
 ```
 
@@ -129,28 +177,50 @@ AdaptiveLayout.registerHUD(gemsFrame, "TopLeft", {
 Elements ใน zone เดียวกัน stack อัตโนมัติตาม order:
 
 ```
-TopLeft (direction = Down):
-  ┌─ Gems (order=1)    Y = padding
-  ├─ Coins (order=2)   Y = gems.bottom + padding
-  └─ Stage (order=3)   Y = coins.bottom + padding
+BottomLeft (direction = Up):
+  ┌─ Stage (order=3)   Y = gems.top - padding
+  ├─ Coins (order=2)   Y = stage.top - padding
+  └─ Gems (order=1)    Y = bottom - padding  (ชิดล่างสุด)
 
 BottomCenter (direction = Up):
   └─ ItemBar (order=1)  Y = bottom - padding
 ```
 
-ระบบคำนวณ position จาก actual size ของ element ก่อนหน้า × scale
+**สำคัญ:** ระบบคำนวณ position จาก `designSize * scale` (**ไม่ใช่** `AbsoluteSize`)
+เพราะ `AbsoluteSize` อาจ stale 1 frame หลัง UIScale เปลี่ยน — ใช้ค่าที่คำนวณได้ทันทีเพื่อความแม่นยำ
+
+### Zone Recalculation Triggers
+
+Zone positions ถูกคำนวณใหม่เมื่อ:
+1. **Viewport เปลี่ยน** — ผ่าน Camera listener
+2. **Element visibility เปลี่ยน** — `Visible = false` จะถูก skip ในการ stack
+3. **Element ถูก register/unregister** — เพิ่ม/ลบ element จาก zone
+
+Elements ที่ `Visible = false` จะไม่ถูกนับใน stacking — elements ถัดไปจะขยับเข้ามาแทนที่
 
 ### Zone Assignments
 
 | Element | Zone | Order | Direction |
 |---------|------|-------|-----------|
-| Gems (ScoreUI) | TopLeft | 1 | Down |
-| Coins (CurrencyUI) | TopLeft | 2 | Down |
-| Stage Counter | TopLeft | 3 | Down |
-| Menu Grid | BottomLeft | 1 | Up |
+| Gems (ScoreUI) | BottomLeft | 1 | Up |
+| Coins (CurrencyUI) | BottomLeft | 2 | Up |
+| Stage Counter | BottomLeft | 3 | Up |
+| Menu Grid | BottomLeft | 4 | Up |
 | Item Bar | BottomCenter | 1 | Up |
-| Rankings | TopRight | 1 | Down |
+| Rankings (Spectator) | TopRight | 1 | Down |
+| Rankings (MatchLobby) | TopRight | 1 | Down |
 | Spectate Prompt | BottomCenter | 2 | Up |
+
+**หมายเหตุ:** Gems/Coins/Stage อยู่ **BottomLeft** (ตรงกับตำแหน่งปัจจุบัน) ไม่ใช่ TopLeft
+
+### Elements ที่ไม่อยู่ใน Zone System
+
+| Element | เหตุผล |
+|---------|--------|
+| TimerFrame (ScoreUI) | อยู่ TopCenter ตายตัว, ไม่ต้อง stack กับอะไร — ใช้ HUD scale ตรงๆ |
+| Notifications (TimeWarning, Death, Invite) | Transient labels ขนาดเล็ก, ใช้ relative position (0.5, X) อยู่แล้ว |
+| ItemUI on mobile | ซ่อนถาวร (`Visible = false`) — MobileInputUI ทำหน้าที่แทน |
+| LeaderboardUI | Server-side SurfaceGui, ไม่ใช่ ScreenGui |
 
 ### Phone-Specific Adjustments
 
@@ -214,17 +284,42 @@ AdaptiveLayout.compensateStrokes(frame)
 
 ### ไฟล์ที่แก้ไข
 
+**Modal panels (เปลี่ยน ResponsiveScale → AdaptiveLayout.applyScale):**
+
 | ไฟล์ | เปลี่ยนอะไร |
 |------|------------|
 | `MainUI.luau` | `ResponsiveScale.init()` → `AdaptiveLayout.init()` |
-| `UIFactory.luau` | เปลี่ยนเป็น `AdaptiveLayout.applyScale()` |
-| 9 Modal panels | เปลี่ยน require + เรียก `applyScale` แทน |
-| `ScoreUI.luau` | ลบ viewport listener → `registerHUD("TopLeft", order=1)` |
-| `CurrencyUI.luau` | ลบ viewport listener → `registerHUD("TopLeft", order=2)` |
+| `UIFactory.luau` | `ResponsiveScale.applyToFrame()` → `AdaptiveLayout.applyScale()` |
+| `ClassSelectionUI.luau` | เปลี่ยน require + applyScale |
+| `DailyBonusUI.luau` | เปลี่ยน require + applyScale |
+| `FeedbackUI.luau` | เปลี่ยน require + applyScale |
+| `MatchLobbyUI.luau` | เปลี่ยน require + applyScale (modal container) |
+| `RaceResultsUI.luau` | เปลี่ยน require + applyScale |
+| `SettingsUI.luau` | เปลี่ยน require + applyScale |
+| `ShopUI.luau` | เปลี่ยน require + applyScale |
+| `StageSelectionUI.luau` | เปลี่ยน require + applyScale |
+| `SummaryUI.luau` | เปลี่ยน require + applyScale |
+| `TitleCollectionUI.luau` | เปลี่ยน require + applyScale |
+| `TutorialUI.luau` | เปลี่ยน require + applyScale |
+
+**HUD elements (ลบ viewport listeners → registerHUD):**
+
+| ไฟล์ | เปลี่ยนอะไร |
+|------|------------|
+| `ScoreUI.luau` | ลบ viewport listener → `registerHUD("BottomLeft", order=1)` |
+| `CurrencyUI.luau` | ลบ viewport listener → `registerHUD("BottomLeft", order=2)` |
 | `SpectatorUI.luau` | ลบ 3 UIScale instances → `registerHUD` per element |
-| `MatchLobbyUI.luau` | ลบ custom UIScale → `registerHUD("TopRight")` |
-| `MenuGridUI.luau` | ลบ viewport listener → `registerHUD("BottomLeft")` |
+| `MatchLobbyUI.luau` | ลบ custom UIScale rankings → `registerHUD("TopRight")` |
+| `MenuGridUI.luau` | ลบ viewport listener → `registerHUD("BottomLeft", order=4)` |
 | `ItemBarUI.luau` | `registerHUD("BottomCenter")` |
+
+**Cleanup:**
+
+| ไฟล์ | เปลี่ยนอะไร |
+|------|------------|
+| `LeaderboardUI.luau` | ลบ commented-out ResponsiveScale imports |
+
+**หมายเหตุ:** MatchLobbyUI อยู่ **ทั้ง 2 กลุ่ม** — modal container ใช้ applyScale, rankings panel ใช้ registerHUD
 
 ### ไฟล์ที่ลบ
 
@@ -234,27 +329,46 @@ AdaptiveLayout.compensateStrokes(frame)
 ### Migration Order
 
 1. สร้าง `AdaptiveLayout.luau` + unit tests
-2. Modals — เปลี่ยน UIFactory + 9 panels
+2. Modals — เปลี่ยน UIFactory + 12 panels (ทีละไฟล์ ทดสอบผ่าน MCP)
 3. HUD ทีละตัว — ScoreUI → CurrencyUI → MenuGrid → ItemBar → SpectatorUI → MatchLobbyUI
-4. ลบ ResponsiveScale หลังทุก reference หายหมด
+4. ลบ ResponsiveScale — **ก่อนลบ ต้อง grep `ResponsiveScale` ใน src/ ยืนยัน 0 references**
 5. ทดสอบบน Device Emulator + Roblox Studio MCP
 
-### Testing Plan (Roblox Studio MCP)
+### Testing Plan
 
-**ระหว่าง Development:**
+#### Unit Tests (`AdaptiveLayout.spec.luau`)
+
+1. **Scale calculation** — phone (375×667), tablet (810×1080), desktop (1920×1080)
+2. **Modal scale with margin** — 780×580 modal on phone, tablet, desktop
+3. **MIN_SCALE floor** — verify scale never goes below 0.4
+4. **MAX_SCALE cap** — verify scale never exceeds 1.0
+5. **Device type classification** — thresholds 500/900
+6. **Zone stacking positions** — 3 elements in BottomLeft, verify Y offsets
+7. **Zone skip invisible** — element with Visible=false, verify stacking skips it
+8. **Stroke compensation** — idempotent, correct thickness at various scales
+9. **Orphan cleanup** — unparented frame removed from tracking
+10. **Unregister** — removed element recalculates zone positions
+
+#### Roblox Studio MCP (ระหว่าง Development)
+
 - `screen_capture` — ถ่าย screenshot ดู UI ผลลัพธ์
 - `execute_luau` — ทดสอบ scale calculation, ตรวจ UIScale values
 - `inspect_instance` — ตรวจ properties (Size, Position, UIScale)
 - `start_stop_play` — Play test บน Device Emulator
 
-**Device Emulator ขนาดทดสอบ:**
+#### Device Emulator ขนาดทดสอบ
+
 - iPhone SE (375×667) — จอเล็กสุด
 - iPhone 14 (390×844) — phone ยอดนิยม
+- iPhone 14 Pro Max (430×932) — phone จอยาว + Dynamic Island (ทดสอบ CoreUISafeInsets)
 - iPad (810×1080) — tablet
+- iPad landscape (1080×810) — width > height, ทดสอบ constraint axis ต่าง
 - Desktop 1920×1080 — baseline
 
-**เกณฑ์ผ่าน:**
+#### เกณฑ์ผ่าน
+
 - Modal ไม่ล้นจอทุกขนาด
 - HUD ไม่ซ้อนทับกัน
 - Scale สม่ำเสมอ ดูเป็นธรรมชาติ
 - Device Emulator ≈ มือถือจริง
+- UIStroke ไม่หนาเกินสัดส่วนบนจอเล็ก
