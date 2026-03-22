@@ -7,7 +7,7 @@ local TweenService = game:GetService("TweenService")
 
 local RemoteRegistry = require(ReplicatedStorage.Shared.RemoteRegistry)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local ScoreUI = require(script.Parent.ScoreUI)
 local ItemUI = require(script.Parent.ItemUI)
@@ -65,7 +65,7 @@ function MainUI.new()
 	self.screenGui = screenGui
 
 	-- Initialize responsive scaling system (per D-02: single viewport listener)
-	ResponsiveScale.init()
+	AdaptiveLayout.init()
 
 	-- Create UI components
 	self.scoreUI = ScoreUI.new(screenGui)

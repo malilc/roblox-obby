@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local UIFactory = {}
 
@@ -237,7 +237,7 @@ function UIFactory.createModal(parent: GuiObject, options: {
 	-- Auto-apply responsive scaling to modal panel (per D-09)
 	-- Opt out via options.responsive == false
 	if options.responsive ~= false then
-		ResponsiveScale.applyToFrame(
+		AdaptiveLayout.applyScale(
 			panel,
 			options.size.X.Offset,
 			options.size.Y.Offset
