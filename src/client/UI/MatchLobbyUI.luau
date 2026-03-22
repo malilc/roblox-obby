@@ -406,6 +406,16 @@ function MatchLobbyUI:createRaceTimerUI()
 	timerTextStroke.Thickness = 1.5
 	timerTextStroke.Transparency = 0.4
 	timerTextStroke.Parent = timerLabel
+
+	-- Adaptive HUD scaling for race timer (not in a zone, scaled directly)
+	local raceTimerUIScale = Instance.new("UIScale")
+	raceTimerUIScale.Name = "AdaptiveHUDScale"
+	raceTimerUIScale.Scale = AdaptiveLayout.getScale()
+	raceTimerUIScale.Parent = timerFrame
+
+	AdaptiveLayout.onChanged(function()
+		raceTimerUIScale.Scale = AdaptiveLayout.getScale()
+	end)
 end
 
 function MatchLobbyUI:createTimeWarningUI()
@@ -508,25 +518,13 @@ function MatchLobbyUI:createRaceRankingUI()
 	rankHeaderCorner.CornerRadius = Theme.CORNER_SM
 	rankHeaderCorner.Parent = rankHeader
 
-	-- Mobile scaling for race rankings
-	local camera = workspace.CurrentCamera
-	local rankUIScale = Instance.new("UIScale")
-	rankUIScale.Scale = 1
-	rankUIScale.Parent = rankFrame
-
-	local function updateRankLayout()
-		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
-		if isMobile then
-			rankUIScale.Scale = 0.5
-			rankFrame.Position = UDim2.new(1, -6, 0, 50)
-		else
-			rankUIScale.Scale = 1
-			rankFrame.Position = UDim2.new(1, -10, 0, 70)
-		end
-	end
-	updateRankLayout()
-	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateRankLayout)
-	self.rankUIScale = rankUIScale
+	-- Register race rankings panel with AdaptiveLayout zone
+	AdaptiveLayout.registerHUD(rankFrame, "TopRight", {
+		order = 1,
+		padding = 8,
+		designWidth = 190,
+		designHeight = 300,
+	})
 
 	-- Rankings list
 	local rankList = Instance.new("Frame")
@@ -864,9 +862,7 @@ function MatchLobbyUI:updateRankingsList(rankings, yourRank: number)
 	end
 
 	-- Show top 3 on mobile, top 8 on desktop
-	local camera = workspace.CurrentCamera
-	local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
-	local maxEntries = if isMobile then 3 else 8
+	local maxEntries = if AdaptiveLayout.getDeviceType() == "Phone" then 3 else 8
 	local showCount = math.min(#rankings, maxEntries)
 
 	-- Resize panel to fit content (header 35 + entries * 36 + padding 10)

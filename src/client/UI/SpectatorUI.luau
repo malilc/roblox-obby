@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 
 local SpectatorCamera = require(script.Parent.Parent.SpectatorCamera)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -33,7 +34,6 @@ function SpectatorUI.new(parent: ScreenGui)
 	self.activePlayers = {} :: {Player}
 	self.selectedPlayerIndex = 1
 	self.rankingEntries = {}
-	self.isMobile = false
 
 	self:createUI()
 	self:setupRemotes()
@@ -310,43 +310,27 @@ function SpectatorUI:createUI()
 	leaveBtn.BackgroundColor3 = Theme.BG_SURFACE
 	leaveBtn.TextColor3 = Theme.DANGER
 
-	-- Mobile layout: viewport-based UIScale for HUD elements (not modal-style ResponsiveScale)
-	-- Same proven pattern from Phase 4 (ScoreUI, CurrencyUI)
-	local camera = workspace.CurrentCamera
+	-- Register HUD elements with AdaptiveLayout zones
+	AdaptiveLayout.registerHUD(self.rankingsPanel, "TopRight", {
+		order = 1,
+		padding = 8,
+		designWidth = RANKINGS_W,
+		designHeight = RANKINGS_H,
+	})
 
-	local rankUIScale = Instance.new("UIScale")
-	rankUIScale.Scale = 1
-	rankUIScale.Parent = self.rankingsPanel
+	AdaptiveLayout.registerHUD(self.promptContainer, "BottomCenter", {
+		order = 2,
+		padding = 8,
+		designWidth = PROMPT_W,
+		designHeight = PROMPT_H,
+	})
 
-	local promptUIScale = Instance.new("UIScale")
-	promptUIScale.Scale = 1
-	promptUIScale.Parent = self.promptContainer
-
-	local controlUIScale = Instance.new("UIScale")
-	controlUIScale.Scale = 1
-	controlUIScale.Parent = controlBar
-
-	local function updateMobileLayout()
-		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
-		self.isMobile = isMobile
-		if isMobile then
-			-- Rankings: scale down + reposition to top-left away from item buttons and jump button
-			rankUIScale.Scale = 0.55
-			self.rankingsPanel.Position = UDim2.new(0, 6, 0, 50)
-			-- Prompt: scale down for mobile
-			promptUIScale.Scale = 0.7
-			-- Control bar: scale down for mobile
-			controlUIScale.Scale = 0.7
-		else
-			-- Desktop: original sizes and positions
-			rankUIScale.Scale = 1.0
-			self.rankingsPanel.Position = UDim2.new(0, 10, 0, 60)
-			promptUIScale.Scale = 1.0
-			controlUIScale.Scale = 1.0
-		end
-	end
-	updateMobileLayout()
-	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateMobileLayout)
+	AdaptiveLayout.registerHUD(controlBar, "BottomCenter", {
+		order = 3,
+		padding = 8,
+		designWidth = CONTROL_W,
+		designHeight = CONTROL_H,
+	})
 end
 
 function SpectatorUI:createControlButton(parent: Frame, name: string, label: string, order: number, callback: () -> ()): TextButton
@@ -525,7 +509,7 @@ function SpectatorUI:updateRankings(data: {[string]: any})
 	self.rankingEntries = {}
 
 	-- Create ranking entries (limit to top 3 on mobile per D-01)
-	local maxEntries = if self.isMobile then 3 else #self.latestRankings
+	local maxEntries = if AdaptiveLayout.getDeviceType() == "Phone" then 3 else #self.latestRankings
 	for i = 1, math.min(#self.latestRankings, maxEntries) do
 		local ranking = self.latestRankings[i]
 		local entry = Instance.new("TextLabel")
