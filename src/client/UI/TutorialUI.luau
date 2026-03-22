@@ -5,7 +5,7 @@ local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local TutorialUI = {}
 TutorialUI.__index = TutorialUI
@@ -251,8 +251,7 @@ function TutorialUI:createUI()
 	self.contentLabel = contentLabel
 
 	-- Responsive scaling (Phase 2)
-	local uiScale = ResponsiveScale.applyToFrame(self.panel, PANEL_W, PANEL_H)
-	ResponsiveScale.compensateStrokes(self.panel, uiScale.Scale)
+	AdaptiveLayout.applyScale(self.panel, PANEL_W, PANEL_H)
 end
 
 function TutorialUI:selectTab(index: number)

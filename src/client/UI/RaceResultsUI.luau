@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local PANEL_W = 450
 local PANEL_H = 500
@@ -208,8 +208,7 @@ function RaceResultsUI:createUI()
 	end)
 
 	-- Responsive scaling (Phase 3)
-	local uiScale = ResponsiveScale.applyToFrame(container, PANEL_W, PANEL_H)
-	ResponsiveScale.compensateStrokes(container, uiScale.Scale)
+	AdaptiveLayout.applyScale(container, PANEL_W, PANEL_H)
 	self.uiScale = uiScale
 end
 

@@ -6,7 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local PANEL_W = 580
 local PANEL_H = 480
@@ -624,8 +624,7 @@ function StageSelectionUI:createUI()
 	end)
 
 	-- Responsive scaling (Phase 3)
-	local uiScale = ResponsiveScale.applyToFrame(self.mainFrame, PANEL_W, PANEL_H)
-	ResponsiveScale.compensateStrokes(self.mainFrame, uiScale.Scale)
+	AdaptiveLayout.applyScale(self.mainFrame, PANEL_W, PANEL_H)
 	self.uiScale = uiScale
 
 	-- Initialize default tab

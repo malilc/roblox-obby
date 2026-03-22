@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local COLORS = {
 	GOLD        = Theme.PRIMARY,
@@ -547,8 +547,7 @@ function DailyBonusUI:showCalendar(data)
 	btnLabel.Parent = actionBtn
 
 	-- Responsive scaling (Phase 2) — applied per-show per D-07
-	local uiScale = ResponsiveScale.applyToFrame(panel, PANEL_W, PANEL_H)
-	ResponsiveScale.compensateStrokes(panel, uiScale.Scale)
+	AdaptiveLayout.applyScale(panel, PANEL_W, PANEL_H)
 
 	-- === ANIMATE IN (fade only, same as other Group 1 panels) ===
 	-- overlay removed — no dark background (matches other panels)

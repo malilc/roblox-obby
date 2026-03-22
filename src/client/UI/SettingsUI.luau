@@ -6,7 +6,7 @@ local TweenService = game:GetService("TweenService")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 local UIFactory = require(script.Parent.UIFactory)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local SettingsUI = {}
 SettingsUI.__index = SettingsUI
@@ -44,7 +44,7 @@ function SettingsUI:_build()
 		strokeWeight = "thin",
 		visible = false,
 	})
-	ResponsiveScale.applyToFrame(self.container, PANEL_W, PANEL_H)
+	AdaptiveLayout.applyScale(self.container, PANEL_W, PANEL_H)
 
 	-- Title
 	UIFactory.createLabel(self.container, {

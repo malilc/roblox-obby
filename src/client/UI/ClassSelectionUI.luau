@@ -6,7 +6,7 @@ local TweenService = game:GetService("TweenService")
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -483,8 +483,7 @@ function ClassSelectionUI:createUI()
 	end
 
 	-- Responsive scaling (Phase 2)
-	local uiScale = ResponsiveScale.applyToFrame(self.container, PANEL_W, PANEL_H)
-	ResponsiveScale.compensateStrokes(self.container, uiScale.Scale)
+	AdaptiveLayout.applyScale(self.container, PANEL_W, PANEL_H)
 end
 
 -- ── Class List Item (left sidebar) ──

@@ -6,7 +6,7 @@ local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local PANEL_W = 400
 local PANEL_H = 500
@@ -316,9 +316,8 @@ function MatchLobbyUI:createUI()
 	leaveStroke.Parent = leaveBtn
 
 	-- Responsive scaling (Phase 3)
-	local uiScale = ResponsiveScale.applyToFrame(container, PANEL_W, PANEL_H)
-	ResponsiveScale.compensateStrokes(container, uiScale.Scale)
-	self.uiScale = uiScale
+	AdaptiveLayout.applyScale(container, PANEL_W, PANEL_H)
+	self.uiScale = container:FindFirstChild("AdaptiveScale") :: UIScale
 
 	-- Setup button events
 	self:setupButtonEvents()

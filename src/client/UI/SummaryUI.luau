@@ -8,7 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local StageInfo = require(ReplicatedStorage.Shared.StageInfo)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local PANEL_W = 400
 local PANEL_H = 520
@@ -511,8 +511,7 @@ function SummaryUI:createUI()
 	end)
 
 	-- Responsive scaling (Phase 3)
-	local uiScale = ResponsiveScale.applyToFrame(mainFrame, PANEL_W, PANEL_H)
-	ResponsiveScale.compensateStrokes(mainFrame, uiScale.Scale)
+	AdaptiveLayout.applyScale(mainFrame, PANEL_W, PANEL_H)
 	self.uiScale = uiScale
 end
 

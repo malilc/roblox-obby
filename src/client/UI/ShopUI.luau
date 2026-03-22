@@ -10,7 +10,7 @@ local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
 local ClassTypes = require(ReplicatedStorage.Shared.ClassTypes)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 local RemoteRegistry = require(ReplicatedStorage.Shared.RemoteRegistry)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local ShopUI = {}
 ShopUI.__index = ShopUI
@@ -181,8 +181,7 @@ function ShopUI:createUI()
 	self.statusLabel = statusLabel
 
 	-- Responsive scaling (Phase 2)
-	local uiScale = ResponsiveScale.applyToFrame(self.mainFrame, PANEL_W, PANEL_H)
-	ResponsiveScale.compensateStrokes(self.mainFrame, uiScale.Scale)
+	AdaptiveLayout.applyScale(self.mainFrame, PANEL_W, PANEL_H)
 
 	-- Default tab
 	self:switchTab("Items")

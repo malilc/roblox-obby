@@ -7,7 +7,7 @@ local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 local Config = require(ReplicatedStorage.Shared.Config)
 local RemoteRegistry = require(ReplicatedStorage.Shared.RemoteRegistry)
 local UIFactory = require(script.Parent.UIFactory)
-local ResponsiveScale = require(ReplicatedStorage.Shared.ResponsiveScale)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local FeedbackUI = {}
 FeedbackUI.__index = FeedbackUI
@@ -51,7 +51,7 @@ function FeedbackUI:_build()
 		strokeWeight = "thin",
 		visible = false,
 	})
-	ResponsiveScale.applyToFrame(self.container, PANEL_W, PANEL_H)
+	AdaptiveLayout.applyScale(self.container, PANEL_W, PANEL_H)
 
 	-- Title
 	UIFactory.createLabel(self.container, {
