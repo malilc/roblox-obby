@@ -7,13 +7,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 local UIFactory = require(script.Parent.UIFactory)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local LocalPlayer = Players.LocalPlayer
 
 local ScoreUI = {}
 ScoreUI.__index = ScoreUI
-
--- IS_MOBILE evaluated inside createUI() to avoid Device Emulator race condition
 
 -- Helper: create drop shadow under a pill
 local function createDropShadow(pill: Frame)
@@ -303,32 +302,30 @@ function ScoreUI:createUI()
 	timerTextStroke.Transparency = 0.3
 	timerTextStroke.Parent = timerLabel
 
-	-- Mobile layout: scale down gems/stage using UIScale + reposition
-	-- (UIScale approach is reliable — changing Size directly doesn't stick)
-	local camera = workspace.CurrentCamera
-	local gemUIScale = Instance.new("UIScale")
-	gemUIScale.Scale = 1
-	gemUIScale.Parent = gemFrame
-	local stageUIScale = Instance.new("UIScale")
-	stageUIScale.Scale = 1
-	stageUIScale.Parent = stageFrame
+	-- Register HUD frames with AdaptiveLayout zone system
+	AdaptiveLayout.registerHUD(gemFrame, "BottomLeft", {
+		order = 1,
+		padding = 8,
+		designWidth = 130,
+		designHeight = 44,
+	})
 
-	local function updateHUDLayout()
-		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
-		if isMobile then
-			gemUIScale.Scale = 0.5
-			gemFrame.Position = UDim2.new(0, 0, 1, -55)
-			stageUIScale.Scale = 0.5
-			stageFrame.Position = UDim2.new(0, 0, 1, -70)
-		else
-			gemUIScale.Scale = 1
-			gemFrame.Position = UDim2.new(0, 10, 1, -100)
-			stageUIScale.Scale = 1
-			stageFrame.Position = UDim2.new(0, 10, 1, -132)
-		end
-	end
-	updateHUDLayout()
-	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateHUDLayout)
+	AdaptiveLayout.registerHUD(stageFrame, "BottomLeft", {
+		order = 3,
+		padding = 8,
+		designWidth = 160,
+		designHeight = 28,
+	})
+
+	-- Apply adaptive scale to timer (not in a zone, but still needs scaling)
+	local timerUIScale = Instance.new("UIScale")
+	timerUIScale.Name = "AdaptiveHUDScale"
+	timerUIScale.Scale = AdaptiveLayout.getScale()
+	timerUIScale.Parent = timerFrame
+
+	AdaptiveLayout.onChanged(function()
+		timerUIScale.Scale = AdaptiveLayout.getScale()
+	end)
 end
 
 function ScoreUI:updateGems(data: {gems: number, wins: number?})

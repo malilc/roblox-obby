@@ -7,14 +7,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 local UIFactory = require(script.Parent.UIFactory)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local LocalPlayer = Players.LocalPlayer
 
 local CurrencyUI = {}
 CurrencyUI.__index = CurrencyUI
-
--- Platform detection for mobile repositioning
--- IS_MOBILE evaluated inside createUI() to avoid Device Emulator race condition
 
 -- Helper: create drop shadow under a pill
 local function createDropShadow(pill: Frame)
@@ -183,24 +181,13 @@ function CurrencyUI:createUI()
 	-- Start shine animation loop
 	self:startShineAnimation()
 
-	-- Mobile layout: scale down currency using UIScale + reposition
-	local camera = workspace.CurrentCamera
-	local currUIScale = Instance.new("UIScale")
-	currUIScale.Scale = 1
-	currUIScale.Parent = currencyFrame
-
-	local function updateCurrLayout()
-		local isMobile = camera.ViewportSize.Y > 1 and camera.ViewportSize.Y < 500
-		if isMobile then
-			currUIScale.Scale = 0.5
-			currencyFrame.Position = UDim2.new(0, 0, 1, -32)
-		else
-			currUIScale.Scale = 1
-			currencyFrame.Position = UDim2.new(0, 10, 1, -52)
-		end
-	end
-	updateCurrLayout()
-	camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateCurrLayout)
+	-- Register currency frame with AdaptiveLayout zone system
+	AdaptiveLayout.registerHUD(currencyFrame, "BottomLeft", {
+		order = 2,
+		padding = 8,
+		designWidth = 140,
+		designHeight = 44,
+	})
 end
 
 -- Shine animation loop (continuous, no gap)
