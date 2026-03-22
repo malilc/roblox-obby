@@ -206,10 +206,11 @@ Elements ที่ `Visible = false` จะไม่ถูกนับใน sta
 | Coins (CurrencyUI) | BottomLeft | 2 | Up |
 | Stage Counter | BottomLeft | 3 | Up |
 | Menu Grid | BottomLeft | 4 | Up |
-| Item Bar | BottomCenter | 1 | Up |
+| Item Bar (ItemUI) | BottomCenter | 1 | Up |
 | Rankings (Spectator) | TopRight | 1 | Down |
 | Rankings (MatchLobby) | TopRight | 1 | Down |
 | Spectate Prompt | BottomCenter | 2 | Up |
+| Spectator Controls | BottomCenter | 3 | Up |
 
 **หมายเหตุ:** Gems/Coins/Stage อยู่ **BottomLeft** (ตรงกับตำแหน่งปัจจุบัน) ไม่ใช่ TopLeft
 
@@ -218,6 +219,7 @@ Elements ที่ `Visible = false` จะไม่ถูกนับใน sta
 | Element | เหตุผล |
 |---------|--------|
 | TimerFrame (ScoreUI) | อยู่ TopCenter ตายตัว, ไม่ต้อง stack กับอะไร — ใช้ HUD scale ตรงๆ |
+| RaceTimer (MatchLobbyUI) | TopCenter fixed position, same pattern as TimerFrame — ใช้ HUD scale ตรงๆ |
 | Notifications (TimeWarning, Death, Invite) | Transient labels ขนาดเล็ก, ใช้ relative position (0.5, X) อยู่แล้ว |
 | ItemUI on mobile | ซ่อนถาวร (`Visible = false`) — MobileInputUI ทำหน้าที่แทน |
 | LeaderboardUI | Server-side SurfaceGui, ไม่ใช่ ScreenGui |
@@ -225,7 +227,7 @@ Elements ที่ `Visible = false` จะไม่ถูกนับใน sta
 ### Phone-Specific Adjustments
 
 เมื่อ `deviceType == "Phone"`:
-- Rankings จำกัด top 3 entries (ลดความสูง)
+- Rankings จำกัด top 3 entries — ทั้ง SpectatorUI rankings **และ** MatchLobbyUI race rankings
 - Menu Grid ใช้ compact layout
 - ไม่เปลี่ยน zone — แค่ลด content ภายใน element
 
@@ -261,6 +263,8 @@ AdaptiveLayout.compensateStrokes(frame)
 - เก็บ original thickness ใน attribute `_originalThickness`
 - คูณด้วย scale: `stroke.Thickness = original * modalScale`
 - เรียกอัตโนมัติเมื่อ viewport เปลี่ยน
+- **API change:** signature เปลี่ยนจาก `(frame, scale)` → `(frame)` — scale อ่านจาก module ภายใน
+  call sites เดิมที่ส่ง scale เป็น parameter ต้องลบ argument ที่ 2 ออก
 
 ### Modal vs HUD Scale
 
@@ -306,12 +310,12 @@ AdaptiveLayout.compensateStrokes(frame)
 
 | ไฟล์ | เปลี่ยนอะไร |
 |------|------------|
-| `ScoreUI.luau` | ลบ viewport listener → `registerHUD("BottomLeft", order=1)` |
+| `ScoreUI.luau` | ลบ viewport listener → `registerHUD` x2: gemFrame(BottomLeft, order=1), stageFrame(BottomLeft, order=3) |
 | `CurrencyUI.luau` | ลบ viewport listener → `registerHUD("BottomLeft", order=2)` |
-| `SpectatorUI.luau` | ลบ 3 UIScale instances → `registerHUD` per element |
+| `SpectatorUI.luau` | ลบ 3 UIScale instances → `registerHUD` x3: rankings(TopRight,1), prompt(BottomCenter,2), controlBar(BottomCenter,3) |
 | `MatchLobbyUI.luau` | ลบ custom UIScale rankings → `registerHUD("TopRight")` |
 | `MenuGridUI.luau` | ลบ viewport listener → `registerHUD("BottomLeft", order=4)` |
-| `ItemBarUI.luau` | `registerHUD("BottomCenter")` |
+| `ItemUI.luau` | `registerHUD("BottomCenter", order=1)` — desktop only, ซ่อนบน mobile (Visible=false → zone skips) |
 
 **Cleanup:**
 
