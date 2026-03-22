@@ -62,19 +62,20 @@ src/
 └── shared/                      # Shared code (server + client)
     ├── Config.luau              # ⭐ ค่า Config ทั้งหมด (+ Debug flags + Ultimate Skills + Timing + Map)
     ├── StageInfo.luau           # ⭐ Stage metadata (name, icon, difficulty, color, reward) — single source of truth
-    ├── Types.luau               # Type definitions
     ├── Logger.luau              # 🔧 Centralized logging (configurable levels)
     ├── RemoteRegistry.luau      # 📡 Centralized RemoteEvent access with caching + WaitForChild fallback
     ├── ItemTypes.luau           # 🎯 นิยาม Items ทั้งหมด
     ├── ClassTypes.luau          # 🎭 นิยาม Classes ทั้งหมด (+ ultimateSkill field)
     ├── ThemeConfig.luau         # 🎨 UI theme tokens + helpers
+    ├── AdaptiveLayout.luau      # 📱 Unified responsive UI — modal scaling + HUD zone stacking (CLIENT ONLY)
     ├── GamePassLogic.luau       # 🎫 Pure game pass business logic (ownership resolution, multipliers, validation — no Roblox service deps)
     └── __tests__/               # 🧪 Jest Lua unit tests
         ├── jest.config.luau     # Jest config
         ├── ClassTypes.spec.luau # Tests for ClassTypes
         ├── ItemTypes.spec.luau  # Tests for ItemTypes
         ├── StageInfo.spec.luau  # Tests for StageInfo
-        └── GamePassLogic.spec.luau # Tests for GamePassLogic (45 cases: ownership, multipliers, validation)
+        ├── GamePassLogic.spec.luau # Tests for GamePassLogic (45 cases: ownership, multipliers, validation)
+        └── AdaptiveLayout.spec.luau # Tests for AdaptiveLayout (12 cases: scale, modal, zones, visibility)
 
 scripts/
 └── run-tests.server.luau        # 🧪 Jest test runner (run-in-roblox)
@@ -1869,9 +1870,57 @@ btnLabel.TextColor3 = Theme.TEXT_ON_ACCENT  -- white text on colored button
 7. **Emoji ใน Luau**: ใช้ unicode escape `\u{1F381}` แทน emoji ตรงๆ ใน string literals
 8. **Gradient button with text**: ใช้ Frame+TextLabel pattern — `TextButton (transparent, Text="")` → `Frame (gradient bg)` → `TextLabel (white text, ZIndex+1)` — ห้ามใส่ UIGradient บน TextButton โดยตรง (tint ตัวหนังสือ)
 
+### 📱 AdaptiveLayout — Unified Responsive System
+
+**ไฟล์:** `src/shared/AdaptiveLayout.luau` (CLIENT ONLY — require จาก client เท่านั้น)
+
+ระบบ responsive เดียวที่จัดการทั้ง modal popups และ HUD elements:
+
+**สำหรับ Modal Popups (Shop, Settings, Classes ฯลฯ):**
+```lua
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
+AdaptiveLayout.applyScale(frame, PANEL_W, PANEL_H)
+-- UIStroke compensation ทำอัตโนมัติ ไม่ต้องเรียก compensateStrokes แยก
+```
+
+**สำหรับ HUD Elements (Gems, Coins, Menu ฯลฯ):**
+```lua
+AdaptiveLayout.registerHUD(frame, "BottomLeft", {
+    order = 1,          -- ลำดับใน zone (1 = ชิดขอบสุด)
+    padding = 8,
+    designWidth = 130,  -- ขนาด design ดั้งเดิม
+    designHeight = 44,
+})
+```
+
+**Zone assignments ปัจจุบัน:**
+| Element | Zone | Order |
+|---------|------|-------|
+| Gems (ScoreUI) | BottomLeft | 1 |
+| Coins (CurrencyUI) | BottomLeft | 2 |
+| Stage Counter | BottomLeft | 3 |
+| Menu Grid | BottomLeft | 4 |
+| Item Bar | BottomCenter | 1 |
+| Spectate Prompt | BottomCenter | 2 |
+| Spectator Controls | BottomCenter | 3 |
+| Rankings | TopRight | 1 |
+
+**Elements ที่ไม่อยู่ใน zones** (ใช้ HUD scale ตรงๆ): TimerFrame, RaceTimer
+
+**API หลัก:**
+- `AdaptiveLayout.init()` — เรียกครั้งเดียวจาก MainUI
+- `AdaptiveLayout.getScale()` → number (0.4–1.0)
+- `AdaptiveLayout.getDeviceType()` → "Phone" | "Tablet" | "Desktop"
+- `AdaptiveLayout.onChanged(callback)` → unsubscribe function
+- `AdaptiveLayout.applyScale(frame, designW, designH)` — modal scaling
+- `AdaptiveLayout.registerHUD(frame, zone, config)` → unregister function
+
 ### Checklist สำหรับ UI ใหม่
 
 - [ ] `local Theme = require(ReplicatedStorage.Shared.ThemeConfig)`
+- [ ] `local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)`
+- [ ] Modal popup → `AdaptiveLayout.applyScale(container, PANEL_W, PANEL_H)`
+- [ ] HUD element → `AdaptiveLayout.registerHUD(frame, zone, config)`
 - [ ] Panel background = UIGradient (PANEL_GRAD_TOP → PANEL_GRAD_BTM, rotation 180°)
 - [ ] Subtle UIStroke (ACCENT_CYAN, STROKE_MED, transparency 0.5) บน main container
 - [ ] Soft shadow Frame (CARD_SHADOW, transparency 0.7) บน main container
