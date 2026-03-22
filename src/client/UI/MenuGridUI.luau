@@ -1,16 +1,14 @@
 -- MenuGridUI: 2x3 menu button grid (top-left HUD)
 
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
 local UIFactory = require(script.Parent.UIFactory)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local MenuGridUI = {}
 MenuGridUI.__index = MenuGridUI
-
--- IS_MOBILE evaluated inside .new() to avoid Device Emulator race condition
 
 -- Desktop layout constants (base design size)
 local BUTTON_W = 74
@@ -21,9 +19,6 @@ local COLS = 2
 local PANEL_W = PAD * 2 + COLS * BUTTON_W + GAP         -- 172
 local PANEL_H = PAD * 2 + 4 * BUTTON_H + GAP * 3        -- 306
 local PANEL_X = 10
-
--- On mobile: build at desktop size, then apply UIScale to shrink responsively
--- Position: bottom-left on mobile, center-left on desktop
 
 -- Button definitions
 local BUTTONS = {
@@ -38,15 +33,12 @@ local BUTTONS = {
 }
 
 function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
-	local IS_MOBILE = UserInputService.TouchEnabled
-
 	local self = setmetatable({}, MenuGridUI)
 	self.buttons = {}
 	self.callbacks = callbacks or {}
 
-	-- Container panel (always built at desktop size, scaled on mobile via UIScale)
-	local desktopPos = UDim2.new(0, PANEL_X, 0.5, -math.floor(PANEL_H / 2)) -- center-left on desktop
-	-- Mobile: position calculated after UIScale is applied (see below)
+	-- Container panel (always built at desktop size; AdaptiveLayout handles scaling/positioning)
+	local desktopPos = UDim2.new(0, PANEL_X, 0.5, -math.floor(PANEL_H / 2))
 
 	local panel = UIFactory.createPanel(parent, {
 		name = "MenuGridPanel",
@@ -61,20 +53,12 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 	})
 	self.panel = panel
 
-	-- Responsive scaling on mobile: shrink and position center-left (above coins/gems)
-	if IS_MOBILE then
-		local camera = workspace.CurrentCamera
-		local MOBILE_SCALE = 0.55
-
-		local uiScale = Instance.new("UIScale")
-		uiScale.Scale = MOBILE_SCALE
-		uiScale.Parent = panel
-		self.menuScale = uiScale
-
-		-- Center-left position, slightly above center to leave room for coins at bottom
-		local scaledH = PANEL_H * MOBILE_SCALE
-		panel.Position = UDim2.new(0, 4, 0.38, -math.floor(scaledH / 2))
-	end
+	AdaptiveLayout.registerHUD(panel, "BottomLeft", {
+		order = 4,
+		padding = 8,
+		designWidth = PANEL_W,
+		designHeight = PANEL_H,
+	})
 
 	-- Build grid buttons (always at desktop size — UIScale handles shrinking)
 	for i, def in ipairs(BUTTONS) do
@@ -162,6 +146,8 @@ end
 function MenuGridUI:hide()
 	if self.panel then
 		local currentPos = self.panel.Position
+		-- Cache the visible position so show() can restore it after AdaptiveLayout placed it
+		self._shownPos = currentPos
 		TweenService:Create(self.panel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(0, -PANEL_W - 10, currentPos.Y.Scale, currentPos.Y.Offset),
 		}):Play()
@@ -170,12 +156,8 @@ end
 
 function MenuGridUI:show()
 	if self.panel then
-		local isMobile = UserInputService.TouchEnabled
-		local scale = self.menuScale and self.menuScale.Scale or 1
-		local scaledH = PANEL_H * scale
-		local showPos = if isMobile
-			then UDim2.new(0, 4, 0.38, -math.floor(scaledH / 2))
-			else UDim2.new(0, PANEL_X, 0.5, -math.floor(PANEL_H / 2))
+		-- Restore to the position AdaptiveLayout assigned (captured in hide())
+		local showPos = self._shownPos or self.panel.Position
 		TweenService:Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = showPos,
 		}):Play()

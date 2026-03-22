@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemTypes = require(ReplicatedStorage.Shared.ItemTypes)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -53,7 +54,15 @@ function ItemUI:createUI()
 	container.Parent = self.parent
 	self.container = container
 
+	AdaptiveLayout.registerHUD(container, "BottomCenter", {
+		order = 1,
+		padding = 8,
+		designWidth = 160,
+		designHeight = 95,
+	})
+
 	-- Hide item container on mobile (MobileInputUI provides touch buttons instead)
+	-- AdaptiveLayout automatically skips invisible elements when stacking zones
 	if IS_MOBILE then
 		container.Visible = false
 	end
