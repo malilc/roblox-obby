@@ -92,9 +92,10 @@ describe("AdaptiveLayout", function()
     describe("calculateZonePositions", function()
 
         -- BottomLeft anchor (0,1) with 3 visible elements stacking Up at scale 0.5
-        -- order 1: 130x44, pad=8 → cursor 0 - 8 - 22 = -30  → y=-30
-        -- order 2: 160x28, pad=8 → cursor -30 - 8 - 14 = -52 → y=-52
-        -- order 3: 130x30, pad=8 → cursor -52 - 8 - 15 = -75 → y=-75
+        -- yOffset = anchor (bottom) of each element; cursor tracks top edge
+        -- order 1: 130x44, pad=8, scaledH=22 → pad=-8, yOff=-8, cursor=-30
+        -- order 2: 160x28, pad=8, scaledH=14 → pad=-38, yOff=-38, cursor=-52
+        -- order 3: 130x30, pad=8, scaledH=15 → pad=-60, yOff=-60, cursor=-75
         -- xOffset = +8 (left-anchored, xSign=1)
         it("should stack 3 elements upward from BottomLeft with correct Y offsets", function()
             local elements = {
@@ -104,17 +105,17 @@ describe("AdaptiveLayout", function()
             }
             local positions = AdaptiveLayout.calculateZonePositions("BottomLeft", elements, 0.5, 375, 667)
             expect(#positions).toBe(3)
-            expect(positions[1].y).toBe(-30)
-            expect(positions[2].y).toBe(-52)
-            expect(positions[3].y).toBe(-75)
+            expect(positions[1].y).toBe(-8)
+            expect(positions[2].y).toBe(-38)
+            expect(positions[3].y).toBe(-60)
             expect(positions[1].x).toBe(8)
             expect(positions[1].anchorX).toBe(0)
             expect(positions[1].anchorY).toBe(1)
         end)
 
         -- Same 3 elements but order 2 has visible=false — should be skipped
-        -- order 1: cursor 0 - 8 - 22 = -30  → y=-30
-        -- order 3: cursor -30 - 8 - 15 = -53 → y=-53
+        -- order 1: scaledH=22, pad=8 → yOff=-8, cursor=-30
+        -- order 3: scaledH=15, pad=8 → yOff=-38, cursor=-53
         it("should skip invisible elements and still produce correct Y offsets", function()
             local elements = {
                 { order = 1, designWidth = 130, designHeight = 44, padding = 8, visible = true },
@@ -123,8 +124,8 @@ describe("AdaptiveLayout", function()
             }
             local positions = AdaptiveLayout.calculateZonePositions("BottomLeft", elements, 0.5, 375, 667)
             expect(#positions).toBe(2)
-            expect(positions[1].y).toBe(-30)
-            expect(positions[2].y).toBe(-53)
+            expect(positions[1].y).toBe(-8)
+            expect(positions[2].y).toBe(-38)
         end)
 
         -- TopRight anchor (1,0) stacking Down at scale 0.55

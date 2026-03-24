@@ -1876,43 +1876,61 @@ btnLabel.TextColor3 = Theme.TEXT_ON_ACCENT  -- white text on colored button
 
 ระบบ responsive เดียวที่จัดการทั้ง modal popups และ HUD elements:
 
+**Viewport detection:** ใช้ Camera.ViewportSize เป็นหลัก ถ้าได้ (1,1) จะ fallback ไป ScreenGui.AbsoluteSize + guiInsetY
+
 **สำหรับ Modal Popups (Shop, Settings, Classes ฯลฯ):**
 ```lua
 local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 AdaptiveLayout.applyScale(frame, PANEL_W, PANEL_H)
 -- UIStroke compensation ทำอัตโนมัติ ไม่ต้องเรียก compensateStrokes แยก
+-- ถ้า UI ต้อง reference UIScale (เช่น scale animation):
+self.uiScale = frame:FindFirstChild("AdaptiveScale")
 ```
 
-**สำหรับ HUD Elements (Gems, Coins, Menu ฯลฯ):**
+**สำหรับ HUD Elements ใน zone system (Gems, Coins, Stage):**
 ```lua
 AdaptiveLayout.registerHUD(frame, "BottomLeft", {
     order = 1,          -- ลำดับใน zone (1 = ชิดขอบสุด)
-    padding = 8,
+    padding = 12,
     designWidth = 130,  -- ขนาด design ดั้งเดิม
     designHeight = 44,
 })
 ```
 
-**Zone assignments ปัจจุบัน:**
-| Element | Zone | Order |
-|---------|------|-------|
-| Gems (ScoreUI) | BottomLeft | 1 |
-| Coins (CurrencyUI) | BottomLeft | 2 |
-| Stage Counter | BottomLeft | 3 |
-| Menu Grid | BottomLeft | 4 |
-| Item Bar | BottomCenter | 1 |
-| Spectate Prompt | BottomCenter | 2 |
-| Spectator Controls | BottomCenter | 3 |
-| Rankings | TopRight | 1 |
+**สำหรับ HUD Elements ที่จัดการ position เอง (Items, MenuGrid, Rankings):**
+```lua
+-- ใช้ onChanged + getScale แทน registerHUD เมื่อ element มี dynamic size/position
+local uiScale = Instance.new("UIScale")
+uiScale.Parent = frame
+local function update()
+    uiScale.Scale = math.max(AdaptiveLayout.getScale(), 0.65) -- min scale สูงกว่า
+end
+update()
+AdaptiveLayout.onChanged(update)
+```
 
-**Elements ที่ไม่อยู่ใน zones** (ใช้ HUD scale ตรงๆ): TimerFrame, RaceTimer
+**Zone assignments ปัจจุบัน:**
+| Element | Zone | Order | หมายเหตุ |
+|---------|------|-------|----------|
+| Gems (ScoreUI) | BottomLeft | 1 | |
+| Coins (CurrencyUI) | BottomLeft | 2 | |
+| Stage Counter | BottomLeft | 3 | |
+| Spectate Prompt | BottomCenter | 2 | |
+| Spectator Controls | BottomCenter | 3 | |
+
+**Elements ที่ไม่อยู่ใน zones** (ใช้ scale เอง + ตำแหน่งเดิม):
+- MenuGrid — center-left, min scale 0.85
+- Item Bar — bottom-center, min scale 0.65
+- Race Rankings — top-right, min scale 0.85
+- TimerFrame, RaceTimer — ใช้ HUD scale ตรงๆ
 
 **API หลัก:**
-- `AdaptiveLayout.init()` — เรียกครั้งเดียวจาก MainUI
+- `AdaptiveLayout.init(screenGui?)` — เรียกครั้งเดียวจาก MainUI, ส่ง ScreenGui เป็น fallback viewport
 - `AdaptiveLayout.getScale()` → number (0.4–1.0)
+- `AdaptiveLayout.getSafeArea()` → { width, height }
 - `AdaptiveLayout.getDeviceType()` → "Phone" | "Tablet" | "Desktop"
 - `AdaptiveLayout.onChanged(callback)` → unsubscribe function
-- `AdaptiveLayout.applyScale(frame, designW, designH)` — modal scaling
+- `AdaptiveLayout.applyScale(frame, designW, designH)` — modal scaling, สร้าง "AdaptiveScale" UIScale
 - `AdaptiveLayout.registerHUD(frame, zone, config)` → unregister function
 
 ### Checklist สำหรับ UI ใหม่

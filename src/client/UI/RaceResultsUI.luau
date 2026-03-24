@@ -209,7 +209,7 @@ function RaceResultsUI:createUI()
 
 	-- Responsive scaling (Phase 3)
 	AdaptiveLayout.applyScale(container, PANEL_W, PANEL_H)
-	self.uiScale = uiScale
+	self.uiScale = container:FindFirstChild("AdaptiveScale")
 end
 
 function RaceResultsUI:setupRemotes()

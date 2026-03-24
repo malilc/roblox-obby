@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Logger = require(ReplicatedStorage.Shared.Logger)
 local Theme = require(ReplicatedStorage.Shared.ThemeConfig)
+local AdaptiveLayout = require(ReplicatedStorage.Shared.AdaptiveLayout)
 
 Logger.info("Client", "Starting Obby Game Client...")
 
@@ -392,6 +393,9 @@ local function showUpdateLog()
 		end
 	end)
 
+	-- Apply responsive scaling (shrinks on small viewports)
+	AdaptiveLayout.applyScale(panel, panelW, panelH)
+
 	-- ============ Animate in ============
 	panel.Position = UDim2.new(0.5, 0, 0.45, 40)
 	panel.BackgroundTransparency = 1
@@ -445,7 +449,7 @@ do
 	local btn = Instance.new("TextButton")
 	btn.Name = "UpdateLogBtn"
 	btn.Size = UDim2.new(0, 40, 0, 35)
-	btn.Position = UDim2.new(1, -180, 0, 10)
+	btn.Position = UDim2.new(1, -260, 0, 10)
 	btn.BackgroundColor3 = Theme.BG_SURFACE
 	btn.BorderSizePixel = 0
 	btn.Text = ""

@@ -141,9 +141,10 @@ function AdaptiveLayout.calculateZonePositions(
 
         local yOffset: number
         if zone.dirDefault == "Up" then
-            -- Stack upward: subtract padding + height, place at new cursor
-            cursor = cursor - el.padding - scaledH
+            -- Stack upward: padding from previous top, place anchor (bottom), advance to top
+            cursor = cursor - el.padding
             yOffset = cursor
+            cursor = cursor - scaledH
         else
             -- Stack downward: add padding, place, then advance cursor
             cursor = cursor + el.padding
@@ -165,12 +166,15 @@ end
 -- ========== MODULE STATE ==========
 
 local camera: Camera? = nil
+local screenGui: ScreenGui? = nil
 local guiInsetY: number = 0
 local currentScale: number = 1.0
 local currentSafeArea = { width = 1920, height = 1080 }
 local currentViewport = { x = 1920, y = 1080 }
 local currentDeviceType: DeviceType = "Desktop"
 local initialized = false
+local viewportReady = false
+local viewportConnection: RBXScriptConnection? = nil
 
 local trackedModals: {{ frame: Frame, designW: number, designH: number, uiScale: UIScale }} = {}
 local trackedHUD: {{ frame: Frame, zone: ZoneName, config: ZoneConfig, uiScale: UIScale }} = {}
@@ -178,18 +182,41 @@ local changeCallbacks: {() -> ()} = {}
 
 -- ========== INTERNAL FUNCTIONS ==========
 
-local function _recalculate()
+-- Resolve the actual viewport size from Camera or ScreenGui fallback.
+-- Camera.ViewportSize may return (1,1) in some Studio configurations.
+local function _getViewportSize(): (number, number)
+    -- Prefer Camera.ViewportSize
     local cam = camera
-    if not cam then return end
+    if cam then
+        local vp = cam.ViewportSize
+        if vp.X > 1 and vp.Y > 1 then
+            return vp.X, vp.Y
+        end
+    end
+    -- Fallback: derive from ScreenGui.AbsoluteSize
+    -- AbsoluteSize.Y excludes the gui inset when IgnoreGuiInset=false,
+    -- so add it back to get the full viewport height.
+    if screenGui and screenGui.Parent then
+        local abs = screenGui.AbsoluteSize
+        if abs.X > 1 and abs.Y > 1 then
+            return abs.X, abs.Y + guiInsetY
+        end
+    end
+    return 0, 0
+end
 
-    local vp = cam.ViewportSize
-    currentViewport = { x = vp.X, y = vp.Y }
+local function _recalculate()
+    local vw, vh = _getViewportSize()
+    if vw <= 1 or vh <= 1 then return end
+
+    viewportReady = true
+    currentViewport = { x = vw, y = vh }
     currentSafeArea = {
-        width  = vp.X,
-        height = vp.Y - guiInsetY,
+        width  = vw,
+        height = vh - guiInsetY,
     }
-    currentScale       = AdaptiveLayout.calculateHUDScale(vp.X, vp.Y, guiInsetY)
-    currentDeviceType  = AdaptiveLayout.classifyDevice(vp.X, vp.Y, guiInsetY)
+    currentScale       = AdaptiveLayout.calculateHUDScale(vw, vh, guiInsetY)
+    currentDeviceType  = AdaptiveLayout.classifyDevice(vw, vh, guiInsetY)
 end
 
 local function _cleanOrphans()
@@ -312,32 +339,62 @@ end
 -- Must be called once from a client script (e.g. MainUI) before using any
 -- runtime features. Grabs the Camera and GuiService inset, then listens for
 -- viewport changes so all registered elements stay up-to-date automatically.
-function AdaptiveLayout.init()
+function AdaptiveLayout.init(gui: ScreenGui?)
     if initialized then return end
     initialized = true
+
+    -- Store ScreenGui for viewport fallback (Camera.ViewportSize may be 1,1 in Studio)
+    screenGui = gui
 
     local GuiService = game:GetService("GuiService")
     local inset = GuiService:GetGuiInset()
     guiInsetY = inset.Y
 
-    -- Workspace.CurrentCamera may not exist yet on very early startup
     local Workspace = game:GetService("Workspace")
-    camera = Workspace.CurrentCamera
-    if not camera then
-        Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-            camera = Workspace.CurrentCamera
-            _recalculate()
+
+    -- Helper: bind ViewportSize listener to a camera, cleaning up the old one
+    local function connectCamera(cam: Camera)
+        camera = cam
+        if viewportConnection then
+            viewportConnection:Disconnect()
+            viewportConnection = nil
+        end
+        viewportConnection = cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+            task.wait()
+            _updateAll()
+        end)
+        _updateAll()
+    end
+
+    -- Connect current camera if available
+    local cam = Workspace.CurrentCamera
+    if cam then
+        connectCamera(cam)
+    end
+
+    -- Always listen for camera swap (respawn, etc.)
+    Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+        local newCam = Workspace.CurrentCamera
+        if newCam then
+            connectCamera(newCam)
+        end
+    end)
+
+    -- Listen for ScreenGui resize (reliable fallback when Camera.ViewportSize is stale)
+    if screenGui then
+        screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            task.wait()
+            _updateAll()
         end)
     end
 
-    _recalculate()
-
-    -- Listen for viewport size changes (window resize, device rotation)
-    if camera then
-        camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-            -- Yield one frame so AbsoluteSize values are settled before recalculating
-            task.wait()
-            _updateAll()
+    -- If viewport wasn't ready yet, poll until it becomes valid
+    if not viewportReady then
+        task.spawn(function()
+            while not viewportReady do
+                task.wait(0.1)
+                _updateAll()
+            end
         end)
     end
 end

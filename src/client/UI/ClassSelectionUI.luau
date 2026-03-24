@@ -1659,15 +1659,11 @@ function ClassSelectionUI:setupRemotes()
 		end
 
 		if type(data.action) == "table" and data.action.leveledUp == true and type(data.action.classId) == "string" then
-			local classDef = ClassTypes.getClass(data.action.classId)
-			local className = classDef and classDef.name or data.action.classId
-			local level = self.classMastery[data.action.classId] and self.classMastery[data.action.classId].level or tonumber(data.action.newLevel) or 1
-			self:showToast(string.format("%s Mastery Lv.%d!", className, level), Theme.PRIMARY)
-
+			-- Mastery level-up toast disabled (distracting during gameplay)
 			if type(data.action.unlockedRewards) == "table" and #data.action.unlockedRewards > 0 then
-				task.delay(0.25, function()
-					self:showRewardUnlockToast(className, data.action.unlockedRewards)
-				end)
+				local classDef = ClassTypes.getClass(data.action.classId)
+				local className = classDef and classDef.name or data.action.classId
+				self:showRewardUnlockToast(className, data.action.unlockedRewards)
 			end
 		elseif type(data.action) == "table" and type(data.action.unlockedRewards) == "table" and type(data.action.classId) == "string" then
 			local classDef = ClassTypes.getClass(data.action.classId)

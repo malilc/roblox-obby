@@ -176,7 +176,7 @@ function SummaryUI:createUI()
 	-- ==================== SCROLLABLE CONTENT AREA ====================
 	local contentScroll = Instance.new("ScrollingFrame")
 	contentScroll.Name = "ContentScroll"
-	contentScroll.Size = UDim2.new(1, 0, 1, -185) -- header(100) + footer(85)
+	contentScroll.Size = UDim2.new(1, 0, 1, -215) -- header(100) + footer(115)
 	contentScroll.Position = UDim2.new(0, 0, 0, 100)
 	contentScroll.BackgroundTransparency = 1
 	contentScroll.BorderSizePixel = 0
@@ -431,23 +431,23 @@ function SummaryUI:createUI()
 	totalValue.Parent = totalHighlight
 	self.totalValueLabel = totalValue
 
-	-- ==================== FOOTER (OK + UPSELL) ====================
+	-- ==================== FOOTER (UPSELL above, OK below) ====================
 	local footerFrame = Instance.new("Frame")
 	footerFrame.Name = "FooterFrame"
-	footerFrame.Size = UDim2.new(1, -20, 0, 75)
-	footerFrame.Position = UDim2.new(0, 10, 1, -80)
+	footerFrame.Size = UDim2.new(1, -20, 0, 105)
+	footerFrame.Position = UDim2.new(0, 10, 1, -110)
 	footerFrame.BackgroundTransparency = 1
 	footerFrame.BorderSizePixel = 0
 	footerFrame.ZIndex = 51
 	footerFrame.Parent = mainFrame
 	self.footerFrame = footerFrame
 
-	-- OK button (right side of footer)
+	-- OK button (centered, below upsell row)
 	local okButton = Instance.new("TextButton")
 	okButton.Name = "OKButton"
-	okButton.Size = UDim2.new(0, 160, 0, 60)
-	okButton.Position = UDim2.new(1, 0, 0, 0)
-	okButton.AnchorPoint = Vector2.new(1, 0)
+	okButton.Size = UDim2.new(1, 0, 0, 50)
+	okButton.Position = UDim2.new(0.5, 0, 1, 0)
+	okButton.AnchorPoint = Vector2.new(0.5, 1)
 	okButton.BackgroundTransparency = 1
 	okButton.BorderSizePixel = 0
 	okButton.Text = ""
@@ -512,7 +512,7 @@ function SummaryUI:createUI()
 
 	-- Responsive scaling (Phase 3)
 	AdaptiveLayout.applyScale(mainFrame, PANEL_W, PANEL_H)
-	self.uiScale = uiScale
+	self.uiScale = mainFrame:FindFirstChild("AdaptiveScale")
 end
 
 function SummaryUI:createSmallRow(config: {name: string, icon: string, key: string, color: Color3, isTime: boolean?}, index: number, parent: Frame, startY: number): Frame
@@ -1051,10 +1051,10 @@ function SummaryUI:setupGamePassUpsell(upsellData: {doubleCoin: number?, extraSl
 		table.insert(showEntries, entries[i])
 	end
 
-	-- Container for upsell buttons (left side of footer)
+	-- Container for upsell buttons (top of footer, centered)
 	local container = Instance.new("Frame")
 	container.Name = "GamePassUpsell"
-	container.Size = UDim2.new(0.55, -10, 0, 60)
+	container.Size = UDim2.new(1, 0, 0, 45)
 	container.Position = UDim2.new(0, 0, 0, 0)
 	container.BackgroundTransparency = 1
 	container.ZIndex = 51
@@ -1063,7 +1063,7 @@ function SummaryUI:setupGamePassUpsell(upsellData: {doubleCoin: number?, extraSl
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Padding = UDim.new(0, 6)
 	layout.Parent = container
 
@@ -1077,7 +1077,7 @@ end
 function SummaryUI:createUpsellButton(parent: Frame, text: string, gamePassId: number, width: number, color: Color3)
 	local btn = Instance.new("TextButton")
 	btn.Name = "UpsellBtn"
-	btn.Size = UDim2.new(0, width, 0, 60)
+	btn.Size = UDim2.new(0, width, 0, 45)
 	btn.BackgroundColor3 = color
 	btn.BackgroundTransparency = 0.1
 	btn.BorderSizePixel = 0

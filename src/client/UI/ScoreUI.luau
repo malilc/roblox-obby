@@ -305,14 +305,14 @@ function ScoreUI:createUI()
 	-- Register HUD frames with AdaptiveLayout zone system
 	AdaptiveLayout.registerHUD(gemFrame, "BottomLeft", {
 		order = 1,
-		padding = 8,
+		padding = 12,
 		designWidth = 130,
 		designHeight = 44,
 	})
 
 	AdaptiveLayout.registerHUD(stageFrame, "BottomLeft", {
 		order = 3,
-		padding = 8,
+		padding = 12,
 		designWidth = 160,
 		designHeight = 28,
 	})

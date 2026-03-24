@@ -184,7 +184,7 @@ function CurrencyUI:createUI()
 	-- Register currency frame with AdaptiveLayout zone system
 	AdaptiveLayout.registerHUD(currencyFrame, "BottomLeft", {
 		order = 2,
-		padding = 8,
+		padding = 12,
 		designWidth = 140,
 		designHeight = 44,
 	})

@@ -65,7 +65,7 @@ function MainUI.new()
 	self.screenGui = screenGui
 
 	-- Initialize responsive scaling system (per D-02: single viewport listener)
-	AdaptiveLayout.init()
+	AdaptiveLayout.init(screenGui)
 
 	-- Create UI components
 	self.scoreUI = ScoreUI.new(screenGui)

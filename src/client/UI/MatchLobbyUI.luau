@@ -518,13 +518,17 @@ function MatchLobbyUI:createRaceRankingUI()
 	rankHeaderCorner.CornerRadius = Theme.CORNER_SM
 	rankHeaderCorner.Parent = rankHeader
 
-	-- Register race rankings panel with AdaptiveLayout zone
-	AdaptiveLayout.registerHUD(rankFrame, "TopRight", {
-		order = 1,
-		padding = 8,
-		designWidth = 190,
-		designHeight = 300,
-	})
+	-- Adaptive scale for rankings — keep readable with min 0.85
+	local rankScale = Instance.new("UIScale")
+	rankScale.Name = "RankAdaptiveScale"
+	rankScale.Parent = rankFrame
+
+	local function updateRankScale()
+		local s = AdaptiveLayout.getScale()
+		rankScale.Scale = math.max(s, 0.85)
+	end
+	updateRankScale()
+	AdaptiveLayout.onChanged(updateRankScale)
 
 	-- Rankings list
 	local rankList = Instance.new("Frame")

@@ -49,20 +49,27 @@ function ItemUI:createUI()
 	local container = Instance.new("Frame")
 	container.Name = "ItemContainer"
 	container.Size = UDim2.new(0, 160, 0, 95)
-	container.Position = UDim2.new(0.5, -80, 1, -100)
+	container.AnchorPoint = Vector2.new(0.5, 1)
+	container.Position = UDim2.new(0.5, 0, 1, -8)
 	container.BackgroundTransparency = 1
 	container.Parent = self.parent
 	self.container = container
 
-	AdaptiveLayout.registerHUD(container, "BottomCenter", {
-		order = 1,
-		padding = 8,
-		designWidth = 160,
-		designHeight = 95,
-	})
+	-- Items use gentler scaling (min 0.65) to stay clickable on small viewports.
+	-- Not in zone system because updateItems changes Size dynamically.
+	local itemScale = Instance.new("UIScale")
+	itemScale.Name = "ItemAdaptiveScale"
+	itemScale.Parent = container
+
+	local function updateItemScale()
+		local safeArea = AdaptiveLayout.getSafeArea()
+		local s = math.clamp(math.min(safeArea.width / 1920, safeArea.height / 1080), 0.65, 1.0)
+		itemScale.Scale = s
+	end
+	updateItemScale()
+	AdaptiveLayout.onChanged(updateItemScale)
 
 	-- Hide item container on mobile (MobileInputUI provides touch buttons instead)
-	-- AdaptiveLayout automatically skips invisible elements when stacking zones
 	if IS_MOBILE then
 		container.Visible = false
 	end
@@ -576,10 +583,8 @@ function ItemUI:updateItems(data: {[string]: any})
 		end
 		if maxSlots >= 3 then
 			self.container.Size = UDim2.new(0, 240, 0, 95)
-			self.container.Position = UDim2.new(0.5, -120, 1, -100)
 		else
 			self.container.Size = UDim2.new(0, 160, 0, 95)
-			self.container.Position = UDim2.new(0.5, -80, 1, -100)
 		end
 	end
 

@@ -37,13 +37,11 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 	self.buttons = {}
 	self.callbacks = callbacks or {}
 
-	-- Container panel (always built at desktop size; AdaptiveLayout handles scaling/positioning)
-	local desktopPos = UDim2.new(0, PANEL_X, 0.5, -math.floor(PANEL_H / 2))
-
+	-- Container panel — center-left position with adaptive scaling
 	local panel = UIFactory.createPanel(parent, {
 		name = "MenuGridPanel",
 		size = UDim2.new(0, PANEL_W, 0, PANEL_H),
-		position = desktopPos,
+		position = UDim2.new(0, PANEL_X, 0.5, -math.floor(PANEL_H / 2)),
 		bgColor = Theme.BG_OVERLAY,
 		bgTransparency = 0.25,
 		cornerSize = "lg",
@@ -53,12 +51,17 @@ function MenuGridUI.new(parent: ScreenGui, callbacks: {[string]: () -> ()})
 	})
 	self.panel = panel
 
-	AdaptiveLayout.registerHUD(panel, "BottomLeft", {
-		order = 4,
-		padding = 8,
-		designWidth = PANEL_W,
-		designHeight = PANEL_H,
-	})
+	-- Scale with viewport but keep center-left position (not in zone system)
+	local menuScale = Instance.new("UIScale")
+	menuScale.Name = "MenuAdaptiveScale"
+	menuScale.Parent = panel
+
+	local function updateMenuScale()
+		local s = AdaptiveLayout.getScale()
+		menuScale.Scale = math.max(s, 0.85)
+	end
+	updateMenuScale()
+	AdaptiveLayout.onChanged(updateMenuScale)
 
 	-- Build grid buttons (always at desktop size — UIScale handles shrinking)
 	for i, def in ipairs(BUTTONS) do
@@ -146,7 +149,6 @@ end
 function MenuGridUI:hide()
 	if self.panel then
 		local currentPos = self.panel.Position
-		-- Cache the visible position so show() can restore it after AdaptiveLayout placed it
 		self._shownPos = currentPos
 		TweenService:Create(self.panel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(0, -PANEL_W - 10, currentPos.Y.Scale, currentPos.Y.Offset),
@@ -156,7 +158,6 @@ end
 
 function MenuGridUI:show()
 	if self.panel then
-		-- Restore to the position AdaptiveLayout assigned (captured in hide())
 		local showPos = self._shownPos or self.panel.Position
 		TweenService:Create(self.panel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = showPos,

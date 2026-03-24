@@ -625,7 +625,7 @@ function StageSelectionUI:createUI()
 
 	-- Responsive scaling (Phase 3)
 	AdaptiveLayout.applyScale(self.mainFrame, PANEL_W, PANEL_H)
-	self.uiScale = uiScale
+	self.uiScale = self.mainFrame:FindFirstChild("AdaptiveScale")
 
 	-- Initialize default tab
 	self:switchTab("Easy")

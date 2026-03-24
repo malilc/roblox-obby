@@ -51,7 +51,7 @@ function ItemTestingUI:createUI()
 	local toggleButton = Instance.new("TextButton")
 	toggleButton.Name = "ToggleButton"
 	toggleButton.Size = UDim2.new(0, 120, 0, 35)
-	toggleButton.Position = UDim2.new(1, -130, 0, 10)
+	toggleButton.Position = UDim2.new(1, -330, 0, 10)
 	toggleButton.BackgroundColor3 = Theme.DANGER
 	toggleButton.Text = "🧪 Testing"
 	toggleButton.TextColor3 = Theme.TEXT_ON_ACCENT
